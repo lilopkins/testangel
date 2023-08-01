@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{prelude::*, value::ParameterValue};
 
 /// An instruction that this engine is capable of providing.
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Instruction {
     /// The internal ID of this instruction. Must be unique.
     id: String,
@@ -65,7 +65,7 @@ impl Instruction {
 }
 
 /// An instruction with it's parameters.
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct InstructionWithParameters {
     /// The ID of the instruction to run.
     pub instruction: String,

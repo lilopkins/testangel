@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// A type of a parameter
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(tag = "t", content = "v")]
 pub enum ParameterKind {
     /// A string type.
@@ -20,7 +20,7 @@ pub enum ParameterKind {
 }
 
 /// A value of a parameter
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(tag = "t", content = "v")]
 pub enum ParameterValue {
     /// A string type.

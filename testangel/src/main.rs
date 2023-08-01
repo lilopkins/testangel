@@ -1,3 +1,9 @@
+use std::path::PathBuf;
+
+use testangel_ipc::prelude::*;
+
+mod ipc;
+
 fn main() {
     pretty_env_logger::init();
 
@@ -14,7 +20,9 @@ fn main() {
 }
 
 #[derive(Default)]
-struct App;
+struct App {
+    engines: Vec<(PathBuf, Vec<Instruction>)>,
+}
 
 impl App {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
@@ -22,7 +30,9 @@ impl App {
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
-        Self::default()
+        Self {
+            engines: ipc::get_engines(),
+        }
     }
 }
 

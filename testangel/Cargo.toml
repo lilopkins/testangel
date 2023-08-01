@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+testangel-ipc = { path = "../testangel-ipc" }
 clap = "4.3.19"
 eframe = "0.22.0"
 egui = "0.22.0"

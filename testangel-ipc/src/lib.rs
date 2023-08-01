@@ -15,7 +15,7 @@ mod value;
 use prelude::*;
 
 /// The possible request messages that could be sent over the JSON IPC channel.
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(tag = "type")]
 pub enum Request {
     /// Request the list of available instructions from this engine plugin.
@@ -23,6 +23,13 @@ pub enum Request {
     /// Run the list of instructions given in the order they are listed.
     RunInstructions {
         instructions: Vec<InstructionWithParameters>,
+    }
+}
+
+impl Request {
+    /// Convert this request to JSON
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap()
     }
 }
 
@@ -35,7 +42,7 @@ impl TryFrom<String> for Request {
 }
 
 /// The possible response messages that could be sent over the JSON IPC channel.
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(tag = "type")]
 pub enum Response {
     /// The list of instructions this engine is capable of.
@@ -62,7 +69,15 @@ impl Response {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+impl TryFrom<String> for Response {
+    type Error = serde_json::Error;
+
+    fn try_from(value: String) -> Result<Self, <Self as TryFrom<String>>::Error> {
+        serde_json::from_str(&value)
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum ErrorKind {
     /// The IPC JSON request couldn't be parsed.
     FailedToParseIPCJson,
