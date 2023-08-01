@@ -44,6 +44,7 @@ fn main() {
             println!(
                 "{}",
                 Response::Instructions {
+                    friendly_name: "Dummy".to_owned(),
                     instructions: vec![add_instruction.clone(), sub_instruction.clone(),],
                 }
                 .to_json()

@@ -47,6 +47,8 @@ impl TryFrom<String> for Request {
 pub enum Response {
     /// The list of instructions this engine is capable of.
     Instructions {
+        /// The friendly name of the engine.
+        friendly_name: String,
         /// The list of instructions this engine is capable of.
         instructions: Vec<Instruction>,
     },

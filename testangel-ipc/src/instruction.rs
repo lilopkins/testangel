@@ -34,6 +34,11 @@ impl Instruction {
         }
     }
 
+    /// Get the friendly name of this instruction
+    pub fn friendly_name(&self) -> &String {
+        &self.friendly_name
+    }
+
     /// Add a parameter to this instruction.
     pub fn with_parameter<S>(mut self, id: S, friendly_name: S, kind: ParameterKind) -> Self
     where

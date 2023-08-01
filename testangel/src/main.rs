@@ -4,7 +4,7 @@ use std::{
     collections::HashMap,
     fs::{self, File},
     io::BufReader,
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 use egui::Ui;
@@ -12,6 +12,7 @@ use egui_file::FileDialog;
 use egui_modal::Modal;
 use ipc::Engine;
 use serde::{Deserialize, Serialize};
+use testangel_ipc::prelude::*;
 
 mod ipc;
 
@@ -32,10 +33,12 @@ fn main() {
 
 #[derive(Default)]
 struct App {
-    _engines: HashMap<PathBuf, Engine>,
-    state: AppState,
+    engines: HashMap<PathBuf, Engine>,
     error: String,
     file_dialog: Option<(FileDialogAction, FileDialog)>,
+    open_type: OpenType,
+    open_path: Option<PathBuf>,
+    open_action: Option<Action>,
 }
 
 enum FileDialogAction {
@@ -43,72 +46,17 @@ enum FileDialogAction {
     SaveAsAction,
 }
 
-#[derive(Default)]
-enum AppState {
+#[derive(Default, PartialEq, Eq)]
+enum OpenType {
     #[default]
     Nothing,
-    ActionEdit {
-        action: Action,
-        path: Option<PathBuf>,
-    },
-    About,
-}
-
-impl AppState {
-    fn is_action_edit(&self) -> bool {
-        match self {
-            Self::ActionEdit { action: _, path: _ } => true,
-            _ => false,
-        }
-    }
-
-    fn get_current_file(&self) -> &Option<PathBuf> {
-        match self {
-            Self::ActionEdit { action: _, path } => path,
-            _ => &None,
-        }
-    }
-
-    fn open_action(&mut self, path: &Path) -> Result<(), ()> {
-        if let Ok(file) = File::open(path) {
-            if let Ok(action) = rmp_serde::from_read(BufReader::new(file)) {
-                *self = Self::ActionEdit {
-                    action,
-                    path: Some(path.to_path_buf()),
-                };
-                return Ok(());
-            }
-        }
-        Err(())
-    }
-
-    fn set_file_path(&mut self, new_path: &Path) {
-        match self {
-            Self::ActionEdit { action: _, path } => *path = Some(new_path.to_path_buf()),
-            _ => (),
-        };
-    }
-
-    fn save(&self) -> Result<(), ()> {
-        match self {
-            Self::ActionEdit { action, path } => {
-                if path.is_none() {
-                    panic!("path not set");
-                }
-                if let Ok(data) = rmp_serde::to_vec(action) {
-                    if let Ok(_) = fs::write(path.as_ref().unwrap(), data) {
-                        return Ok(());
-                    }
-                }
-            }
-            _ => (),
-        };
-        return Err(());
-    }
+    Action,
 }
 
 #[derive(Default, Serialize, Deserialize)]
-struct Action {}
+struct Action {
+    instructions: Vec<Instruction>,
+}
 
 impl App {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
@@ -117,14 +65,61 @@ impl App {
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
         Self {
-            _engines: ipc::get_engines(),
+            engines: ipc::get_engines(),
             ..Default::default()
+        }
+    }
+
+    fn save_file(&self) -> Result<(), ()> {
+        match self.open_type {
+            OpenType::Action => {
+                if self.open_path.is_none() {
+                    panic!("path not set");
+                }
+                if let Ok(data) = rmp_serde::to_vec(&self.open_action.as_ref().unwrap()) {
+                    if let Ok(_) = fs::write(self.open_path.as_ref().unwrap(), data) {
+                        return Ok(());
+                    }
+                }
+            }
+            _ => (),
+        };
+        return Err(());
+    }
+
+    fn close_file(&mut self) {
+        self.open_type = OpenType::Nothing;
+        self.open_action = None;
+        self.open_path = None;
+    }
+
+    fn add_instruction_context(&mut self, ui: &mut Ui, index: usize) {
+        for (_path, engine) in &self.engines {
+            ui.menu_button(&engine.name, |ui| {
+                for inst in &engine.instructions {
+                    if ui.button(inst.friendly_name()).clicked() {
+                        ui.close_menu();
+                        self.open_action.as_mut().unwrap().instructions.insert(index, inst.clone());
+                    }
+                }
+            });
         }
     }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let about_modal = Modal::new(ctx, "about_modal");
+        about_modal.show(|ui| {
+            about_modal.title(ui, "About TestAngel");
+            about_modal.frame(ui, |ui| {
+                about_modal.body(ui, "TestAngel automates testing across a number of tools by providing a standardised interface to communicate actions to perform.");
+            });
+            about_modal.buttons(ui, |ui| {
+                let _ = about_modal.button(ui, "Close");
+            });
+        });
+
         // Handle file dialog.
         let error_modal = Modal::new(ctx, "file_error_modal");
         error_modal.show(|ui| {
@@ -133,23 +128,32 @@ impl eframe::App for App {
                 error_modal.body(ui, &self.error);
             });
             error_modal.buttons(ui, |ui| {
-                let _ = error_modal.button(ui, "close");
+                let _ = error_modal.button(ui, "Close");
             });
         });
 
         if let Some((action, dialog)) = &mut self.file_dialog {
             if dialog.show(ctx).selected() {
-                if let Some(file) = dialog.path() {
+                if let Some(path) = dialog.path() {
                     match action {
                         FileDialogAction::OpenAction => {
-                            if let Err(()) = self.state.open_action(file) {
+                            if let Ok(file) = File::open(path) {
+                                if let Ok(action) = rmp_serde::from_read(BufReader::new(file)) {
+                                    self.open_type = OpenType::Action;
+                                    self.open_path = Some(path.to_path_buf());
+                                    self.open_action = action;
+                                } else {
+                                    self.error = "Failed to open action.".to_owned();
+                                    error_modal.open();
+                                }
+                            } else {
                                 self.error = "Failed to open action.".to_owned();
                                 error_modal.open();
                             }
                         }
                         FileDialogAction::SaveAsAction => {
-                            self.state.set_file_path(file);
-                            if let Err(()) = self.state.save() {
+                            self.open_path = Some(path.to_path_buf());
+                            if let Err(()) = self.save_file() {
                                 self.error = "Failed to save action.".to_owned();
                                 error_modal.open();
                             }
@@ -169,7 +173,7 @@ impl eframe::App for App {
                     .on_hover_text("Close the currently opened item")
                     .clicked()
                 {
-                    self.state = AppState::Nothing;
+                    self.close_file();
                 }
 
                 ui.separator();
@@ -183,27 +187,27 @@ impl eframe::App for App {
                 ui.menu_button("Actions", |ui| {
                     if ui.button("New").clicked() {
                         ui.close_menu();
-                        self.state = AppState::ActionEdit {
-                            action: Action::default(),
-                            path: None,
-                        }
+                        self.close_file();
+                        self.open_type = OpenType::Action;
+                        self.open_action = Some(Action::default());
                     }
                     if ui.button("Open...").clicked() {
                         ui.close_menu();
+                        self.close_file();
                         let mut dialog = FileDialog::open_file(None);
                         dialog.open();
                         self.file_dialog = Some((FileDialogAction::OpenAction, dialog));
                     }
-                    ui.add_enabled_ui(self.state.is_action_edit(), |ui| {
+                    ui.add_enabled_ui(self.open_type == OpenType::Action, |ui| {
                         if ui.button("Save").clicked() {
                             ui.close_menu();
-                            if self.state.get_current_file().is_none() {
-                                let mut dialog =
-                                    FileDialog::save_file(None);
+                            self.close_file();
+                            if self.open_path.is_none() {
+                                let mut dialog = FileDialog::save_file(None);
                                 dialog.open();
                                 self.file_dialog = Some((FileDialogAction::SaveAsAction, dialog));
                             } else {
-                                if let Err(()) = self.state.save() {
+                                if let Err(()) = self.save_file() {
                                     self.error = "Failed to save action.".to_owned();
                                     error_modal.open();
                                 }
@@ -211,8 +215,7 @@ impl eframe::App for App {
                         }
                         if ui.button("Save as...").clicked() {
                             ui.close_menu();
-                            let mut dialog =
-                                FileDialog::save_file(None);
+                            let mut dialog = FileDialog::save_file(None);
                             dialog.open();
                             self.file_dialog = Some((FileDialogAction::SaveAsAction, dialog));
                         }
@@ -221,25 +224,28 @@ impl eframe::App for App {
                 ui.menu_button("Help", |ui| {
                     if ui.button("About").clicked() {
                         ui.close_menu();
-                        self.state = AppState::About;
+                        self.close_file();
+                        about_modal.open();
                     }
                     ui.hyperlink_to("GitHub", "https://github.com/lilopkins/testangel");
                 });
             });
         });
 
-        egui::CentralPanel::default().show(ctx,match &self.state {
-            AppState::About => |ui: &mut Ui| {
-                ui.heading("TestAngel");
-                ui.label("by Lily Hopkins and contributors");
-                ui.separator();
-                ui.label("TestAngel automates testing across a number of tools by providing a standardised interface to communicate actions to perform.");
-            },
-            AppState::ActionEdit { action: _, path: _ } => |_ui: &mut Ui| {
-
-            },
-            AppState::Nothing => |_: &mut Ui| {},
+        if self.open_type == OpenType::Action {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                ui.menu_button("+ Add instruction", |ui| self.add_instruction_context(ui, 0));
+                let mut index = 0;
+                for instruction in self.open_action.as_ref().unwrap().instructions.clone() {
+                    // add ui for instruction
+                    ui.collapsing(instruction.friendly_name(), |ui| {
+                        // TODO
+                        ui.label("todo: build items here");
+                    });
+                    index += 1;
+                    ui.menu_button("+ Add instruction", |ui| self.add_instruction_context(ui, index));
+                }
+            });
         }
-         );
     }
 }
