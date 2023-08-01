@@ -1,15 +1,17 @@
-use std::{fs, path::PathBuf, process::Command, ffi::OsStr};
+use std::{collections::HashMap, ffi::OsStr, fs, path::PathBuf, process::Command};
 
 use testangel_ipc::prelude::*;
 
 pub fn ipc_call<P>(engine: P, request: Request) -> Result<Response, ()>
-where P: AsRef<OsStr>
+where
+    P: AsRef<OsStr>,
 {
-    log::debug!("Sending request {:?} to engine {:?}", request, engine.as_ref());
-    if let Ok(output) = Command::new(engine)
-        .arg(request.to_json())
-        .output()
-    {
+    log::debug!(
+        "Sending request {:?} to engine {:?}",
+        request,
+        engine.as_ref()
+    );
+    if let Ok(output) = Command::new(engine).arg(request.to_json()).output() {
         let output_string = String::from_utf8(output.stdout).unwrap();
         let res = Response::try_from(output_string);
         if res.is_err() {
@@ -24,18 +26,38 @@ where P: AsRef<OsStr>
     return Err(());
 }
 
+#[derive(Clone, Debug)]
+pub struct Engine {
+    pub name: String,
+    pub instructions: Vec<Instruction>,
+}
+
 /// Get the list of available engines.
-pub fn get_engines() -> Vec<(PathBuf, Vec<Instruction>)> {
-    let mut engines = Vec::new();
+pub fn get_engines() -> HashMap<PathBuf, Engine> {
+    let mut engines = HashMap::new();
     for path in fs::read_dir("./").unwrap() {
         let path = path.unwrap();
         let basename = path.file_name();
+        if let Ok(meta) = path.metadata() {
+            if meta.is_dir() {
+                continue;
+            }
+        }
+
         if let Ok(str) = basename.into_string() {
             if str.starts_with("testangel-") {
-                log::debug!("Detected engine {str}");
+                log::debug!("Detected possible engine {str}");
                 if let Ok(res) = ipc_call(path.path(), Request::Instructions) {
                     match res {
-                        Response::Instructions { instructions } => engines.push((path.path(), instructions)),
+                        Response::Instructions { instructions } => {
+                            engines.insert(
+                                path.path(),
+                                Engine {
+                                    name: str,
+                                    instructions,
+                                },
+                            );
+                        }
                         _ => log::error!("Invalid response from engine {str}"),
                     }
                 }

@@ -22,7 +22,8 @@ pub struct Instruction {
 impl Instruction {
     /// Build a new instruction
     pub fn new<S>(id: S, friendly_name: S, description: S) -> Self
-    where S: Into<String>
+    where
+        S: Into<String>,
     {
         Self {
             id: id.into(),
@@ -35,15 +36,18 @@ impl Instruction {
 
     /// Add a parameter to this instruction.
     pub fn with_parameter<S>(mut self, id: S, friendly_name: S, kind: ParameterKind) -> Self
-    where S: Into<String>
+    where
+        S: Into<String>,
     {
-        self.parameters.insert(id.into(), (friendly_name.into(), kind));
+        self.parameters
+            .insert(id.into(), (friendly_name.into(), kind));
         self
     }
 
     /// Add a output to this instruction.
     pub fn with_output<S>(mut self, id: S, friendly_name: S, kind: ParameterKind) -> Self
-    where S: Into<String>
+    where
+        S: Into<String>,
     {
         self.outputs.insert(id.into(), (friendly_name.into(), kind));
         self
@@ -52,11 +56,20 @@ impl Instruction {
     pub fn validate(&self, iwp: &InstructionWithParameters) -> Result<(), (ErrorKind, String)> {
         for (id, (_, kind)) in &self.parameters {
             if !iwp.parameters.contains_key(id) {
-                return Err((ErrorKind::MissingParameter, format!("Missing parameter {id} from call to {}", iwp.instruction)));
+                return Err((
+                    ErrorKind::MissingParameter,
+                    format!("Missing parameter {id} from call to {}", iwp.instruction),
+                ));
             }
 
             if iwp.parameters[id].kind() != *kind {
-                return Err((ErrorKind::InvalidParameterType, format!("Invalid kind of parameter {id} from call to {}", iwp.instruction)));
+                return Err((
+                    ErrorKind::InvalidParameterType,
+                    format!(
+                        "Invalid kind of parameter {id} from call to {}",
+                        iwp.instruction
+                    ),
+                ));
             }
         }
 

@@ -78,7 +78,10 @@ impl ParameterValue {
             Self::Decimal(_) => ParameterKind::Decimal,
             Self::Integer(_) => ParameterKind::Integer,
             Self::String(_) => ParameterKind::String,
-            Self::SpecialType { id, value: _ } => ParameterKind::SpecialType { id: id.clone(), friendly_name: "unknown".to_owned() },
+            Self::SpecialType { id, value: _ } => ParameterKind::SpecialType {
+                id: id.clone(),
+                friendly_name: "unknown".to_owned(),
+            },
         }
     }
 }

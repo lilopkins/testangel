@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 
 /// A prelude module to quickly import common imports.
 pub mod prelude {
-    pub use crate::{ErrorKind, Request, Response};
     pub use crate::instruction::{Instruction, InstructionWithParameters};
     pub use crate::value::{ParameterKind, ParameterValue};
+    pub use crate::{ErrorKind, Request, Response};
 }
 
 mod instruction;
@@ -23,7 +23,7 @@ pub enum Request {
     /// Run the list of instructions given in the order they are listed.
     RunInstructions {
         instructions: Vec<InstructionWithParameters>,
-    }
+    },
 }
 
 impl Request {
@@ -56,10 +56,7 @@ pub enum Response {
         output: Vec<HashMap<String, ParameterValue>>,
     },
     /// An error occured.
-    Error {
-        kind: ErrorKind,
-        reason: String,
-    },
+    Error { kind: ErrorKind, reason: String },
 }
 
 impl Response {
