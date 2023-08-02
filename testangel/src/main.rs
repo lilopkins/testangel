@@ -7,14 +7,15 @@ use std::{
     path::PathBuf,
 };
 
-use egui::Ui;
+use egui::{Ui, ComboBox};
 use egui_file::FileDialog;
-use egui_modal::Modal;
+use egui_modal::{Modal, Icon};
 use ipc::Engine;
-use serde::{Deserialize, Serialize};
-use testangel_ipc::prelude::*;
 
 mod ipc;
+mod types;
+use testangel_ipc::prelude::*;
+use types::{Action, InstructionConfiguration, ParameterSource};
 
 fn main() {
     pretty_env_logger::init();
@@ -51,11 +52,6 @@ enum OpenType {
     #[default]
     Nothing,
     Action,
-}
-
-#[derive(Default, Serialize, Deserialize)]
-struct Action {
-    instructions: Vec<Instruction>,
 }
 
 impl App {
@@ -99,11 +95,22 @@ impl App {
                 for inst in &engine.instructions {
                     if ui.button(inst.friendly_name()).clicked() {
                         ui.close_menu();
-                        self.open_action.as_mut().unwrap().instructions.insert(index, inst.clone());
+                        self.open_action.as_mut().unwrap().instructions.insert(index, InstructionConfiguration::from(inst.clone()));
                     }
                 }
             });
         }
+    }
+
+    fn get_instruction(&self, instruction_id: String) -> Option<Instruction> {
+        for (_path, engine) in &self.engines {
+            for inst in &engine.instructions {
+                if *inst.id() == instruction_id {
+                    return Some(inst.clone());
+                }
+            }
+        }
+        return None;
     }
 }
 
@@ -125,7 +132,7 @@ impl eframe::App for App {
         error_modal.show(|ui| {
             error_modal.title(ui, "Error");
             error_modal.frame(ui, |ui| {
-                error_modal.body(ui, &self.error);
+                error_modal.body_and_icon(ui, &self.error, Icon::Error);
             });
             error_modal.buttons(ui, |ui| {
                 let _ = error_modal.button(ui, "Close");
@@ -137,17 +144,19 @@ impl eframe::App for App {
                 if let Some(path) = dialog.path() {
                     match action {
                         FileDialogAction::OpenAction => {
-                            if let Ok(file) = File::open(path) {
-                                if let Ok(action) = rmp_serde::from_read(BufReader::new(file)) {
+                            let res = File::open(path);
+                            if let Ok(file) = res {
+                                let res = rmp_serde::from_read(BufReader::new(file));
+                                if let Ok(action) = res {
                                     self.open_type = OpenType::Action;
                                     self.open_path = Some(path.to_path_buf());
                                     self.open_action = action;
                                 } else {
-                                    self.error = "Failed to open action.".to_owned();
+                                    self.error = format!("Failed to parse action. ({:?})", res.unwrap_err());
                                     error_modal.open();
                                 }
                             } else {
-                                self.error = "Failed to open action.".to_owned();
+                                self.error = format!("Failed to open action. ({:?})", res.unwrap_err());
                                 error_modal.open();
                             }
                         }
@@ -236,11 +245,39 @@ impl eframe::App for App {
             egui::CentralPanel::default().show(ctx, |ui| {
                 ui.menu_button("+ Add instruction", |ui| self.add_instruction_context(ui, 0));
                 let mut index = 0;
-                for instruction in self.open_action.as_ref().unwrap().instructions.clone() {
+                for mut ic in self.open_action.as_ref().unwrap().instructions.clone() /* TODO: Don't clone here */ {
                     // add ui for instruction
-                    ui.collapsing(instruction.friendly_name(), |ui| {
-                        // TODO
-                        ui.label("todo: build items here");
+                    let instruction = self.get_instruction(ic.instruction_id.clone());
+                    let heading = if instruction.is_none() {
+                        self.error = "An instruction contained within this action can no longer be found.".to_owned();
+                        error_modal.open();
+                        ic.instruction_id
+                    } else {
+                        instruction.as_ref().unwrap().friendly_name().clone()
+                    };
+
+                    ui.collapsing(heading, |ui| {
+                        if instruction.is_none() { return; }
+                        let inst = instruction.unwrap();
+
+                        ui.label(inst.description());
+                        ui.separator();
+                        ui.label("Parameters:");
+                        egui::Grid::new(format!("{}_{}_param_grid", index, inst.id()))
+                            .num_columns(3)
+                            .show(ui, |ui| {
+                                for (param_id, (param_name, param_kind)) in inst.parameters() {
+                                    ui.label(param_name);
+                                    ComboBox::new(format!("{index}_{}_{param_id}", inst.id()), "Source")
+                                        .show_ui(ui, |ui| {
+                                            ui.selectable_value(ic.parameter_sources.get_mut(param_id).unwrap(), ParameterSource::Literal, "Literal");
+                                            ui.selectable_value(ic.parameter_sources.get_mut(param_id).unwrap(), ParameterSource::FromOutput, "From output of another instruction");
+                                        });
+                                    ui.end_row();
+                                }
+                            });
+
+                        ui.label("Outputs:");
                     });
                     index += 1;
                     ui.menu_button("+ Add instruction", |ui| self.add_instruction_context(ui, index));

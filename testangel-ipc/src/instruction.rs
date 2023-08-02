@@ -80,6 +80,21 @@ impl Instruction {
 
         Ok(())
     }
+
+    /// Get the ID of this instruction
+    pub fn id(&self) -> &String {
+        &self.id
+    }
+
+    /// Get the description of this instruction
+    pub fn description(&self) -> &String {
+        &self.description
+    }
+
+    /// Get the parameters of this instruction
+    pub fn parameters(&self) -> &HashMap<String, (String, ParameterKind)> {
+        &self.parameters
+    }
 }
 
 /// An instruction with it's parameters.
