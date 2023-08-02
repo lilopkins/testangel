@@ -37,21 +37,13 @@ struct App {
     engines: HashMap<PathBuf, Engine>,
     error: String,
     file_dialog: Option<(FileDialogAction, FileDialog)>,
-    open_type: OpenType,
     open_path: Option<PathBuf>,
     open_action: Option<Action>,
 }
 
 enum FileDialogAction {
-    OpenAction,
-    SaveAsAction,
-}
-
-#[derive(Default, PartialEq, Eq)]
-enum OpenType {
-    #[default]
-    Nothing,
-    Action,
+    Open,
+    SaveAs,
 }
 
 impl App {
@@ -67,24 +59,18 @@ impl App {
     }
 
     fn save_file(&self) -> Result<(), ()> {
-        match self.open_type {
-            OpenType::Action => {
-                if self.open_path.is_none() {
-                    panic!("path not set");
-                }
-                if let Ok(data) = rmp_serde::to_vec(&self.open_action.as_ref().unwrap()) {
-                    if let Ok(_) = fs::write(self.open_path.as_ref().unwrap(), data) {
-                        return Ok(());
-                    }
-                }
+        if self.open_path.is_none() {
+            panic!("path not set");
+        }
+        if let Ok(data) = rmp_serde::to_vec(&self.open_action.as_ref().unwrap()) {
+            if let Ok(_) = fs::write(self.open_path.as_ref().unwrap(), data) {
+                return Ok(());
             }
-            _ => (),
-        };
-        return Err(());
+        }
+        Err(())
     }
 
     fn close_file(&mut self) {
-        self.open_type = OpenType::Nothing;
         self.open_action = None;
         self.open_path = None;
     }
@@ -116,6 +102,7 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Handle about modal
         let about_modal = Modal::new(ctx, "about_modal");
         about_modal.show(|ui| {
             about_modal.title(ui, "About TestAngel");
@@ -127,7 +114,7 @@ impl eframe::App for App {
             });
         });
 
-        // Handle file dialog.
+        // Handle error modal
         let error_modal = Modal::new(ctx, "file_error_modal");
         error_modal.show(|ui| {
             error_modal.title(ui, "Error");
@@ -139,16 +126,16 @@ impl eframe::App for App {
             });
         });
 
+        // Handle file dialog
         if let Some((action, dialog)) = &mut self.file_dialog {
             if dialog.show(ctx).selected() {
                 if let Some(path) = dialog.path() {
                     match action {
-                        FileDialogAction::OpenAction => {
+                        FileDialogAction::Open => {
                             let res = File::open(path);
                             if let Ok(file) = res {
                                 let res = rmp_serde::from_read(BufReader::new(file));
                                 if let Ok(action) = res {
-                                    self.open_type = OpenType::Action;
                                     self.open_path = Some(path.to_path_buf());
                                     self.open_action = action;
                                 } else {
@@ -160,7 +147,7 @@ impl eframe::App for App {
                                 error_modal.open();
                             }
                         }
-                        FileDialogAction::SaveAsAction => {
+                        FileDialogAction::SaveAs => {
                             self.open_path = Some(path.to_path_buf());
                             if let Err(()) = self.save_file() {
                                 self.error = "Failed to save action.".to_owned();
@@ -172,7 +159,7 @@ impl eframe::App for App {
             }
         }
 
-        // Render UI
+        // Render top menu
         egui::TopBottomPanel::top("ta_top").show(ctx, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.visuals_mut().button_frame = false;
@@ -188,16 +175,9 @@ impl eframe::App for App {
                 ui.separator();
 
                 ui.menu_button("Test Flows", |ui| {
-                    ui.button("New").clicked();
-                    let _ = ui.button("Open...");
-                    let _ = ui.button("Save");
-                    let _ = ui.button("Save as...");
-                });
-                ui.menu_button("Actions", |ui| {
                     if ui.button("New").clicked() {
                         ui.close_menu();
                         self.close_file();
-                        self.open_type = OpenType::Action;
                         self.open_action = Some(Action::default());
                     }
                     if ui.button("Open...").clicked() {
@@ -205,16 +185,16 @@ impl eframe::App for App {
                         self.close_file();
                         let mut dialog = FileDialog::open_file(None);
                         dialog.open();
-                        self.file_dialog = Some((FileDialogAction::OpenAction, dialog));
+                        self.file_dialog = Some((FileDialogAction::Open, dialog));
                     }
-                    ui.add_enabled_ui(self.open_type == OpenType::Action, |ui| {
+                    ui.add_enabled_ui(self.open_action.is_some(), |ui| {
                         if ui.button("Save").clicked() {
                             ui.close_menu();
                             self.close_file();
                             if self.open_path.is_none() {
                                 let mut dialog = FileDialog::save_file(None);
                                 dialog.open();
-                                self.file_dialog = Some((FileDialogAction::SaveAsAction, dialog));
+                                self.file_dialog = Some((FileDialogAction::SaveAs, dialog));
                             } else {
                                 if let Err(()) = self.save_file() {
                                     self.error = "Failed to save action.".to_owned();
@@ -226,7 +206,7 @@ impl eframe::App for App {
                             ui.close_menu();
                             let mut dialog = FileDialog::save_file(None);
                             dialog.open();
-                            self.file_dialog = Some((FileDialogAction::SaveAsAction, dialog));
+                            self.file_dialog = Some((FileDialogAction::SaveAs, dialog));
                         }
                     });
                 });
@@ -241,7 +221,8 @@ impl eframe::App for App {
             });
         });
 
-        if self.open_type == OpenType::Action {
+        // Render content
+        if self.open_action.is_some() {
             egui::CentralPanel::default().show(ctx, |ui| {
                 ui.menu_button("+ Add instruction", |ui| self.add_instruction_context(ui, 0));
                 let mut index = 0;
@@ -266,13 +247,19 @@ impl eframe::App for App {
                         egui::Grid::new(format!("{}_{}_param_grid", index, inst.id()))
                             .num_columns(3)
                             .show(ui, |ui| {
-                                for (param_id, (param_name, param_kind)) in inst.parameters() {
+                                for (param_id, (param_name, _param_kind)) in inst.parameters() {
                                     ui.label(param_name);
                                     ComboBox::new(format!("{index}_{}_{param_id}", inst.id()), "Source")
                                         .show_ui(ui, |ui| {
                                             ui.selectable_value(ic.parameter_sources.get_mut(param_id).unwrap(), ParameterSource::Literal, "Literal");
                                             ui.selectable_value(ic.parameter_sources.get_mut(param_id).unwrap(), ParameterSource::FromOutput, "From output of another instruction");
                                         });
+                                    if *ic.parameter_sources.get(param_id).unwrap() == ParameterSource::Literal {
+                                        // TODO: Match input type depending on type
+                                        ui.text_edit_singleline(&mut "text");
+                                    } else {
+                                        // TODO: Combo box of possible sources
+                                    }
                                     ui.end_row();
                                 }
                             });
