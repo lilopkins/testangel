@@ -6,17 +6,15 @@ use testangel_ipc::prelude::*;
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
     /// The internal ID of this action. Must be unique.
-    id: String,
+    pub id: String,
     /// The friendly name of this action.
-    friendly_name: String,
+    pub friendly_name: String,
     /// A description of this action.
-    description: String,
+    pub description: String,
     /// A group this action belongs to.
-    group: String,
+    pub group: String,
     /// The parameters this action takes, with a friendly name.
-    parameters: HashMap<String, (String, ParameterKind)>,
-    /// The order of the parameters in the editor.
-    parameter_order: Vec<String>,
+    pub parameters: Vec<(String, ParameterKind)>,
     /// The outputs this action produces, with a friendly name
     outputs: HashMap<String, (String, ParameterKind)>,
     /// The instructions called by this action
@@ -50,6 +48,7 @@ impl From<Instruction> for InstructionConfiguration {
 pub enum ParameterSource {
     #[default]
     Literal,
+    FromParameter(usize, String),
     FromOutput(usize, String, String),
 }
 
@@ -57,6 +56,7 @@ impl ParameterSource {
     pub(crate) fn text_repr(&self) -> String {
         match self {
             ParameterSource::FromOutput(step, _id, friendly_name) => format!("From Step {}: {}", step + 1, friendly_name),
+            ParameterSource::FromParameter(_id, friendly_name) => format!("Parameter: {friendly_name}"),
             ParameterSource::Literal => "Literal".to_owned(),
         }
     }

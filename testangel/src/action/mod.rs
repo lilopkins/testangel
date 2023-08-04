@@ -2,6 +2,7 @@ use std::{rc::Rc, path::PathBuf, fs::{self, File}, io::BufReader};
 
 use egui_file::FileDialog;
 use testangel_ipc::prelude::ParameterKind;
+use uuid::Uuid;
 
 use crate::{ipc::EngineMap, UiComponent};
 use types::{Action, InstructionConfiguration, ParameterSource};
@@ -103,7 +104,9 @@ impl UiComponent for ActionState {
         ui.menu_button("Test Action", |ui| {
             if ui.button("New").clicked() {
                 ui.close_menu();
-                self.target = Some(Action::default());
+                let mut action = Action::default();
+                action.id = Uuid::new_v4().hyphenated().to_string();
+                self.target = Some(action);
                 next_state = Some(crate::State::ActionEditor);
             }
             if ui.button("Open...").clicked() {
@@ -199,6 +202,79 @@ impl UiComponent for ActionState {
             }
             let target = self.target.as_mut().unwrap();
 
+            ui.heading("Action Properties");
+
+            egui::Grid::new("action_editor_grid")
+                .num_columns(2)
+                .show(ui, |ui| {
+                    ui.label("Action Name:");
+                    ui.text_edit_singleline(&mut target.friendly_name);
+                    ui.end_row();
+
+                    ui.label("Group:");
+                    ui.text_edit_singleline(&mut target.group);
+                    ui.end_row();
+
+                    ui.label("Description:");
+                    ui.text_edit_multiline(&mut target.description);
+                    ui.end_row();
+                });
+
+            ui.separator();
+
+            ui.heading("Parameters:");
+
+            let mut param_id = 0;
+            for (param_name, param_kind) in &mut target.parameters {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(format!("Parameter {}", param_id + 1));
+                    ui.text_edit_singleline(param_name).on_hover_text("Parameter Name");
+                    egui::ComboBox::from_id_source(format!("action_param_{}", param_id))
+                        .selected_text(format!("{param_kind}"))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(param_kind, ParameterKind::String, "Text");
+                            ui.selectable_value(param_kind, ParameterKind::Integer, "Integer");
+                            ui.selectable_value(param_kind, ParameterKind::Decimal, "Decimal");
+                            ui.selectable_value(param_kind, ParameterKind::SpecialType { id: "Type ID".to_owned(), friendly_name: "Type Name".to_owned() }, "Custom");
+                        });
+                    if let ParameterKind::SpecialType { id, friendly_name } = param_kind {
+                        ui.text_edit_singleline(id);
+                        ui.text_edit_singleline(friendly_name);
+                    }
+                });
+                param_id += 1;
+            }
+            if ui.button("+ Add parameter").clicked() {
+                target.parameters.push(("New parameter".to_owned(), ParameterKind::String));
+            }
+            ui.menu_button("× Delete parameter", |ui| {
+                for i in 0..target.parameters.len() {
+                    if ui.button(format!("Delete parameter {}", i + 1)).clicked() {
+                        ui.close_menu();
+                        target.parameters.remove(i);
+                        // Update references
+                        for inst in &mut target.instructions {
+                            for (_id, src) in &mut inst.parameter_sources {
+                                match src {
+                                    ParameterSource::FromParameter(param, name) => {
+                                        if *param == i {
+                                            *src = ParameterSource::Literal;
+                                        } else if *param > i {
+                                            *src = ParameterSource::FromParameter(*param - 1, name.clone());
+                                        }
+                                    }
+                                    _ => (),
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            ui.separator();
+
+            ui.heading("Steps:");
+
             self.all_instructions_available = true;
             let mut index = 0;
             let mut possible_outputs: Vec<PossibleOutput> = Vec::new();
@@ -225,6 +301,15 @@ impl UiComponent for ActionState {
                                 .selected_text(param_source.text_repr())
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(param_source, ParameterSource::Literal, ParameterSource::Literal.text_repr());
+
+                                    let mut p_id = 0;
+                                    for (p_name, p_kind) in &target.parameters {
+                                        if *p_kind == *param_kind {
+                                            let ps = ParameterSource::FromParameter(p_id, p_name.clone());
+                                            ui.selectable_value(param_source, ps.clone(), ps.text_repr());
+                                        }
+                                        p_id += 1;
+                                    }
 
                                     // Filter possible_outputs by same ParameterKind.
                                     for po in &possible_outputs {
