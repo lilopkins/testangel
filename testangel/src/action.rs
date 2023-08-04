@@ -207,7 +207,8 @@ impl UiComponent for ActionState {
 
                     ui.separator();
                     ui.label("Parameters:");
-                    for (param_id, (param_name, param_kind)) in instruction.parameters() {
+                    for param_id in instruction.parameter_order() {
+                        let (param_name, param_kind) = instruction.parameters().get(param_id).unwrap();
                         ui.horizontal_wrapped(|ui| {
                             ui.label(format!("{param_name} ({param_kind})"));
 

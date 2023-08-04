@@ -15,6 +15,8 @@ pub struct Instruction {
     description: String,
     /// The parameters this instruction takes, with a friendly name.
     parameters: HashMap<String, (String, ParameterKind)>,
+    /// The order of the parameters in the editor.
+    parameter_order: Vec<String>,
     /// The outputs this instruction produces, with a friendly name
     outputs: HashMap<String, (String, ParameterKind)>,
 }
@@ -30,6 +32,7 @@ impl Instruction {
             friendly_name: friendly_name.into(),
             description: description.into(),
             parameters: HashMap::new(),
+            parameter_order: Vec::new(),
             outputs: HashMap::new(),
         }
     }
@@ -44,8 +47,10 @@ impl Instruction {
     where
         S: Into<String>,
     {
+        let id = id.into();
         self.parameters
-            .insert(id.into(), (friendly_name.into(), kind));
+            .insert(id.clone(), (friendly_name.into(), kind));
+        self.parameter_order.push(id.clone());
         self
     }
 
@@ -94,6 +99,11 @@ impl Instruction {
     /// Get the parameters of this instruction
     pub fn parameters(&self) -> &HashMap<String, (String, ParameterKind)> {
         &self.parameters
+    }
+
+    /// Get the order of parameters of this instruction
+    pub fn parameter_order(&self) -> &Vec<String> {
+        &self.parameter_order
     }
 
     /// Get the outputs of this instruction
