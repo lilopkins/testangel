@@ -74,6 +74,7 @@ pub fn get_engines() -> EngineMap {
                             friendly_name,
                             instructions,
                         } => {
+                            log::info!("Discovered engine {friendly_name} at {:?}", path.path());
                             engines.insert(
                                 path.path(),
                                 Engine {
