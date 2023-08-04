@@ -15,7 +15,10 @@ where
         let output_string = String::from_utf8(output.stdout).unwrap();
         let res = Response::try_from(output_string);
         if res.is_err() {
-            log::error!("Failed to parse subprocess response ({}).", res.unwrap_err());
+            log::error!(
+                "Failed to parse subprocess response ({}).",
+                res.unwrap_err()
+            );
             return Err(());
         }
         let res = res.unwrap();
@@ -32,8 +35,25 @@ pub struct Engine {
     pub instructions: Vec<Instruction>,
 }
 
+#[derive(Default)]
+pub struct EngineMap(HashMap<PathBuf, Engine>);
+
+impl EngineMap {
+    /// Get an instruction from an instruction ID by iterating through available engines.
+    pub fn get_instruction_by_id(&self, instruction_id: String) -> Option<Instruction> {
+        for (_path, engine) in &self.0 {
+            for inst in &engine.instructions {
+                if *inst.id() == instruction_id {
+                    return Some(inst.clone());
+                }
+            }
+        }
+        return None;
+    }
+}
+
 /// Get the list of available engines.
-pub fn get_engines() -> HashMap<PathBuf, Engine> {
+pub fn get_engines() -> EngineMap {
     let mut engines = HashMap::new();
     for path in fs::read_dir("./").unwrap() {
         let path = path.unwrap();
@@ -49,7 +69,10 @@ pub fn get_engines() -> HashMap<PathBuf, Engine> {
                 log::debug!("Detected possible engine {str}");
                 if let Ok(res) = ipc_call(path.path(), Request::Instructions) {
                     match res {
-                        Response::Instructions { friendly_name, instructions } => {
+                        Response::Instructions {
+                            friendly_name,
+                            instructions,
+                        } => {
                             engines.insert(
                                 path.path(),
                                 Engine {
@@ -64,5 +87,5 @@ pub fn get_engines() -> HashMap<PathBuf, Engine> {
             }
         }
     }
-    engines
+    EngineMap(engines)
 }
