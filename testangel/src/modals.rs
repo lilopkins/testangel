@@ -13,3 +13,17 @@ pub fn about_modal(ctx: &egui::Context) -> Modal {
     });
     about_modal
 }
+
+pub fn error_modal<S: AsRef<str>>(ctx: &egui::Context, id: S, error: S) -> Modal {
+    let error_modal = Modal::new(ctx, id.as_ref());
+    error_modal.show(|ui| {
+        error_modal.title(ui, "Error");
+        error_modal.frame(ui, |ui| {
+            error_modal.body_and_icon(ui, error.as_ref(), Icon::Error);
+        });
+        error_modal.buttons(ui, |ui| {
+            let _ = error_modal.button(ui, "OK");
+        });
+    });
+    error_modal
+}

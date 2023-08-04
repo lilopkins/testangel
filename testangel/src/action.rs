@@ -1,5 +1,6 @@
-use std::rc::Rc;
+use std::{rc::Rc, path::PathBuf, fs::{self, File}, io::BufReader};
 
+use egui_file::FileDialog;
 use testangel_ipc::prelude::ParameterKind;
 
 use crate::{ipc::EngineMap, types::{Action, InstructionConfiguration, ParameterSource}, UiComponent};
@@ -22,13 +23,19 @@ impl Into<ParameterSource> for PossibleOutput {
 pub(crate) struct ActionState {
     engine_map: Rc<EngineMap>,
     target: Option<Action>,
+    error: String,
+    trigger_error: bool,
     all_instructions_available: bool,
+    save_path: Option<PathBuf>,
+    open_dialog: Option<FileDialog>,
+    save_dialog: Option<FileDialog>,
 }
 
 impl ActionState {
     pub fn new(engine_map: Rc<EngineMap>) -> Self {
         Self {
             engine_map,
+            all_instructions_available: true,
             ..Default::default()
         }
     }
@@ -68,6 +75,18 @@ impl ActionState {
             }
         }
     }
+
+    fn save(&self) -> Result<(), ()> {
+        if self.save_path.is_none() {
+            panic!("Save path not set");
+        }
+        if let Ok(data) = rmp_serde::to_vec(&self.target.as_ref().unwrap()) {
+            if let Ok(_) = fs::write(self.save_path.as_ref().unwrap(), data) {
+                return Ok(());
+            }
+        }
+        Err(())
+    }
 }
 
 impl UiComponent for ActionState {
@@ -81,16 +100,29 @@ impl UiComponent for ActionState {
             }
             if ui.button("Open...").clicked() {
                 ui.close_menu();
-                // TODO: Open file dialog to open Action.
+                let mut dialog = FileDialog::open_file(None);
+                dialog.open();
+                self.open_dialog = Some(dialog);
             }
-            ui.add_enabled_ui(false /* TODO */, |ui| {
+            ui.add_enabled_ui(self.target.is_some(), |ui| {
                 if ui.button("Save").clicked() {
                     ui.close_menu();
-                    // TODO: Open file dialog (if needed) to save Action.
+                    if let None = self.save_path {
+                        let mut dialog = FileDialog::save_file(None);
+                        dialog.open();
+                        self.save_dialog = Some(dialog);
+                    } else {
+                        if let Err(_) = self.save() {
+                            self.error = "Failed to save.".to_owned();
+                            self.trigger_error = true;
+                        }
+                    }
                 }
                 if ui.button("Save as...").clicked() {
                     ui.close_menu();
-                    // TODO: Open file dialog to save Action.
+                    let mut dialog = FileDialog::save_file(None);
+                    dialog.open();
+                    self.save_dialog = Some(dialog);
                 }
                 if ui.button("Close").clicked() {
                     ui.close_menu();
@@ -102,7 +134,56 @@ impl UiComponent for ActionState {
         next_state
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui) -> Option<crate::State> {
+    fn always_ui(&mut self, ctx: &egui::Context) -> Option<crate::State> {
+        let mut next_state = None;
+
+        // handle error modal
+        let error_modal = crate::modals::error_modal(ctx, "action_editor_error_modal", &self.error);
+        if self.trigger_error {
+            error_modal.open();
+            self.trigger_error = false;
+        }
+
+        // handle open dialog
+        if let Some(dialog) = &mut self.open_dialog {
+            if dialog.show(ctx).selected() {
+                if let Some(path) = dialog.path() {
+                    let res = File::open(path);
+                    if let Ok(file) = res {
+                        let res = rmp_serde::from_read(BufReader::new(file));
+                        if let Ok(action) = res {
+                            self.save_path = Some(path.to_path_buf());
+                            self.target = Some(action);
+                            next_state = Some(crate::State::ActionEditor);
+                        } else {
+                            self.error = format!("Failed to parse action. ({:?})", res.unwrap_err());
+                            error_modal.open();
+                        }
+                    } else {
+                        self.error = format!("Failed to open action. ({:?})", res.unwrap_err());
+                        error_modal.open();
+                    }
+                }
+            }
+        }
+
+        // handle save dialog
+        if let Some(dialog) = &mut self.save_dialog {
+            if dialog.show(ctx).selected() {
+                if let Some(path) = dialog.path() {
+                    self.save_path = Some(path.to_path_buf());
+                    if let Err(_) = self.save() {
+                        self.error = "Failed to save.".to_owned();
+                        error_modal.open();
+                    }
+                }
+            }
+        }
+
+        next_state
+    }
+
+    fn ui(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) -> Option<crate::State> {
         // produce UI for action editor
         egui::ScrollArea::vertical().show(ui, |ui| {
             if let None = self.target {

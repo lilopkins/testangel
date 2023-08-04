@@ -80,13 +80,18 @@ impl eframe::App for App {
             });
         });
 
+        // Render always UI
+        if let Some(next_state) = self.action_state.always_ui(ctx) {
+            self.state = next_state;
+        }
+
         // Render content
         egui::CentralPanel::default().show(ctx, |ui| match self.state {
             State::Nothing => {
                 ui.label("Nothing to display.");
             }
             State::ActionEditor => {
-                if let Some(next_state) = self.action_state.ui(ui) {
+                if let Some(next_state) = self.action_state.ui(ctx, ui) {
                     self.state = next_state;
                 }
             }
@@ -98,6 +103,9 @@ trait UiComponent {
     /// Render the menu bar. Returns an optional next state to transition to.
     fn menu_bar(&mut self, ui: &mut egui::Ui) -> Option<State>;
 
+    /// Render UI that runs regardless of current state. Returns an optional next state to transition to.
+    fn always_ui(&mut self, ctx: &egui::Context) -> Option<State>;
+
     /// Render the central panel UI. Returns an optional next state to transition to.
-    fn ui(&mut self, ui: &mut egui::Ui) -> Option<State>;
+    fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) -> Option<State>;
 }
