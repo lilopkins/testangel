@@ -4,6 +4,20 @@ use testangel_ipc::prelude::ParameterKind;
 
 use crate::{ipc::EngineMap, types::{Action, InstructionConfiguration, ParameterSource}, UiComponent};
 
+#[derive(Clone)]
+struct PossibleOutput {
+    step: usize,
+    kind: ParameterKind,
+    id: String,
+    friendly_name: String,
+}
+
+impl Into<ParameterSource> for PossibleOutput {
+    fn into(self) -> ParameterSource {
+        ParameterSource::FromOutput(self.step, self.id, self.friendly_name)
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct ActionState {
     engine_map: Rc<EngineMap>,
@@ -67,75 +81,87 @@ impl UiComponent for ActionState {
     }
 
     fn ui(&mut self, ui: &mut egui::Ui) -> Option<crate::State> {
-        if let None = self.target {
-            panic!("ActionEditor target is null, but ActionEditor is open!")
-        }
-        let target = self.target.as_mut().unwrap();
-
         // produce UI for action editor
-        self.all_instructions_available = true;
-        let mut index = 0;
-        for instruction_config in &mut target.instructions {
-            let instruction = self.engine_map.get_instruction_by_id(instruction_config.instruction_id.clone());
-            if let None = instruction {
-                self.all_instructions_available = false;
-                continue;
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            if let None = self.target {
+                panic!("ActionEditor target is null, but ActionEditor is open!")
             }
-            let instruction = instruction.unwrap();
+            let target = self.target.as_mut().unwrap();
 
-            ui.group(|ui| {
-                ui.heading(format!("Step {}: {}", index + 1, instruction.friendly_name()));
+            self.all_instructions_available = true;
+            let mut index = 0;
+            let mut possible_outputs: Vec<PossibleOutput> = Vec::new();
+            for instruction_config in &mut target.instructions {
+                let instruction = self.engine_map.get_instruction_by_id(instruction_config.instruction_id.clone());
+                if let None = instruction {
+                    self.all_instructions_available = false;
+                    continue;
+                }
+                let instruction = instruction.unwrap();
 
-                ui.separator();
-                ui.label("Parameters:");
-                for (param_id, (param_name, param_kind)) in instruction.parameters() {
-                    ui.horizontal_wrapped(|ui| {
-                        ui.label(format!("{param_name} ({param_kind})"));
+                ui.group(|ui| {
+                    ui.heading(format!("Step {}: {}", index + 1, instruction.friendly_name()));
 
-                        let param_source = instruction_config.parameter_sources.get_mut(param_id).unwrap();
-                        egui::ComboBox::from_id_source(format!("{index}_param_{param_id}"))
-                            .selected_text(param_source.text_repr())
-                            .show_ui(ui, |ui| {
-                                ui.selectable_value(param_source, ParameterSource::Literal, ParameterSource::Literal.text_repr());
-                                ui.selectable_value(param_source, ParameterSource::FromOutput, ParameterSource::FromOutput.text_repr());
-                            });
+                    ui.separator();
+                    ui.label("Parameters:");
+                    for (param_id, (param_name, param_kind)) in instruction.parameters() {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(format!("{param_name} ({param_kind})"));
 
-                        if *param_source == ParameterSource::FromOutput {
-                            // TODO: Show output selector.
-                            // Get a list of previous step's outputs (or maintain one as we go).
-                            // Filter by same ParameterKind.
-                            // Show in ComboBox.
-                        } else {
-                            // Literal
-                            let param_value = instruction_config.parameter_values.get_mut(param_id).unwrap();
+                            let param_source = instruction_config.parameter_sources.get_mut(param_id).unwrap();
+                            egui::ComboBox::from_id_source(format!("{index}_param_{param_id}"))
+                                .selected_text(param_source.text_repr())
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(param_source, ParameterSource::Literal, ParameterSource::Literal.text_repr());
 
-                            match param_kind {
-                                ParameterKind::Integer => {
-                                    ui.add(egui::DragValue::new(param_value.int_mut()).speed(1));
-                                }
-                                ParameterKind::Decimal => {
-                                    ui.add(egui::DragValue::new(param_value.f32_mut()).speed(0.1));
-                                }
-                                _ => {
-                                    ui.text_edit_singleline(param_value.string_mut());
+                                    // Filter possible_outputs by same ParameterKind.
+                                    for po in &possible_outputs {
+                                        if po.kind == *param_kind {
+                                            let ps: ParameterSource = po.clone().into();
+                                            ui.selectable_value(param_source, ps.clone(), ps.text_repr());
+                                        }
+                                    }
+                                });
+
+                            if let ParameterSource::Literal = param_source {
+                                // Literal
+                                let param_value = instruction_config.parameter_values.get_mut(param_id).unwrap();
+
+                                match param_kind {
+                                    ParameterKind::Integer => {
+                                        ui.add(egui::DragValue::new(param_value.int_mut()).speed(1));
+                                    }
+                                    ParameterKind::Decimal => {
+                                        ui.add(egui::DragValue::new(param_value.f32_mut()).speed(0.1));
+                                    }
+                                    _ => {
+                                        ui.text_edit_singleline(param_value.string_mut());
+                                    }
                                 }
                             }
-                        }
+                        });
+                    }
+
+                    ui.add_space(8.);
+                    ui.label("Outputs:");
+                    for (_output_id, (output_name, output_kind)) in instruction.outputs() {
+                        ui.label(format!("{output_name} ({output_kind})"));
+                    }
+                });
+
+                for (output_id, (output_name, output_kind)) in instruction.outputs() {
+                    possible_outputs.push(PossibleOutput {
+                        step: index,
+                        kind: output_kind.clone(),
+                        id: output_id.clone(),
+                        friendly_name: output_name.clone(),
                     });
                 }
-
-                ui.add_space(8.);
-                ui.label("Outputs:");
-                for (_output_id, (output_name, output_kind)) in instruction.outputs() {
-                    ui.label(format!("{output_name} ({output_kind})"));
-                }
-            });
-
-            index += 1;
-        }
-        let last_index = target.instructions.len();
-        ui.menu_button("+ Add instruction", |ui| self.add_instruction_menu(ui, last_index));
-
+                index += 1;
+            }
+            let last_index = target.instructions.len();
+            ui.menu_button("+ Add instruction", |ui| self.add_instruction_menu(ui, last_index));
+        });
 
         None
     }

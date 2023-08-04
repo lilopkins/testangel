@@ -35,14 +35,14 @@ impl From<Instruction> for InstructionConfiguration {
 pub enum ParameterSource {
     #[default]
     Literal,
-    FromOutput,
+    FromOutput(usize, String, String),
 }
 
 impl ParameterSource {
-    pub(crate) fn text_repr(&self) -> &'static str {
+    pub(crate) fn text_repr(&self) -> String {
         match self {
-            ParameterSource::FromOutput => "From Output",
-            ParameterSource::Literal => "Literal",
+            ParameterSource::FromOutput(step, _id, friendly_name) => format!("From Step {}: {}", step + 1, friendly_name),
+            ParameterSource::Literal => "Literal".to_owned(),
         }
     }
 }
