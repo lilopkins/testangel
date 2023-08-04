@@ -16,7 +16,7 @@ pub struct Action {
     /// The parameters this action takes, with a friendly name.
     pub parameters: Vec<(String, ParameterKind)>,
     /// The outputs this action produces, with a friendly name
-    outputs: HashMap<String, (String, ParameterKind)>,
+    pub outputs: Vec<(String, ParameterKind, ParameterSource)>,
     /// The instructions called by this action
     pub instructions: Vec<InstructionConfiguration>,
 }

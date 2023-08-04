@@ -29,6 +29,7 @@ pub(crate) struct ActionState {
     target: Option<Action>,
     error: String,
     trigger_error: bool,
+    possible_outputs: Vec<PossibleOutput>,
     all_instructions_available: bool,
     save_path: Option<PathBuf>,
     open_dialog: Option<FileDialog>,
@@ -80,12 +81,14 @@ impl ActionState {
         }
     }
 
-    fn save(&self) -> Result<(), ()> {
+    fn save(&mut self) -> Result<(), ()> {
         if self.save_path.is_none() {
             panic!("Save path not set");
         }
-        if let Ok(data) = rmp_serde::to_vec(&self.target.as_ref().unwrap()) {
-            if let Ok(_) = fs::write(self.save_path.as_ref().unwrap(), data) {
+        let save_path = self.save_path.as_mut().unwrap();
+        save_path.set_extension("taaction");
+        if let Ok(data) = ron::to_string(&self.target.as_ref().unwrap()) {
+            if let Ok(_) = fs::write(save_path, data) {
                 return Ok(());
             }
         }
@@ -161,13 +164,22 @@ impl UiComponent for ActionState {
                 if let Some(path) = dialog.path() {
                     let res = File::open(path);
                     if let Ok(file) = res {
-                        let res = rmp_serde::from_read(BufReader::new(file));
-                        if let Ok(action) = res {
-                            self.save_path = Some(path.to_path_buf());
-                            self.target = Some(action);
-                            next_state = Some(crate::State::ActionEditor);
+                        use std::io::Read;
+                        let mut buf = String::new();
+                        let mut r = BufReader::new(file);
+                        let res = r.read_to_string(&mut buf);
+                        if let Ok(_) = res {
+                            let res = ron::from_str(&buf);
+                            if let Ok(action) = res {
+                                self.save_path = Some(path.to_path_buf());
+                                self.target = Some(action);
+                                next_state = Some(crate::State::ActionEditor);
+                            } else {
+                                self.error = format!("Failed to parse action. ({:?})", res.unwrap_err());
+                                error_modal.open();
+                            }
                         } else {
-                            self.error = format!("Failed to parse action. ({:?})", res.unwrap_err());
+                            self.error = format!("Failed to read action. ({:?})", res.unwrap_err());
                             error_modal.open();
                         }
                     } else {
@@ -273,6 +285,53 @@ impl UiComponent for ActionState {
 
             ui.separator();
 
+            ui.heading("Outputs:");
+
+            let mut output_id = 0;
+            for (output_name, output_kind, output_source) in &mut target.outputs {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(format!("Output {}", output_id + 1));
+                    ui.text_edit_singleline(output_name).on_hover_text("Output Name");
+                    egui::ComboBox::from_id_source(format!("action_output_{output_id}_kind"))
+                        .selected_text(format!("{output_kind}"))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(output_kind, ParameterKind::String, "Text");
+                            ui.selectable_value(output_kind, ParameterKind::Integer, "Integer");
+                            ui.selectable_value(output_kind, ParameterKind::Decimal, "Decimal");
+                            ui.selectable_value(output_kind, ParameterKind::SpecialType { id: "Type ID".to_owned(), friendly_name: "Type Name".to_owned() }, "Custom");
+                        });
+                    if let ParameterKind::SpecialType { id, friendly_name } = output_kind {
+                        ui.text_edit_singleline(id);
+                        ui.text_edit_singleline(friendly_name);
+                    }
+
+                    egui::ComboBox::from_id_source(format!("action_output_{output_id}_source"))
+                                .selected_text(output_source.text_repr())
+                                .show_ui(ui, |ui| {
+                                    for po in &self.possible_outputs {
+                                        if po.kind == *output_kind {
+                                            let ps: ParameterSource = po.clone().into();
+                                            ui.selectable_value(output_source, ps.clone(), ps.text_repr());
+                                        }
+                                    }
+                                });
+                });
+                output_id += 1;
+            }
+            if ui.button("+ Add output").clicked() {
+                target.outputs.push(("New Output".to_owned(), ParameterKind::String, ParameterSource::Literal));
+            }
+            ui.menu_button("× Delete output", |ui| {
+                for i in 0..target.parameters.len() {
+                    if ui.button(format!("Delete output {}", i + 1)).clicked() {
+                        ui.close_menu();
+                        target.outputs.remove(i);
+                    }
+                }
+            });
+
+            ui.separator();
+
             ui.heading("Steps:");
 
             self.all_instructions_available = true;
@@ -356,6 +415,9 @@ impl UiComponent for ActionState {
                 }
                 index += 1;
             }
+
+            self.possible_outputs = possible_outputs;
+
             let last_index = target.instructions.len();
             ui.horizontal_wrapped(|ui| {
                 ui.menu_button("+ Add instruction", |ui| self.add_instruction_menu(ui, last_index));

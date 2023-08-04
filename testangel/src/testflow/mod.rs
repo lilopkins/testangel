@@ -83,7 +83,7 @@ impl TestFlowState {
         if self.save_path.is_none() {
             panic!("Save path not set");
         }
-        if let Ok(data) = rmp_serde::to_vec(&self.target.as_ref().unwrap()) {
+        if let Ok(data) = ron::to_string(&self.target.as_ref().unwrap()) {
             if let Ok(_) = fs::write(self.save_path.as_ref().unwrap(), data) {
                 return Ok(());
             }
@@ -158,13 +158,22 @@ impl UiComponent for TestFlowState {
                 if let Some(path) = dialog.path() {
                     let res = File::open(path);
                     if let Ok(file) = res {
-                        let res = rmp_serde::from_read(BufReader::new(file));
-                        if let Ok(action) = res {
-                            self.save_path = Some(path.to_path_buf());
-                            self.target = Some(action);
-                            next_state = Some(crate::State::TestFlowEditor);
+                        use std::io::Read;
+                        let mut buf = String::new();
+                        let mut r = BufReader::new(file);
+                        let res = r.read_to_string(&mut buf);
+                        if let Ok(_) = res {
+                            let res = ron::from_str(&buf);
+                            if let Ok(action) = res {
+                                self.save_path = Some(path.to_path_buf());
+                                self.target = Some(action);
+                                next_state = Some(crate::State::TestFlowEditor);
+                            } else {
+                                self.error = format!("Failed to parse action. ({:?})", res.unwrap_err());
+                                error_modal.open();
+                            }
                         } else {
-                            self.error = format!("Failed to parse action. ({:?})", res.unwrap_err());
+                            self.error = format!("Failed to read action. ({:?})", res.unwrap_err());
                             error_modal.open();
                         }
                     } else {
