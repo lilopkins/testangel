@@ -3,6 +3,7 @@
 use std::rc::Rc;
 
 use action::ActionState;
+use eframe::IconData;
 
 mod action;
 mod ipc;
@@ -12,9 +13,8 @@ mod types;
 fn main() {
     pretty_env_logger::init();
 
-    let native_options = eframe::NativeOptions::default();
-    // TODO: Create icon for app
-    // native_options.icon_data = Some(IconData::try_from_png_bytes(include_bytes!("icon.png")).unwrap());
+    let mut native_options = eframe::NativeOptions::default();
+    native_options.icon_data = Some(IconData::try_from_png_bytes(include_bytes!("../../icon.png")).unwrap());
     if let Err(err) = eframe::run_native(
         "TestAngel",
         native_options,
