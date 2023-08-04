@@ -11,13 +11,14 @@ where
         request,
         engine.as_ref()
     );
-    if let Ok(output) = Command::new(engine).arg(request.to_json()).output() {
+    if let Ok(output) = Command::new(&engine).arg(request.to_json()).output() {
         let output_string = String::from_utf8(output.stdout).unwrap();
         let res = Response::try_from(output_string);
         if res.is_err() {
             log::error!(
-                "Failed to parse subprocess response ({}).",
-                res.unwrap_err()
+                "Failed to parse subprocess response ({}) from engine {:?}.",
+                res.unwrap_err(),
+                engine.as_ref(),
             );
             return Err(());
         }
@@ -25,7 +26,7 @@ where
         log::debug!("Got response {res:?}");
         return Ok(res);
     }
-    log::error!("Failed to run subprocess.");
+    log::error!("Failed to run subprocess for engine {:?}.", engine.as_ref());
     return Err(());
 }
 
@@ -49,6 +50,10 @@ impl EngineMap {
             }
         }
         return None;
+    }
+
+    pub fn inner(&self) -> &HashMap<PathBuf, Engine> {
+        &self.0
     }
 }
 

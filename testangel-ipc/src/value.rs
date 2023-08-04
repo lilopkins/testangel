@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 /// A type of a parameter
@@ -17,6 +19,27 @@ pub enum ParameterKind {
         /// A friendly name for this special type.
         friendly_name: String,
     },
+}
+impl ParameterKind {
+    pub fn default_value(&self) -> ParameterValue {
+        match self {
+            Self::String => ParameterValue::String(String::new()),
+            Self::Integer => ParameterValue::Integer(0),
+            Self::Decimal => ParameterValue::Decimal(0.),
+            Self::SpecialType { id, friendly_name: _ } => ParameterValue::SpecialType { id: id.clone(), value: String::new() },
+        }
+    }
+}
+
+impl fmt::Display for ParameterKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::String => write!(f, "Text"),
+            Self::Integer => write!(f, "Integer"),
+            Self::Decimal => write!(f, "Decimal"),
+            Self::SpecialType { id: _, friendly_name } => write!(f, "{friendly_name}"),
+        }
+    }
 }
 
 /// A value of a parameter
@@ -82,6 +105,31 @@ impl ParameterValue {
                 id: id.clone(),
                 friendly_name: "unknown".to_owned(),
             },
+        }
+    }
+
+    /// Get a mutable pointer to the value, or panics if it isn't an i32.
+    pub fn int_mut(&mut self) -> &mut i32 {
+        match self {
+            Self::Integer(a) => a,
+            _ => panic!("value isn't an i32"),
+        }
+    }
+
+    /// Get a mutable pointer to the value, or panics if it isn't an f32.
+    pub fn f32_mut(&mut self) -> &mut f32 {
+        match self {
+            Self::Decimal(a) => a,
+            _ => panic!("value isn't an f32"),
+        }
+    }
+
+    /// Get a mutable pointer to the value, or panics if it isn't a String or SpecialValue.
+    pub fn string_mut(&mut self) -> &mut String {
+        match self {
+            Self::String(a) => a,
+            Self::SpecialType { id: _, value } => value,
+            _ => panic!("value isn't a string"),
         }
     }
 }

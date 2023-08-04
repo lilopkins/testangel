@@ -95,6 +95,11 @@ impl Instruction {
     pub fn parameters(&self) -> &HashMap<String, (String, ParameterKind)> {
         &self.parameters
     }
+
+    /// Get the outputs of this instruction
+    pub fn outputs(&self) -> &HashMap<String, (String, ParameterKind)> {
+        &self.outputs
+    }
 }
 
 /// An instruction with it's parameters.
