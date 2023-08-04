@@ -1,15 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{collections::HashMap, path::PathBuf, rc::Rc};
+use std::rc::Rc;
 
 use action::ActionState;
-use ipc::Engine;
 
 mod action;
 mod ipc;
 mod modals;
 mod types;
-use testangel_ipc::prelude::*;
 
 fn main() {
     pretty_env_logger::init();
