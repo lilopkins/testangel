@@ -46,6 +46,28 @@ impl ActionState {
             });
         }
     }
+
+    fn delete_step_menu(&mut self, ui: &mut egui::Ui) {
+        let instructions = &mut self.target.as_mut().unwrap().instructions;
+        for index in 0..instructions.len() {
+            if ui.button(format!("Step {}", index + 1)).clicked() {
+                ui.close_menu();
+                instructions.remove(index);
+                // reshuffle `FromOutput`s
+                for step in instructions.iter_mut() {
+                    for (_param_id, param_source) in &mut step.parameter_sources {
+                        if let ParameterSource::FromOutput(step, _id, _name) = param_source {
+                            if *step == index {
+                                *param_source = ParameterSource::Literal;
+                            } else if *step > index {
+                                *step -= 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl UiComponent for ActionState {
@@ -160,7 +182,10 @@ impl UiComponent for ActionState {
                 index += 1;
             }
             let last_index = target.instructions.len();
-            ui.menu_button("+ Add instruction", |ui| self.add_instruction_menu(ui, last_index));
+            ui.horizontal_wrapped(|ui| {
+                ui.menu_button("+ Add instruction", |ui| self.add_instruction_menu(ui, last_index));
+                ui.menu_button("× Delete step", |ui| self.delete_step_menu(ui));
+            });
         });
 
         None
