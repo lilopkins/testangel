@@ -4,18 +4,31 @@ use serde::{Deserialize, Serialize};
 use testangel_ipc::prelude::*;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct Action {
-    pub instructions: Vec<InstructionConfiguration>,
+pub struct TestFlow {
+    /// The internal ID of this instruction. Must be unique.
+    id: String,
+    /// The friendly name of this instruction.
+    friendly_name: String,
+    /// A description of this instruction.
+    description: String,
+    /// The parameters this instruction takes, with a friendly name.
+    parameters: HashMap<String, (String, ParameterKind)>,
+    /// The order of the parameters in the editor.
+    parameter_order: Vec<String>,
+    /// The outputs this instruction produces, with a friendly name
+    outputs: HashMap<String, (String, ParameterKind)>,
+    /// The instructions called by this action
+    pub instructions: Vec<ActionConfiguration>,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct InstructionConfiguration {
-    pub instruction_id: String,
+pub struct ActionConfiguration {
+    pub action_id: String,
     pub parameter_sources: HashMap<String, ParameterSource>,
     pub parameter_values: HashMap<String, ParameterValue>,
 }
 
-impl From<Instruction> for InstructionConfiguration {
+impl From<Instruction> for ActionConfiguration {
     fn from(value: Instruction) -> Self {
         let mut parameter_sources = HashMap::new();
         let mut parameter_values = HashMap::new();
@@ -24,7 +37,7 @@ impl From<Instruction> for InstructionConfiguration {
             parameter_values.insert(id.clone(), kind.default_value());
         }
         Self {
-            instruction_id: value.id().clone(),
+            action_id: value.id().clone(),
             parameter_sources,
             parameter_values,
         }

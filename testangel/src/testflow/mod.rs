@@ -3,7 +3,10 @@ use std::{rc::Rc, path::PathBuf, fs::{self, File}, io::BufReader};
 use egui_file::FileDialog;
 use testangel_ipc::prelude::ParameterKind;
 
-use crate::{ipc::EngineMap, types::{Action, InstructionConfiguration, ParameterSource}, UiComponent};
+use crate::{ipc::EngineMap, UiComponent};
+use types::{TestFlow, ActionConfiguration, ParameterSource};
+
+mod types;
 
 #[derive(Clone)]
 struct PossibleOutput {
@@ -20,9 +23,9 @@ impl Into<ParameterSource> for PossibleOutput {
 }
 
 #[derive(Default)]
-pub(crate) struct ActionState {
+pub(crate) struct TestFlowState {
     engine_map: Rc<EngineMap>,
-    target: Option<Action>,
+    target: Option<TestFlow>,
     error: String,
     trigger_error: bool,
     all_instructions_available: bool,
@@ -31,7 +34,7 @@ pub(crate) struct ActionState {
     save_dialog: Option<FileDialog>,
 }
 
-impl ActionState {
+impl TestFlowState {
     pub fn new(engine_map: Rc<EngineMap>) -> Self {
         Self {
             engine_map,
@@ -47,7 +50,7 @@ impl ActionState {
                     if ui.button(instruction.friendly_name()).clicked() {
                         // add instruction
                         ui.close_menu();
-                        self.target.as_mut().unwrap().instructions.insert(index, InstructionConfiguration::from(instruction.clone()));
+                        self.target.as_mut().unwrap().instructions.insert(index, ActionConfiguration::from(instruction.clone()));
                     }
                 }
             });
@@ -87,16 +90,21 @@ impl ActionState {
         }
         Err(())
     }
+
+    pub(crate) fn close(&mut self) {
+        self.save_path = None;
+        self.target = None;
+    }
 }
 
-impl UiComponent for ActionState {
+impl UiComponent for TestFlowState {
     fn menu_bar(&mut self, ui: &mut egui::Ui) -> Option<crate::State> {
         let mut next_state = None;
-        ui.menu_button("Actions", |ui| {
+        ui.menu_button("Test Flow", |ui| {
             if ui.button("New").clicked() {
                 ui.close_menu();
-                self.target = Some(Action::default());
-                next_state = Some(crate::State::ActionEditor);
+                self.target = Some(TestFlow::default());
+                next_state = Some(crate::State::TestFlowEditor);
             }
             if ui.button("Open...").clicked() {
                 ui.close_menu();
@@ -138,7 +146,7 @@ impl UiComponent for ActionState {
         let mut next_state = None;
 
         // handle error modal
-        let error_modal = crate::modals::error_modal(ctx, "action_editor_error_modal", &self.error);
+        let error_modal = crate::modals::error_modal(ctx, "test_flow_editor_error_modal", &self.error);
         if self.trigger_error {
             error_modal.open();
             self.trigger_error = false;
@@ -154,7 +162,7 @@ impl UiComponent for ActionState {
                         if let Ok(action) = res {
                             self.save_path = Some(path.to_path_buf());
                             self.target = Some(action);
-                            next_state = Some(crate::State::ActionEditor);
+                            next_state = Some(crate::State::TestFlowEditor);
                         } else {
                             self.error = format!("Failed to parse action. ({:?})", res.unwrap_err());
                             error_modal.open();
@@ -187,7 +195,7 @@ impl UiComponent for ActionState {
         // produce UI for action editor
         egui::ScrollArea::vertical().show(ui, |ui| {
             if let None = self.target {
-                panic!("ActionEditor target is null, but ActionEditor is open!")
+                panic!("TestFlowEditor target is null, but TestFlowEditor is open!")
             }
             let target = self.target.as_mut().unwrap();
 
@@ -195,7 +203,7 @@ impl UiComponent for ActionState {
             let mut index = 0;
             let mut possible_outputs: Vec<PossibleOutput> = Vec::new();
             for instruction_config in &mut target.instructions {
-                let instruction = self.engine_map.get_instruction_by_id(instruction_config.instruction_id.clone());
+                let instruction = self.engine_map.get_instruction_by_id(instruction_config.action_id.clone());
                 if let None = instruction {
                     self.all_instructions_available = false;
                     continue;
@@ -265,7 +273,7 @@ impl UiComponent for ActionState {
             }
             let last_index = target.instructions.len();
             ui.horizontal_wrapped(|ui| {
-                ui.menu_button("+ Add instruction", |ui| self.add_instruction_menu(ui, last_index));
+                ui.menu_button("+ Add action", |ui| self.add_instruction_menu(ui, last_index));
                 ui.menu_button("× Delete step", |ui| self.delete_step_menu(ui));
             });
         });
