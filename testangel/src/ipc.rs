@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ffi::OsStr, fs, path::PathBuf, process::Command};
+use std::{collections::HashMap, ffi::OsStr, fs, path::PathBuf, process::Command, env};
 
 use testangel_ipc::prelude::*;
 
@@ -55,7 +55,8 @@ impl EngineMap {
 /// Get the list of available engines.
 pub fn get_engines() -> EngineMap {
     let mut engines = HashMap::new();
-    for path in fs::read_dir("./").unwrap() {
+    let engine_dir = env::var("ENGINE_DIR").unwrap_or("./engines".to_owned());
+    for path in fs::read_dir(engine_dir).unwrap() {
         let path = path.unwrap();
         let basename = path.file_name();
         if let Ok(meta) = path.metadata() {
