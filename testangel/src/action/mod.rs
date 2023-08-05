@@ -322,7 +322,7 @@ impl UiComponent for ActionState {
                 target.outputs.push(("New Output".to_owned(), ParameterKind::String, ParameterSource::Literal));
             }
             ui.menu_button("× Delete output", |ui| {
-                for i in 0..target.parameters.len() {
+                for i in 0..target.outputs.len() {
                     if ui.button(format!("Delete output {}", i + 1)).clicked() {
                         ui.close_menu();
                         target.outputs.remove(i);
