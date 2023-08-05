@@ -60,12 +60,15 @@ impl ActionState {
     }
 
     fn delete_step_menu(&mut self, ui: &mut egui::Ui) {
-        let instructions = &mut self.target.as_mut().unwrap().instructions;
+        let target = self.target.as_mut().unwrap();
+        let outputs = &mut target.outputs;
+        let instructions = &mut target.instructions;
         for index in 0..instructions.len() {
             if ui.button(format!("Step {}", index + 1)).clicked() {
                 ui.close_menu();
                 instructions.remove(index);
-                // reshuffle `FromOutput`s
+
+                // reshuffle `FromOutput`s for instructions
                 for step in instructions.iter_mut() {
                     for (_param_id, param_source) in &mut step.parameter_sources {
                         if let ParameterSource::FromOutput(step, _id, _name) = param_source {
@@ -75,6 +78,20 @@ impl ActionState {
                                 *step -= 1;
                             }
                         }
+                    }
+                }
+
+                // reshuffle `FromOutput`s for outputs
+                for (_output_name, _output_kind, output_source) in outputs.iter_mut() {
+                    match output_source {
+                        ParameterSource::FromOutput(step, _id, _name) => {
+                            if *step == index {
+                                *output_source = ParameterSource::Literal;
+                            } else if *step > index {
+                                *step -= 1;
+                            }
+                        }
+                        _ => (),
                     }
                 }
             }
