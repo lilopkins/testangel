@@ -88,10 +88,12 @@ impl AutomationFlowState {
         }
     }
 
-    fn save(&self) -> Result<(), ()> {
+    fn save(&mut self) -> Result<(), ()> {
         if self.save_path.is_none() {
             panic!("Save path not set");
         }
+        let save_path = self.save_path.as_mut().unwrap();
+        save_path.set_extension("taflow");
         if let Ok(data) = ron::to_string(&self.target.as_ref().unwrap()) {
             if let Ok(_) = fs::write(self.save_path.as_ref().unwrap(), data) {
                 return Ok(());
