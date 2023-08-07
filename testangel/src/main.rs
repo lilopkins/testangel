@@ -2,21 +2,23 @@
 
 use std::rc::Rc;
 
-use eframe::IconData;
 use action::ActionState;
 use automation_flow::AutomationFlowState;
+use eframe::IconData;
 
 mod action;
 mod action_loader;
+mod automation_flow;
+mod flow_running;
 mod ipc;
 mod modals;
-mod automation_flow;
 
 fn main() {
     pretty_env_logger::init();
 
     let mut native_options = eframe::NativeOptions::default();
-    native_options.icon_data = Some(IconData::try_from_png_bytes(include_bytes!("../../icon.png")).unwrap());
+    native_options.icon_data =
+        Some(IconData::try_from_png_bytes(include_bytes!("../../icon.png")).unwrap());
     if let Err(err) = eframe::run_native(
         "TestAngel",
         native_options,
@@ -31,6 +33,7 @@ struct App {
     state: State,
     action_state: action::ActionState,
     test_flow_state: automation_flow::AutomationFlowState,
+    flow_running_state: flow_running::FlowRunningState,
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
@@ -38,6 +41,7 @@ enum State {
     #[default]
     Nothing,
     AutomationFlowEditor,
+    AutomationFlowRunning,
     ActionEditor,
 }
 
@@ -71,9 +75,18 @@ impl eframe::App for App {
                 ui.separator();
 
                 if let Some(next_state) = self.test_flow_state.menu_bar(ui) {
-                    if next_state != State::AutomationFlowEditor {
+                    if next_state != State::AutomationFlowEditor
+                        && next_state != State::AutomationFlowRunning
+                    {
                         self.test_flow_state.close();
+                    } else if next_state == State::AutomationFlowRunning {
+                        // Pass over flow
+                        let flow = self.test_flow_state.test_flow();
+                        self.flow_running_state.flow = Some(flow);
                     }
+                    self.state = next_state;
+                }
+                if let Some(next_state) = self.flow_running_state.menu_bar(ui) {
                     self.state = next_state;
                 }
                 if let Some(next_state) = self.action_state.menu_bar(ui) {
@@ -95,9 +108,14 @@ impl eframe::App for App {
 
         // Render always UI
         if let Some(next_state) = self.test_flow_state.always_ui(ctx) {
-            if next_state != State::AutomationFlowEditor {
+            if next_state != State::AutomationFlowEditor
+                && next_state != State::AutomationFlowRunning
+            {
                 self.test_flow_state.close();
             }
+            self.state = next_state;
+        }
+        if let Some(next_state) = self.flow_running_state.always_ui(ctx) {
             self.state = next_state;
         }
         if let Some(next_state) = self.action_state.always_ui(ctx) {
@@ -114,9 +132,16 @@ impl eframe::App for App {
             }
             State::AutomationFlowEditor => {
                 if let Some(next_state) = self.test_flow_state.ui(ctx, ui) {
-                    if next_state != State::AutomationFlowEditor {
+                    if next_state != State::AutomationFlowEditor
+                        && next_state != State::AutomationFlowRunning
+                    {
                         self.test_flow_state.close();
                     }
+                    self.state = next_state;
+                }
+            }
+            State::AutomationFlowRunning => {
+                if let Some(next_state) = self.flow_running_state.ui(ctx, ui) {
                     self.state = next_state;
                 }
             }

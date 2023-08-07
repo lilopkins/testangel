@@ -1,4 +1,9 @@
-use std::{rc::Rc, path::PathBuf, fs::{self, File}, io::BufReader};
+use std::{
+    fs::{self, File},
+    io::BufReader,
+    path::PathBuf,
+    rc::Rc,
+};
 
 use egui_file::FileDialog;
 use testangel_ipc::prelude::ParameterKind;
@@ -52,7 +57,11 @@ impl ActionState {
                     if ui.button(instruction.friendly_name()).clicked() {
                         // add instruction
                         ui.close_menu();
-                        self.target.as_mut().unwrap().instructions.insert(index, InstructionConfiguration::from(instruction.clone()));
+                        self.target
+                            .as_mut()
+                            .unwrap()
+                            .instructions
+                            .insert(index, InstructionConfiguration::from(instruction.clone()));
                     }
                 }
             });
@@ -192,7 +201,8 @@ impl UiComponent for ActionState {
                                 self.target = Some(action);
                                 next_state = Some(crate::State::ActionEditor);
                             } else {
-                                self.error = format!("Failed to parse action. ({:?})", res.unwrap_err());
+                                self.error =
+                                    format!("Failed to parse action. ({:?})", res.unwrap_err());
                                 error_modal.open();
                             }
                         } else {
@@ -257,14 +267,22 @@ impl UiComponent for ActionState {
             for (param_name, param_kind) in &mut target.parameters {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(format!("Parameter {}", param_id + 1));
-                    ui.text_edit_singleline(param_name).on_hover_text("Parameter Name");
+                    ui.text_edit_singleline(param_name)
+                        .on_hover_text("Parameter Name");
                     egui::ComboBox::from_id_source(format!("action_param_{}", param_id))
                         .selected_text(format!("{param_kind}"))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(param_kind, ParameterKind::String, "Text");
                             ui.selectable_value(param_kind, ParameterKind::Integer, "Integer");
                             ui.selectable_value(param_kind, ParameterKind::Decimal, "Decimal");
-                            ui.selectable_value(param_kind, ParameterKind::SpecialType { id: "Type ID".to_owned(), friendly_name: "Type Name".to_owned() }, "Custom");
+                            ui.selectable_value(
+                                param_kind,
+                                ParameterKind::SpecialType {
+                                    id: "Type ID".to_owned(),
+                                    friendly_name: "Type Name".to_owned(),
+                                },
+                                "Custom",
+                            );
                         });
                     if let ParameterKind::SpecialType { id, friendly_name } = param_kind {
                         ui.text_edit_singleline(id);
@@ -274,7 +292,9 @@ impl UiComponent for ActionState {
                 param_id += 1;
             }
             if ui.button("+ Add parameter").clicked() {
-                target.parameters.push(("New parameter".to_owned(), ParameterKind::String));
+                target
+                    .parameters
+                    .push(("New parameter".to_owned(), ParameterKind::String));
             }
             ui.menu_button("× Delete parameter", |ui| {
                 for i in 0..target.parameters.len() {
@@ -289,7 +309,10 @@ impl UiComponent for ActionState {
                                         if *param == i {
                                             *src = ParameterSource::Literal;
                                         } else if *param > i {
-                                            *src = ParameterSource::FromParameter(*param - 1, name.clone());
+                                            *src = ParameterSource::FromParameter(
+                                                *param - 1,
+                                                name.clone(),
+                                            );
                                         }
                                     }
                                     _ => (),
@@ -308,14 +331,22 @@ impl UiComponent for ActionState {
             for (output_name, output_kind, output_source) in &mut target.outputs {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(format!("Output {}", output_id + 1));
-                    ui.text_edit_singleline(output_name).on_hover_text("Output Name");
+                    ui.text_edit_singleline(output_name)
+                        .on_hover_text("Output Name");
                     egui::ComboBox::from_id_source(format!("action_output_{output_id}_kind"))
                         .selected_text(format!("{output_kind}"))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(output_kind, ParameterKind::String, "Text");
                             ui.selectable_value(output_kind, ParameterKind::Integer, "Integer");
                             ui.selectable_value(output_kind, ParameterKind::Decimal, "Decimal");
-                            ui.selectable_value(output_kind, ParameterKind::SpecialType { id: "Type ID".to_owned(), friendly_name: "Type Name".to_owned() }, "Custom");
+                            ui.selectable_value(
+                                output_kind,
+                                ParameterKind::SpecialType {
+                                    id: "Type ID".to_owned(),
+                                    friendly_name: "Type Name".to_owned(),
+                                },
+                                "Custom",
+                            );
                         });
                     if let ParameterKind::SpecialType { id, friendly_name } = output_kind {
                         ui.text_edit_singleline(id);
@@ -323,20 +354,24 @@ impl UiComponent for ActionState {
                     }
 
                     egui::ComboBox::from_id_source(format!("action_output_{output_id}_source"))
-                                .selected_text(output_source.text_repr())
-                                .show_ui(ui, |ui| {
-                                    for po in &self.possible_outputs {
-                                        if po.kind == *output_kind {
-                                            let ps: ParameterSource = po.clone().into();
-                                            ui.selectable_value(output_source, ps.clone(), ps.text_repr());
-                                        }
-                                    }
-                                });
+                        .selected_text(output_source.text_repr())
+                        .show_ui(ui, |ui| {
+                            for po in &self.possible_outputs {
+                                if po.kind == *output_kind {
+                                    let ps: ParameterSource = po.clone().into();
+                                    ui.selectable_value(output_source, ps.clone(), ps.text_repr());
+                                }
+                            }
+                        });
                 });
                 output_id += 1;
             }
             if ui.button("+ Add output").clicked() {
-                target.outputs.push(("New Output".to_owned(), ParameterKind::String, ParameterSource::Literal));
+                target.outputs.push((
+                    "New Output".to_owned(),
+                    ParameterKind::String,
+                    ParameterSource::Literal,
+                ));
             }
             ui.menu_button("× Delete output", |ui| {
                 for i in 0..target.outputs.len() {
@@ -355,7 +390,9 @@ impl UiComponent for ActionState {
             let mut index = 0;
             let mut possible_outputs: Vec<PossibleOutput> = Vec::new();
             for instruction_config in &mut target.instructions {
-                let instruction = self.engine_map.get_instruction_by_id(instruction_config.instruction_id.clone());
+                let instruction = self
+                    .engine_map
+                    .get_instruction_by_id(instruction_config.instruction_id.clone());
                 if let None = instruction {
                     self.all_instructions_available = false;
                     continue;
@@ -363,26 +400,45 @@ impl UiComponent for ActionState {
                 let instruction = instruction.unwrap();
 
                 ui.group(|ui| {
-                    ui.heading(format!("Step {}: {}", index + 1, instruction.friendly_name()));
+                    ui.heading(format!(
+                        "Step {}: {}",
+                        index + 1,
+                        instruction.friendly_name()
+                    ));
 
                     ui.separator();
                     ui.label("Parameters:");
                     for param_id in instruction.parameter_order() {
-                        let (param_name, param_kind) = instruction.parameters().get(param_id).unwrap();
+                        let (param_name, param_kind) =
+                            instruction.parameters().get(param_id).unwrap();
                         ui.horizontal_wrapped(|ui| {
                             ui.label(format!("{param_name} ({param_kind})"));
 
-                            let param_source = instruction_config.parameter_sources.get_mut(param_id).unwrap();
+                            let param_source = instruction_config
+                                .parameter_sources
+                                .get_mut(param_id)
+                                .unwrap();
                             egui::ComboBox::from_id_source(format!("{index}_param_{param_id}"))
                                 .selected_text(param_source.text_repr())
                                 .show_ui(ui, |ui| {
-                                    ui.selectable_value(param_source, ParameterSource::Literal, ParameterSource::Literal.text_repr());
+                                    ui.selectable_value(
+                                        param_source,
+                                        ParameterSource::Literal,
+                                        ParameterSource::Literal.text_repr(),
+                                    );
 
                                     let mut p_id = 0;
                                     for (p_name, p_kind) in &target.parameters {
                                         if *p_kind == *param_kind {
-                                            let ps = ParameterSource::FromParameter(p_id, p_name.clone());
-                                            ui.selectable_value(param_source, ps.clone(), ps.text_repr());
+                                            let ps = ParameterSource::FromParameter(
+                                                p_id,
+                                                p_name.clone(),
+                                            );
+                                            ui.selectable_value(
+                                                param_source,
+                                                ps.clone(),
+                                                ps.text_repr(),
+                                            );
                                         }
                                         p_id += 1;
                                     }
@@ -391,21 +447,32 @@ impl UiComponent for ActionState {
                                     for po in &possible_outputs {
                                         if po.kind == *param_kind {
                                             let ps: ParameterSource = po.clone().into();
-                                            ui.selectable_value(param_source, ps.clone(), ps.text_repr());
+                                            ui.selectable_value(
+                                                param_source,
+                                                ps.clone(),
+                                                ps.text_repr(),
+                                            );
                                         }
                                     }
                                 });
 
                             if let ParameterSource::Literal = param_source {
                                 // Literal
-                                let param_value = instruction_config.parameter_values.get_mut(param_id).unwrap();
+                                let param_value = instruction_config
+                                    .parameter_values
+                                    .get_mut(param_id)
+                                    .unwrap();
 
                                 match param_kind {
                                     ParameterKind::Integer => {
-                                        ui.add(egui::DragValue::new(param_value.int_mut()).speed(1));
+                                        ui.add(
+                                            egui::DragValue::new(param_value.int_mut()).speed(1),
+                                        );
                                     }
                                     ParameterKind::Decimal => {
-                                        ui.add(egui::DragValue::new(param_value.f32_mut()).speed(0.1));
+                                        ui.add(
+                                            egui::DragValue::new(param_value.f32_mut()).speed(0.1),
+                                        );
                                     }
                                     _ => {
                                         ui.text_edit_singleline(param_value.string_mut());
@@ -437,7 +504,9 @@ impl UiComponent for ActionState {
 
             let last_index = target.instructions.len();
             ui.horizontal_wrapped(|ui| {
-                ui.menu_button("+ Add instruction", |ui| self.add_instruction_menu(ui, last_index));
+                ui.menu_button("+ Add instruction", |ui| {
+                    self.add_instruction_menu(ui, last_index)
+                });
                 ui.menu_button("× Delete step", |ui| self.delete_step_menu(ui));
             });
         });

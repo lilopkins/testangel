@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ffi::OsStr, fs, path::PathBuf, process::Command, env};
+use std::{collections::HashMap, env, ffi::OsStr, fs, path::PathBuf, process::Command};
 
 use testangel_ipc::prelude::*;
 

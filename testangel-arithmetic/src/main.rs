@@ -28,22 +28,38 @@ fn main() {
         return;
     }
 
-    let add_instruction = Instruction::new("arithmetic-int-add", "Add (Integer)", "Add together two integers.")
-        .with_parameter("val1", "A", ParameterKind::Integer)
-        .with_parameter("val2", "B", ParameterKind::Integer)
-        .with_output("result", "A + B", ParameterKind::Integer);
-    let sub_instruction = Instruction::new("arithmetic-int-sub", "Subtract (Integer)", "Subtract two integers.")
-        .with_parameter("val1", "A", ParameterKind::Integer)
-        .with_parameter("val2", "B", ParameterKind::Integer)
-        .with_output("result", "A - B", ParameterKind::Integer);
-    let mul_instruction = Instruction::new("arithmetic-int-mul", "Multiply (Integer)", "Multiply two integers.")
-        .with_parameter("val1", "A", ParameterKind::Integer)
-        .with_parameter("val2", "B", ParameterKind::Integer)
-        .with_output("result", "A × B", ParameterKind::Integer);
-    let div_instruction = Instruction::new("arithmetic-int-div", "Divide (Integer)", "Divide two integers, returning the floored result.")
-        .with_parameter("val1", "A", ParameterKind::Integer)
-        .with_parameter("val2", "B", ParameterKind::Integer)
-        .with_output("result", "A ÷ B", ParameterKind::Integer);
+    let add_instruction = Instruction::new(
+        "arithmetic-int-add",
+        "Add (Integer)",
+        "Add together two integers.",
+    )
+    .with_parameter("val1", "A", ParameterKind::Integer)
+    .with_parameter("val2", "B", ParameterKind::Integer)
+    .with_output("result", "A + B", ParameterKind::Integer);
+    let sub_instruction = Instruction::new(
+        "arithmetic-int-sub",
+        "Subtract (Integer)",
+        "Subtract two integers.",
+    )
+    .with_parameter("val1", "A", ParameterKind::Integer)
+    .with_parameter("val2", "B", ParameterKind::Integer)
+    .with_output("result", "A - B", ParameterKind::Integer);
+    let mul_instruction = Instruction::new(
+        "arithmetic-int-mul",
+        "Multiply (Integer)",
+        "Multiply two integers.",
+    )
+    .with_parameter("val1", "A", ParameterKind::Integer)
+    .with_parameter("val2", "B", ParameterKind::Integer)
+    .with_output("result", "A × B", ParameterKind::Integer);
+    let div_instruction = Instruction::new(
+        "arithmetic-int-div",
+        "Divide (Integer)",
+        "Divide two integers, returning the floored result.",
+    )
+    .with_parameter("val1", "A", ParameterKind::Integer)
+    .with_parameter("val2", "B", ParameterKind::Integer)
+    .with_output("result", "A ÷ B", ParameterKind::Integer);
 
     let request = request.unwrap();
     match request {
@@ -53,7 +69,12 @@ fn main() {
                 "{}",
                 Response::Instructions {
                     friendly_name: "Arithmetic".to_owned(),
-                    instructions: vec![add_instruction.clone(), sub_instruction.clone(), mul_instruction.clone(), div_instruction.clone()],
+                    instructions: vec![
+                        add_instruction.clone(),
+                        sub_instruction.clone(),
+                        mul_instruction.clone(),
+                        div_instruction.clone()
+                    ],
                 }
                 .to_json()
             );
@@ -80,10 +101,7 @@ fn main() {
                         content: EvidenceContent::Textual(format!("{val1} + {val2} = {result}")),
                     }]);
                     let mut map = HashMap::new();
-                    map.insert(
-                        "result".to_owned(),
-                        ParameterValue::Integer(result),
-                    );
+                    map.insert("result".to_owned(), ParameterValue::Integer(result));
                     output.push(map);
                 } else if i.instruction == *sub_instruction.id() {
                     // Validate parameters
@@ -103,10 +121,7 @@ fn main() {
                         content: EvidenceContent::Textual(format!("{val1} - {val2} = {result}")),
                     }]);
                     let mut map = HashMap::new();
-                    map.insert(
-                        "result".to_owned(),
-                        ParameterValue::Integer(result),
-                    );
+                    map.insert("result".to_owned(), ParameterValue::Integer(result));
                     output.push(map);
                 } else if i.instruction == *mul_instruction.id() {
                     // Validate parameters
@@ -126,10 +141,7 @@ fn main() {
                         content: EvidenceContent::Textual(format!("{val1} × {val2} = {result}")),
                     }]);
                     let mut map = HashMap::new();
-                    map.insert(
-                        "result".to_owned(),
-                        ParameterValue::Integer(result),
-                    );
+                    map.insert("result".to_owned(), ParameterValue::Integer(result));
                     output.push(map);
                 } else if i.instruction == *div_instruction.id() {
                     // Validate parameters
@@ -149,10 +161,7 @@ fn main() {
                         content: EvidenceContent::Textual(format!("{val1} ÷ {val2} = {result}")),
                     }]);
                     let mut map = HashMap::new();
-                    map.insert(
-                        "result".to_owned(),
-                        ParameterValue::Integer(result),
-                    );
+                    map.insert("result".to_owned(), ParameterValue::Integer(result));
                     output.push(map);
                 } else {
                     println!(
@@ -169,7 +178,10 @@ fn main() {
                 }
             }
             // Print output
-            println!("{}", Response::ExecutionOutput { output, evidence }.to_json());
+            println!(
+                "{}",
+                Response::ExecutionOutput { output, evidence }.to_json()
+            );
         }
     }
 }

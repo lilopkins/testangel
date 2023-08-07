@@ -26,7 +26,13 @@ impl ParameterKind {
             Self::String => ParameterValue::String(String::new()),
             Self::Integer => ParameterValue::Integer(0),
             Self::Decimal => ParameterValue::Decimal(0.),
-            Self::SpecialType { id, friendly_name: _ } => ParameterValue::SpecialType { id: id.clone(), value: String::new() },
+            Self::SpecialType {
+                id,
+                friendly_name: _,
+            } => ParameterValue::SpecialType {
+                id: id.clone(),
+                value: String::new(),
+            },
         }
     }
 }
@@ -37,7 +43,10 @@ impl fmt::Display for ParameterKind {
             Self::String => write!(f, "Text"),
             Self::Integer => write!(f, "Integer"),
             Self::Decimal => write!(f, "Decimal"),
-            Self::SpecialType { id: _, friendly_name } => write!(f, "{friendly_name}"),
+            Self::SpecialType {
+                id: _,
+                friendly_name,
+            } => write!(f, "{friendly_name}"),
         }
     }
 }

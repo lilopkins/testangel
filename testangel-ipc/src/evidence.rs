@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// A piece of evidence.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

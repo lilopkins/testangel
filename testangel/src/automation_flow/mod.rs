@@ -1,12 +1,17 @@
-use std::{rc::Rc, path::PathBuf, fs::{self, File}, io::BufReader};
+use std::{
+    fs::{self, File},
+    io::BufReader,
+    path::PathBuf,
+    rc::Rc,
+};
 
 use egui_file::FileDialog;
 use testangel_ipc::prelude::ParameterKind;
 
-use crate::{UiComponent, action_loader::ActionMap};
-use types::{AutomationFlow, ActionConfiguration, ParameterSource};
+use crate::{action_loader::ActionMap, UiComponent};
+use types::{ActionConfiguration, AutomationFlow, ParameterSource};
 
-mod types;
+pub mod types;
 
 #[derive(Clone)]
 struct PossibleOutput {
@@ -50,7 +55,11 @@ impl AutomationFlowState {
                     if ui.button(action.friendly_name.clone()).clicked() {
                         // add action
                         ui.close_menu();
-                        self.target.as_mut().unwrap().instructions.insert(index, ActionConfiguration::from(action.clone()));
+                        self.target
+                            .as_mut()
+                            .unwrap()
+                            .instructions
+                            .insert(index, ActionConfiguration::from(action.clone()));
                     }
                 }
             });
@@ -95,6 +104,11 @@ impl AutomationFlowState {
         self.save_path = None;
         self.target = None;
     }
+
+    /// Get a copy of the currently opened test flow
+    pub(crate) fn test_flow(&self) -> AutomationFlow {
+        self.target.as_ref().unwrap().clone()
+    }
 }
 
 impl UiComponent for AutomationFlowState {
@@ -113,6 +127,10 @@ impl UiComponent for AutomationFlowState {
                 self.open_dialog = Some(dialog);
             }
             ui.add_enabled_ui(self.target.is_some(), |ui| {
+                if ui.button("Run Flow").clicked() {
+                    ui.close_menu();
+                    next_state = Some(crate::State::AutomationFlowRunning);
+                }
                 if ui.button("Save").clicked() {
                     ui.close_menu();
                     if let None = self.save_path {
@@ -146,7 +164,8 @@ impl UiComponent for AutomationFlowState {
         let mut next_state = None;
 
         // handle error modal
-        let error_modal = crate::modals::error_modal(ctx, "test_flow_editor_error_modal", &self.error);
+        let error_modal =
+            crate::modals::error_modal(ctx, "test_flow_editor_error_modal", &self.error);
         if self.trigger_error {
             error_modal.open();
             self.trigger_error = false;
@@ -169,7 +188,8 @@ impl UiComponent for AutomationFlowState {
                                 self.target = Some(action);
                                 next_state = Some(crate::State::AutomationFlowEditor);
                             } else {
-                                self.error = format!("Failed to parse action. ({:?})", res.unwrap_err());
+                                self.error =
+                                    format!("Failed to parse action. ({:?})", res.unwrap_err());
                                 error_modal.open();
                             }
                         } else {
@@ -212,7 +232,9 @@ impl UiComponent for AutomationFlowState {
             let mut index = 0;
             let mut possible_outputs: Vec<PossibleOutput> = Vec::new();
             for action_config in &mut target.instructions {
-                let instruction = self.action_map.get_action_by_id(action_config.action_id.clone());
+                let instruction = self
+                    .action_map
+                    .get_action_by_id(action_config.action_id.clone());
                 if let None = instruction {
                     self.all_instructions_available = false;
                     continue;
@@ -229,31 +251,45 @@ impl UiComponent for AutomationFlowState {
                         ui.horizontal_wrapped(|ui| {
                             ui.label(format!("{param_name} ({param_kind})"));
 
-                            let param_source = action_config.parameter_sources.get_mut(&param_id).unwrap();
+                            let param_source =
+                                action_config.parameter_sources.get_mut(&param_id).unwrap();
                             egui::ComboBox::from_id_source(format!("{index}_param_{param_id}"))
                                 .selected_text(param_source.text_repr())
                                 .show_ui(ui, |ui| {
-                                    ui.selectable_value(param_source, ParameterSource::Literal, ParameterSource::Literal.text_repr());
+                                    ui.selectable_value(
+                                        param_source,
+                                        ParameterSource::Literal,
+                                        ParameterSource::Literal.text_repr(),
+                                    );
 
                                     // Filter possible_outputs by same ParameterKind.
                                     for po in &possible_outputs {
                                         if po.kind == param_kind {
                                             let ps: ParameterSource = po.clone().into();
-                                            ui.selectable_value(param_source, ps.clone(), ps.text_repr());
+                                            ui.selectable_value(
+                                                param_source,
+                                                ps.clone(),
+                                                ps.text_repr(),
+                                            );
                                         }
                                     }
                                 });
 
                             if let ParameterSource::Literal = param_source {
                                 // Literal
-                                let param_value = action_config.parameter_values.get_mut(&param_id).unwrap();
+                                let param_value =
+                                    action_config.parameter_values.get_mut(&param_id).unwrap();
 
                                 match param_kind {
                                     ParameterKind::Integer => {
-                                        ui.add(egui::DragValue::new(param_value.int_mut()).speed(1));
+                                        ui.add(
+                                            egui::DragValue::new(param_value.int_mut()).speed(1),
+                                        );
                                     }
                                     ParameterKind::Decimal => {
-                                        ui.add(egui::DragValue::new(param_value.f32_mut()).speed(0.1));
+                                        ui.add(
+                                            egui::DragValue::new(param_value.f32_mut()).speed(0.1),
+                                        );
                                     }
                                     _ => {
                                         ui.text_edit_singleline(param_value.string_mut());

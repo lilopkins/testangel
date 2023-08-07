@@ -55,8 +55,12 @@ pub enum ParameterSource {
 impl ParameterSource {
     pub(crate) fn text_repr(&self) -> String {
         match self {
-            ParameterSource::FromOutput(step, _id, friendly_name) => format!("From Step {}: {}", step + 1, friendly_name),
-            ParameterSource::FromParameter(_id, friendly_name) => format!("Parameter: {friendly_name}"),
+            ParameterSource::FromOutput(step, _id, friendly_name) => {
+                format!("From Step {}: {}", step + 1, friendly_name)
+            }
+            ParameterSource::FromParameter(_id, friendly_name) => {
+                format!("Parameter: {friendly_name}")
+            }
             ParameterSource::Literal => "Literal".to_owned(),
         }
     }

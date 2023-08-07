@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf, env, fs};
+use std::{collections::HashMap, env, fs, path::PathBuf};
 
 use crate::action::types::Action;
 
@@ -21,7 +21,8 @@ impl ActionMap {
         let mut map = HashMap::new();
         for (_path, action) in &self.0 {
             map.entry(action.group.clone()).or_default();
-            map.entry(action.group.clone()).and_modify(|vec: &mut Vec<Action>| vec.push(action.clone()));
+            map.entry(action.group.clone())
+                .and_modify(|vec: &mut Vec<Action>| vec.push(action.clone()));
         }
         map
     }
@@ -46,11 +47,12 @@ pub fn get_actions() -> ActionMap {
                 log::debug!("Detected possible action {str}");
                 if let Ok(res) = fs::read_to_string(path.path()) {
                     if let Ok(action) = ron::from_str::<Action>(&res) {
-                        log::info!("Discovered action {} at {:?}", action.friendly_name, path.path());
-                        actions.insert(
-                            path.path(),
-                            action,
+                        log::info!(
+                            "Discovered action {} at {:?}",
+                            action.friendly_name,
+                            path.path()
                         );
+                        actions.insert(path.path(), action);
                     }
                 }
             }
