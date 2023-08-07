@@ -4,12 +4,12 @@ use std::rc::Rc;
 
 use eframe::IconData;
 use action::ActionState;
-use testflow::TestFlowState;
+use automation_flow::AutomationFlowState;
 
 mod action;
 mod ipc;
 mod modals;
-mod testflow;
+mod automation_flow;
 
 fn main() {
     pretty_env_logger::init();
@@ -29,14 +29,14 @@ fn main() {
 struct App {
     state: State,
     action_state: action::ActionState,
-    test_flow_state: testflow::TestFlowState,
+    test_flow_state: automation_flow::AutomationFlowState,
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 enum State {
     #[default]
     Nothing,
-    TestFlowEditor,
+    AutomationFlowEditor,
     ActionEditor,
 }
 
@@ -49,7 +49,7 @@ impl App {
         let engines_rc = Rc::new(ipc::get_engines());
         Self {
             action_state: ActionState::new(engines_rc.clone()),
-            test_flow_state: TestFlowState::new(engines_rc),
+            test_flow_state: AutomationFlowState::new(engines_rc),
             ..Default::default()
         }
     }
@@ -69,7 +69,7 @@ impl eframe::App for App {
                 ui.separator();
 
                 if let Some(next_state) = self.test_flow_state.menu_bar(ui) {
-                    if next_state != State::TestFlowEditor {
+                    if next_state != State::AutomationFlowEditor {
                         self.test_flow_state.close();
                     }
                     self.state = next_state;
@@ -93,7 +93,7 @@ impl eframe::App for App {
 
         // Render always UI
         if let Some(next_state) = self.test_flow_state.always_ui(ctx) {
-            if next_state != State::TestFlowEditor {
+            if next_state != State::AutomationFlowEditor {
                 self.test_flow_state.close();
             }
             self.state = next_state;
@@ -110,9 +110,9 @@ impl eframe::App for App {
             State::Nothing => {
                 ui.label("Nothing to display.");
             }
-            State::TestFlowEditor => {
+            State::AutomationFlowEditor => {
                 if let Some(next_state) = self.test_flow_state.ui(ctx, ui) {
-                    if next_state != State::TestFlowEditor {
+                    if next_state != State::AutomationFlowEditor {
                         self.test_flow_state.close();
                     }
                     self.state = next_state;

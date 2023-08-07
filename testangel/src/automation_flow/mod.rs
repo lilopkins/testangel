@@ -4,7 +4,7 @@ use egui_file::FileDialog;
 use testangel_ipc::prelude::ParameterKind;
 
 use crate::{ipc::EngineMap, UiComponent};
-use types::{TestFlow, ActionConfiguration, ParameterSource};
+use types::{AutomationFlow, ActionConfiguration, ParameterSource};
 
 mod types;
 
@@ -23,9 +23,9 @@ impl Into<ParameterSource> for PossibleOutput {
 }
 
 #[derive(Default)]
-pub(crate) struct TestFlowState {
+pub(crate) struct AutomationFlowState {
     engine_map: Rc<EngineMap>,
-    target: Option<TestFlow>,
+    target: Option<AutomationFlow>,
     error: String,
     trigger_error: bool,
     all_instructions_available: bool,
@@ -34,7 +34,7 @@ pub(crate) struct TestFlowState {
     save_dialog: Option<FileDialog>,
 }
 
-impl TestFlowState {
+impl AutomationFlowState {
     pub fn new(engine_map: Rc<EngineMap>) -> Self {
         Self {
             engine_map,
@@ -97,14 +97,14 @@ impl TestFlowState {
     }
 }
 
-impl UiComponent for TestFlowState {
+impl UiComponent for AutomationFlowState {
     fn menu_bar(&mut self, ui: &mut egui::Ui) -> Option<crate::State> {
         let mut next_state = None;
-        ui.menu_button("Test Flow", |ui| {
+        ui.menu_button("Automation Flow", |ui| {
             if ui.button("New").clicked() {
                 ui.close_menu();
-                self.target = Some(TestFlow::default());
-                next_state = Some(crate::State::TestFlowEditor);
+                self.target = Some(AutomationFlow::default());
+                next_state = Some(crate::State::AutomationFlowEditor);
             }
             if ui.button("Open...").clicked() {
                 ui.close_menu();
@@ -167,7 +167,7 @@ impl UiComponent for TestFlowState {
                             if let Ok(action) = res {
                                 self.save_path = Some(path.to_path_buf());
                                 self.target = Some(action);
-                                next_state = Some(crate::State::TestFlowEditor);
+                                next_state = Some(crate::State::AutomationFlowEditor);
                             } else {
                                 self.error = format!("Failed to parse action. ({:?})", res.unwrap_err());
                                 error_modal.open();
@@ -204,7 +204,7 @@ impl UiComponent for TestFlowState {
         // produce UI for action editor
         egui::ScrollArea::vertical().show(ui, |ui| {
             if let None = self.target {
-                panic!("TestFlowEditor target is null, but TestFlowEditor is open!")
+                panic!("AutomationFlowEditor target is null, but AutomationFlowEditor is open!")
             }
             let target = self.target.as_mut().unwrap();
 

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use testangel_ipc::prelude::*;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct TestFlow {
+pub struct AutomationFlow {
     /// The internal ID of this instruction. Must be unique.
     id: String,
     /// The friendly name of this instruction.
