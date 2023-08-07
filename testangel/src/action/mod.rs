@@ -121,7 +121,7 @@ impl ActionState {
 impl UiComponent for ActionState {
     fn menu_bar(&mut self, ui: &mut egui::Ui) -> Option<crate::State> {
         let mut next_state = None;
-        ui.menu_button("Test Action", |ui| {
+        ui.menu_button("Action", |ui| {
             if ui.button("New").clicked() {
                 ui.close_menu();
                 let mut action = Action::default();
