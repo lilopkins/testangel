@@ -1,0 +1,137 @@
+name: Build Rust Applications
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions: write-all
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install latest rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+          override: true
+
+      - name: Build
+        run: |
+          # Build
+          cargo build --all --release
+          # Strip metadata
+          strip target/release/testangel
+          strip target/release/testangel-arithmetic
+          # Prepare output dir
+          mkdir -p build || exit 1
+          cp target/release/testangel build/
+          # Prepare engines
+          mkdir -p build/engines || exit 1
+          cp target/release/testangel-arithmetic build/engines
+
+      - name: Archive Release
+        uses: thedoctor0/zip-release@0.7.1
+        with:
+          type: tar
+          path: build
+          filename: release-linux-amd64.tar.gz
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            testangel_amd64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-win:
+    runs-on: windows-latest
+    permissions: write-all
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install latest rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+          override: true
+
+      - name: Build
+        run: |
+          cargo build --all --release
+          mkdir build
+          copy target/release/testangel.exe build/
+          mkdir build/engines
+          copy target/release/testangel-arithmetic.exe build/engines/
+
+      - name: Archive Release
+        uses: thedoctor0/zip-release@0.7.1
+        with:
+          type: zip
+          path: build
+          filename: release-win.zip
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            target/release/testangel.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-mac:
+    runs-on: macos-latest
+    permissions: write-all
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Install latest rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-apple-darwin
+          default: true
+          override: true
+
+      - name: Build for mac
+        run: |
+          # Build
+          cargo build --all --release
+          # Strip metadata
+          strip target/release/testangel
+          strip target/release/testangel-arithmetic
+          # Prepare output dir
+          mkdir -p build || exit 1
+          cp target/release/testangel build/
+          # Prepare engines
+          mkdir -p build/engines || exit 1
+          cp target/release/testangel-arithmetic build/engines
+
+      - name: Archive Release
+        uses: thedoctor0/zip-release@0.7.1
+        with:
+          type: tar
+          path: build
+          filename: release-darwin.tar.gz
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            testangel_darwin.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
