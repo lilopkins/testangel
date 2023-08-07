@@ -55,9 +55,9 @@ impl App {
         let engines_rc = Arc::new(ipc::get_engines());
         let actions_rc = Arc::new(action_loader::get_actions());
         Self {
-            action_state: ActionState::new(engines_rc),
+            action_state: ActionState::new(engines_rc.clone()),
             test_flow_state: AutomationFlowState::new(actions_rc.clone()),
-            flow_running_state: FlowRunningState::new(actions_rc),
+            flow_running_state: FlowRunningState::new(actions_rc, engines_rc),
             ..Default::default()
         }
     }

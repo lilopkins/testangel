@@ -12,18 +12,6 @@ use crate::{
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct AutomationFlow {
-    /// The internal ID of this instruction. Must be unique.
-    id: String,
-    /// The friendly name of this instruction.
-    friendly_name: String,
-    /// A description of this instruction.
-    description: String,
-    /// The parameters this instruction takes, with a friendly name.
-    parameters: HashMap<String, (String, ParameterKind)>,
-    /// The order of the parameters in the editor.
-    parameter_order: Vec<String>,
-    /// The outputs this instruction produces, with a friendly name
-    outputs: HashMap<String, (String, ParameterKind)>,
     /// The actions called by this flow
     pub actions: Vec<ActionConfiguration>,
 }

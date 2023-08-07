@@ -36,7 +36,7 @@ pub struct Engine {
     pub instructions: Vec<Instruction>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct EngineMap(HashMap<PathBuf, Engine>);
 
 impl EngineMap {
