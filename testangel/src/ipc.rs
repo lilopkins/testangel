@@ -61,6 +61,7 @@ impl EngineMap {
 pub fn get_engines() -> EngineMap {
     let mut engines = HashMap::new();
     let engine_dir = env::var("ENGINE_DIR").unwrap_or("./engines".to_owned());
+    fs::create_dir_all(engine_dir.clone()).unwrap();
     for path in fs::read_dir(engine_dir).unwrap() {
         let path = path.unwrap();
         let basename = path.file_name();

@@ -3,7 +3,7 @@ use std::{rc::Rc, path::PathBuf, fs::{self, File}, io::BufReader};
 use egui_file::FileDialog;
 use testangel_ipc::prelude::ParameterKind;
 
-use crate::{ipc::EngineMap, UiComponent};
+use crate::{UiComponent, action_loader::ActionMap};
 use types::{AutomationFlow, ActionConfiguration, ParameterSource};
 
 mod types;
@@ -24,7 +24,7 @@ impl Into<ParameterSource> for PossibleOutput {
 
 #[derive(Default)]
 pub(crate) struct AutomationFlowState {
-    engine_map: Rc<EngineMap>,
+    action_map: Rc<ActionMap>,
     target: Option<AutomationFlow>,
     error: String,
     trigger_error: bool,
@@ -35,29 +35,29 @@ pub(crate) struct AutomationFlowState {
 }
 
 impl AutomationFlowState {
-    pub fn new(engine_map: Rc<EngineMap>) -> Self {
+    pub fn new(action_map: Rc<ActionMap>) -> Self {
         Self {
-            engine_map,
+            action_map,
             all_instructions_available: true,
             ..Default::default()
         }
     }
 
-    pub fn add_instruction_menu(&mut self, ui: &mut egui::Ui, index: usize) {
-        for (_path, engine) in self.engine_map.inner() {
-            ui.menu_button(engine.name.clone(), |ui| {
-                for instruction in &engine.instructions {
-                    if ui.button(instruction.friendly_name()).clicked() {
-                        // add instruction
+    pub fn add_action_menu(&mut self, ui: &mut egui::Ui, index: usize) {
+        for (group, actions) in self.action_map.get_by_group() {
+            ui.menu_button(group.clone(), |ui| {
+                for action in &actions {
+                    if ui.button(action.friendly_name.clone()).clicked() {
+                        // add action
                         ui.close_menu();
-                        self.target.as_mut().unwrap().instructions.insert(index, ActionConfiguration::from(instruction.clone()));
+                        self.target.as_mut().unwrap().instructions.insert(index, ActionConfiguration::from(action.clone()));
                     }
                 }
             });
         }
     }
 
-    fn delete_step_menu(&mut self, ui: &mut egui::Ui) {
+    fn delete_action_menu(&mut self, ui: &mut egui::Ui) {
         let instructions = &mut self.target.as_mut().unwrap().instructions;
         for index in 0..instructions.len() {
             if ui.button(format!("Step {}", index + 1)).clicked() {
@@ -211,25 +211,25 @@ impl UiComponent for AutomationFlowState {
             self.all_instructions_available = true;
             let mut index = 0;
             let mut possible_outputs: Vec<PossibleOutput> = Vec::new();
-            for instruction_config in &mut target.instructions {
-                let instruction = self.engine_map.get_instruction_by_id(instruction_config.action_id.clone());
+            for action_config in &mut target.instructions {
+                let instruction = self.action_map.get_action_by_id(action_config.action_id.clone());
                 if let None = instruction {
                     self.all_instructions_available = false;
                     continue;
                 }
-                let instruction = instruction.unwrap();
+                let action = instruction.unwrap();
 
                 ui.group(|ui| {
-                    ui.heading(format!("Step {}: {}", index + 1, instruction.friendly_name()));
+                    ui.heading(format!("Step {}: {}", index + 1, action.friendly_name));
 
                     ui.separator();
                     ui.label("Parameters:");
-                    for param_id in instruction.parameter_order() {
-                        let (param_name, param_kind) = instruction.parameters().get(param_id).unwrap();
+                    let mut param_id = 0;
+                    for (param_name, param_kind) in action.parameters {
                         ui.horizontal_wrapped(|ui| {
                             ui.label(format!("{param_name} ({param_kind})"));
 
-                            let param_source = instruction_config.parameter_sources.get_mut(param_id).unwrap();
+                            let param_source = action_config.parameter_sources.get_mut(&param_id).unwrap();
                             egui::ComboBox::from_id_source(format!("{index}_param_{param_id}"))
                                 .selected_text(param_source.text_repr())
                                 .show_ui(ui, |ui| {
@@ -237,7 +237,7 @@ impl UiComponent for AutomationFlowState {
 
                                     // Filter possible_outputs by same ParameterKind.
                                     for po in &possible_outputs {
-                                        if po.kind == *param_kind {
+                                        if po.kind == param_kind {
                                             let ps: ParameterSource = po.clone().into();
                                             ui.selectable_value(param_source, ps.clone(), ps.text_repr());
                                         }
@@ -246,7 +246,7 @@ impl UiComponent for AutomationFlowState {
 
                             if let ParameterSource::Literal = param_source {
                                 // Literal
-                                let param_value = instruction_config.parameter_values.get_mut(param_id).unwrap();
+                                let param_value = action_config.parameter_values.get_mut(&param_id).unwrap();
 
                                 match param_kind {
                                     ParameterKind::Integer => {
@@ -261,29 +261,32 @@ impl UiComponent for AutomationFlowState {
                                 }
                             }
                         });
+                        param_id += 1;
                     }
 
                     ui.add_space(8.);
                     ui.label("Outputs:");
-                    for (_output_id, (output_name, output_kind)) in instruction.outputs() {
+                    for (output_name, output_kind, _output_src) in &action.outputs {
                         ui.label(format!("{output_name} ({output_kind})"));
                     }
                 });
 
-                for (output_id, (output_name, output_kind)) in instruction.outputs() {
+                let mut output_id = 0;
+                for (output_name, output_kind, _output_src) in action.outputs {
                     possible_outputs.push(PossibleOutput {
                         step: index,
                         kind: output_kind.clone(),
-                        id: output_id.clone(),
+                        id: format!("{output_id}"),
                         friendly_name: output_name.clone(),
                     });
+                    output_id += 1;
                 }
                 index += 1;
             }
             let last_index = target.instructions.len();
             ui.horizontal_wrapped(|ui| {
-                ui.menu_button("+ Add action", |ui| self.add_instruction_menu(ui, last_index));
-                ui.menu_button("× Delete step", |ui| self.delete_step_menu(ui));
+                ui.menu_button("+ Add action", |ui| self.add_action_menu(ui, last_index));
+                ui.menu_button("× Delete action", |ui| self.delete_action_menu(ui));
             });
         });
 

@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use testangel_ipc::prelude::*;
 
+use crate::action::types::Action;
+
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct AutomationFlow {
     /// The internal ID of this instruction. Must be unique.
@@ -24,20 +26,22 @@ pub struct AutomationFlow {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ActionConfiguration {
     pub action_id: String,
-    pub parameter_sources: HashMap<String, ParameterSource>,
-    pub parameter_values: HashMap<String, ParameterValue>,
+    pub parameter_sources: HashMap<u32, ParameterSource>,
+    pub parameter_values: HashMap<u32, ParameterValue>,
 }
 
-impl From<Instruction> for ActionConfiguration {
-    fn from(value: Instruction) -> Self {
+impl From<Action> for ActionConfiguration {
+    fn from(value: Action) -> Self {
         let mut parameter_sources = HashMap::new();
         let mut parameter_values = HashMap::new();
-        for (id, (_friendly_name, kind)) in value.parameters() {
-            parameter_sources.insert(id.clone(), ParameterSource::Literal);
-            parameter_values.insert(id.clone(), kind.default_value());
+        let mut id = 0;
+        for (_friendly_name, kind) in value.parameters {
+            parameter_sources.insert(id, ParameterSource::Literal);
+            parameter_values.insert(id, kind.default_value());
+            id += 1;
         }
         Self {
-            action_id: value.id().clone(),
+            action_id: value.id.clone(),
             parameter_sources,
             parameter_values,
         }

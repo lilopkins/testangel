@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::{ipc::EngineMap, UiComponent};
 use types::{Action, InstructionConfiguration, ParameterSource};
 
-mod types;
+pub mod types;
 
 #[derive(Clone)]
 struct PossibleOutput {

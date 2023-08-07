@@ -7,6 +7,7 @@ use action::ActionState;
 use automation_flow::AutomationFlowState;
 
 mod action;
+mod action_loader;
 mod ipc;
 mod modals;
 mod automation_flow;
@@ -47,9 +48,10 @@ impl App {
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
         let engines_rc = Rc::new(ipc::get_engines());
+        let actions_rc = Rc::new(action_loader::get_actions());
         Self {
-            action_state: ActionState::new(engines_rc.clone()),
-            test_flow_state: AutomationFlowState::new(engines_rc),
+            action_state: ActionState::new(engines_rc),
+            test_flow_state: AutomationFlowState::new(actions_rc),
             ..Default::default()
         }
     }
