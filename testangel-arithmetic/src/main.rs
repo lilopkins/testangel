@@ -28,14 +28,22 @@ fn main() {
         return;
     }
 
-    let add_instruction = Instruction::new("dummy-add", "Add", "Add together two input integers")
-        .with_parameter("val1", "Value 1", ParameterKind::Integer)
-        .with_parameter("val2", "Value 2", ParameterKind::Integer)
-        .with_output("result", "Result", ParameterKind::Integer);
-    let sub_instruction = Instruction::new("dummy-sub", "Subtract", "Subtract two input integers")
-        .with_parameter("val1", "Value 1", ParameterKind::Integer)
-        .with_parameter("val2", "Value 2", ParameterKind::Integer)
-        .with_output("result", "Result", ParameterKind::Integer);
+    let add_instruction = Instruction::new("arithmetic-int-add", "Add (Integer)", "Add together two integers.")
+        .with_parameter("val1", "A", ParameterKind::Integer)
+        .with_parameter("val2", "B", ParameterKind::Integer)
+        .with_output("result", "A + B", ParameterKind::Integer);
+    let sub_instruction = Instruction::new("arithmetic-int-sub", "Subtract (Integer)", "Subtract two integers.")
+        .with_parameter("val1", "A", ParameterKind::Integer)
+        .with_parameter("val2", "B", ParameterKind::Integer)
+        .with_output("result", "A - B", ParameterKind::Integer);
+    let mul_instruction = Instruction::new("arithmetic-int-mul", "Multiply (Integer)", "Multiply two integers.")
+        .with_parameter("val1", "A", ParameterKind::Integer)
+        .with_parameter("val2", "B", ParameterKind::Integer)
+        .with_output("result", "A × B", ParameterKind::Integer);
+    let div_instruction = Instruction::new("arithmetic-int-div", "Divide (Integer)", "Divide two integers, returning the floored result.")
+        .with_parameter("val1", "A", ParameterKind::Integer)
+        .with_parameter("val2", "B", ParameterKind::Integer)
+        .with_output("result", "A ÷ B", ParameterKind::Integer);
 
     let request = request.unwrap();
     match request {
@@ -44,8 +52,8 @@ fn main() {
             println!(
                 "{}",
                 Response::Instructions {
-                    friendly_name: "Dummy".to_owned(),
-                    instructions: vec![add_instruction.clone(), sub_instruction.clone(),],
+                    friendly_name: "Arithmetic".to_owned(),
+                    instructions: vec![add_instruction.clone(), sub_instruction.clone(), mul_instruction.clone(), div_instruction.clone()],
                 }
                 .to_json()
             );
@@ -53,7 +61,7 @@ fn main() {
         Request::RunInstructions { instructions } => {
             let mut output = Vec::new();
             for i in instructions {
-                if i.instruction == "dummy-add" {
+                if i.instruction == *add_instruction.id() {
                     // Validate parameters
                     if let Err((kind, reason)) = add_instruction.validate(&i) {
                         println!("{}", Response::Error { kind, reason }.to_json());
@@ -71,7 +79,7 @@ fn main() {
                         ParameterValue::Integer(val1.value_i32() + val2.value_i32()),
                     );
                     output.push(map);
-                } else if i.instruction == "dummy-sub" {
+                } else if i.instruction == *sub_instruction.id() {
                     // Validate parameters
                     if let Err((kind, reason)) = add_instruction.validate(&i) {
                         println!("{}", Response::Error { kind, reason }.to_json());
@@ -87,6 +95,42 @@ fn main() {
                     map.insert(
                         "result".to_owned(),
                         ParameterValue::Integer(val1.value_i32() - val2.value_i32()),
+                    );
+                    output.push(map);
+                } else if i.instruction == *mul_instruction.id() {
+                    // Validate parameters
+                    if let Err((kind, reason)) = add_instruction.validate(&i) {
+                        println!("{}", Response::Error { kind, reason }.to_json());
+                        return;
+                    }
+
+                    // Get parameters
+                    let val1 = &i.parameters["val1"];
+                    let val2 = &i.parameters["val2"];
+
+                    // Produce output
+                    let mut map = HashMap::new();
+                    map.insert(
+                        "result".to_owned(),
+                        ParameterValue::Integer(val1.value_i32() * val2.value_i32()),
+                    );
+                    output.push(map);
+                } else if i.instruction == *div_instruction.id() {
+                    // Validate parameters
+                    if let Err((kind, reason)) = add_instruction.validate(&i) {
+                        println!("{}", Response::Error { kind, reason }.to_json());
+                        return;
+                    }
+
+                    // Get parameters
+                    let val1 = &i.parameters["val1"];
+                    let val2 = &i.parameters["val2"];
+
+                    // Produce output
+                    let mut map = HashMap::new();
+                    map.insert(
+                        "result".to_owned(),
+                        ParameterValue::Integer(val1.value_i32() / val2.value_i32()),
                     );
                     output.push(map);
                 } else {

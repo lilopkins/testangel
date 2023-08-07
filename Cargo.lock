@@ -2249,7 +2249,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "testangel-dummy"
+name = "testangel-arithmetic"
 version = "0.1.0"
 dependencies = [
  "clap",

@@ -1,6 +1,6 @@
 [workspace]
 members = [
     "testangel",
-    "testangel-dummy",
+    "testangel-arithmetic",
     "testangel-ipc",
 ]

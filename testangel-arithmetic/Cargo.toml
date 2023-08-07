@@ -1,7 +1,7 @@
 [package]
-name = "testangel-dummy"
+name = "testangel-arithmetic"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
-description = "An example engine plugin for testangel."
+description = "An arithmetic engine plugin for testangel."
 version = "0.1.0"
 edition = "2021"
 
