@@ -60,6 +60,7 @@ fn main() {
         }
         Request::RunInstructions { instructions } => {
             let mut output = Vec::new();
+            let mut evidence = Vec::new();
             for i in instructions {
                 if i.instruction == *add_instruction.id() {
                     // Validate parameters
@@ -72,11 +73,16 @@ fn main() {
                     let val1 = &i.parameters["val1"];
                     let val2 = &i.parameters["val2"];
 
-                    // Produce output
+                    // Produce output and evidence
+                    let result = val1.value_i32() + val2.value_i32();
+                    evidence.push(vec![Evidence {
+                        label: "Arithmetic Operation".to_owned(),
+                        content: EvidenceContent::Textual(format!("{val1} + {val2} = {result}")),
+                    }]);
                     let mut map = HashMap::new();
                     map.insert(
                         "result".to_owned(),
-                        ParameterValue::Integer(val1.value_i32() + val2.value_i32()),
+                        ParameterValue::Integer(result),
                     );
                     output.push(map);
                 } else if i.instruction == *sub_instruction.id() {
@@ -90,11 +96,16 @@ fn main() {
                     let val1 = &i.parameters["val1"];
                     let val2 = &i.parameters["val2"];
 
-                    // Produce output
+                    // Produce output and evidence
+                    let result = val1.value_i32() - val2.value_i32();
+                    evidence.push(vec![Evidence {
+                        label: "Arithmetic Operation".to_owned(),
+                        content: EvidenceContent::Textual(format!("{val1} - {val2} = {result}")),
+                    }]);
                     let mut map = HashMap::new();
                     map.insert(
                         "result".to_owned(),
-                        ParameterValue::Integer(val1.value_i32() - val2.value_i32()),
+                        ParameterValue::Integer(result),
                     );
                     output.push(map);
                 } else if i.instruction == *mul_instruction.id() {
@@ -108,11 +119,16 @@ fn main() {
                     let val1 = &i.parameters["val1"];
                     let val2 = &i.parameters["val2"];
 
-                    // Produce output
+                    // Produce output and evidence
+                    let result = val1.value_i32() * val2.value_i32();
+                    evidence.push(vec![Evidence {
+                        label: "Arithmetic Operation".to_owned(),
+                        content: EvidenceContent::Textual(format!("{val1} × {val2} = {result}")),
+                    }]);
                     let mut map = HashMap::new();
                     map.insert(
                         "result".to_owned(),
-                        ParameterValue::Integer(val1.value_i32() * val2.value_i32()),
+                        ParameterValue::Integer(result),
                     );
                     output.push(map);
                 } else if i.instruction == *div_instruction.id() {
@@ -126,11 +142,16 @@ fn main() {
                     let val1 = &i.parameters["val1"];
                     let val2 = &i.parameters["val2"];
 
-                    // Produce output
+                    // Produce output and evidence
+                    let result = val1.value_i32() / val2.value_i32();
+                    evidence.push(vec![Evidence {
+                        label: "Arithmetic Operation".to_owned(),
+                        content: EvidenceContent::Textual(format!("{val1} ÷ {val2} = {result}")),
+                    }]);
                     let mut map = HashMap::new();
                     map.insert(
                         "result".to_owned(),
-                        ParameterValue::Integer(val1.value_i32() / val2.value_i32()),
+                        ParameterValue::Integer(result),
                     );
                     output.push(map);
                 } else {
@@ -148,7 +169,7 @@ fn main() {
                 }
             }
             // Print output
-            println!("{}", Response::ExecutionOutput { output }.to_json());
+            println!("{}", Response::ExecutionOutput { output, evidence }.to_json());
         }
     }
 }

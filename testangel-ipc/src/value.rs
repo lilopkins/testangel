@@ -133,3 +133,14 @@ impl ParameterValue {
         }
     }
 }
+
+impl fmt::Display for ParameterValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Integer(a) => write!(f, "{a}"),
+            Self::Decimal(a) => write!(f, "{a}"),
+            Self::String(a) => write!(f, "{a}"),
+            Self::SpecialType { id: _, value } => write!(f, "{value}"),
+        }
+    }
+}

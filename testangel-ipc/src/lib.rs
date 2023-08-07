@@ -4,11 +4,13 @@ use serde::{Deserialize, Serialize};
 
 /// A prelude module to quickly import common imports.
 pub mod prelude {
+    pub use crate::evidence::{Evidence, EvidenceContent};
     pub use crate::instruction::{Instruction, InstructionWithParameters};
     pub use crate::value::{ParameterKind, ParameterValue};
     pub use crate::{ErrorKind, Request, Response};
 }
 
+mod evidence;
 mod instruction;
 mod value;
 
@@ -54,8 +56,10 @@ pub enum Response {
     },
     /// Execution finished with the output provided.
     ExecutionOutput {
-        /// The execution output. Order matches the list of instructions sent originally.
+        /// TOrder matches the list of instructions sent originally.he execution output. Order matches the list of instructions sent originally.
         output: Vec<HashMap<String, ParameterValue>>,
+        /// The evidence output. Order matches the list of instructions sent originally.
+        evidence: Vec<Vec<Evidence>>,
     },
     /// An error occured.
     Error { kind: ErrorKind, reason: String },
