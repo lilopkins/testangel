@@ -12,4 +12,4 @@ In TestAngel, you start off creating a Test Flow. This will be the instructions 
 |:-----|:------------|
 |`testangel`|The main executable and UI that controls the platform ("the controller").|
 |`testangel-ipc`|The library that contains the serialisable messages that can be exchanged between the controller and the engine plugins.|
-|`testangel-dummy`|An example dummy engine plugin.|
+|`testangel-arithmetic`|An arithmetic engine plugin.|
