@@ -41,11 +41,26 @@ pub struct EngineMap(HashMap<PathBuf, Engine>);
 
 impl EngineMap {
     /// Get an instruction from an instruction ID by iterating through available engines.
-    pub fn get_instruction_by_id(&self, instruction_id: String) -> Option<Instruction> {
+    pub fn get_instruction_by_id(&self, instruction_id: &String) -> Option<Instruction> {
         for (_path, engine) in &self.0 {
             for inst in &engine.instructions {
-                if *inst.id() == instruction_id {
+                if *inst.id() == *instruction_id {
                     return Some(inst.clone());
+                }
+            }
+        }
+        return None;
+    }
+
+    /// Get an instruction and engine from an instruction ID by iterating through available engines.
+    pub fn get_instruction_and_engine_path_by_id(
+        &self,
+        instruction_id: &String,
+    ) -> Option<(Instruction, PathBuf)> {
+        for (path, engine) in &self.0 {
+            for inst in &engine.instructions {
+                if *inst.id() == *instruction_id {
+                    return Some((inst.clone(), path.clone()));
                 }
             }
         }

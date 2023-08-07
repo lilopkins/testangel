@@ -1,7 +1,12 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use testangel_ipc::prelude::*;
+
+use crate::{
+    flow_running::FlowError,
+    ipc::{self, EngineMap},
+};
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
@@ -26,6 +31,66 @@ pub struct InstructionConfiguration {
     pub instruction_id: String,
     pub parameter_sources: HashMap<String, ParameterSource>,
     pub parameter_values: HashMap<String, ParameterValue>,
+}
+impl InstructionConfiguration {
+    pub fn execute(
+        &self,
+        engine_map: Arc<EngineMap>,
+        action_parameters: &HashMap<usize, ParameterValue>,
+        previous_outputs: Vec<HashMap<String, ParameterValue>>,
+    ) -> Result<(HashMap<String, ParameterValue>, Vec<Evidence>), FlowError> {
+        // Get instruction
+        let (_instruction, engine_path) = engine_map
+            .get_instruction_and_engine_path_by_id(&self.instruction_id)
+            .unwrap();
+
+        // Build input parameters
+        let mut parameters = HashMap::new();
+        for (id, src) in &self.parameter_sources {
+            let value = match src {
+                ParameterSource::Literal => self.parameter_values.get(id).unwrap().clone(),
+                ParameterSource::FromOutput(step, id, _friendly_name) => previous_outputs
+                    .get(*step)
+                    .unwrap()
+                    .get(id)
+                    .unwrap()
+                    .clone(),
+                ParameterSource::FromParameter(id, _friendly_name) => {
+                    action_parameters.get(id).unwrap().clone()
+                }
+            };
+            parameters.insert(id.clone(), value);
+        }
+
+        // Make IPC call
+        let response = ipc::ipc_call(
+            engine_path,
+            Request::RunInstructions {
+                instructions: vec![InstructionWithParameters {
+                    instruction: self.instruction_id.clone(),
+                    parameters,
+                }],
+            },
+        );
+        if response.is_err() {
+            return Err(FlowError::IPCFailure);
+        }
+        let response = response.unwrap();
+
+        // Generate output table and return
+        match response {
+            Response::ExecutionOutput { output, evidence } => {
+                return Ok((output[0].clone(), evidence[0].clone()));
+            }
+            Response::Error { kind, reason } => {
+                return Err(FlowError::FromInstruction {
+                    error_kind: kind,
+                    reason,
+                })
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 impl From<Instruction> for InstructionConfiguration {

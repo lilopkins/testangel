@@ -7,9 +7,9 @@ pub struct ActionMap(HashMap<PathBuf, Action>);
 
 impl ActionMap {
     /// Get an action from an action ID by iterating through available actions.
-    pub fn get_action_by_id(&self, action_id: String) -> Option<Action> {
+    pub fn get_action_by_id(&self, action_id: &String) -> Option<Action> {
         for (_path, action) in &self.0 {
-            if action.id == action_id {
+            if action.id == *action_id {
                 return Some(action.clone());
             }
         }

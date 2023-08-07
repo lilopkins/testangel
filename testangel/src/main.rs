@@ -1,10 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 use action::ActionState;
 use automation_flow::AutomationFlowState;
 use eframe::IconData;
+use flow_running::FlowRunningState;
 
 mod action;
 mod action_loader;
@@ -51,11 +52,12 @@ impl App {
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
-        let engines_rc = Rc::new(ipc::get_engines());
-        let actions_rc = Rc::new(action_loader::get_actions());
+        let engines_rc = Arc::new(ipc::get_engines());
+        let actions_rc = Arc::new(action_loader::get_actions());
         Self {
             action_state: ActionState::new(engines_rc),
-            test_flow_state: AutomationFlowState::new(actions_rc),
+            test_flow_state: AutomationFlowState::new(actions_rc.clone()),
+            flow_running_state: FlowRunningState::new(actions_rc),
             ..Default::default()
         }
     }
@@ -83,6 +85,7 @@ impl eframe::App for App {
                         // Pass over flow
                         let flow = self.test_flow_state.test_flow();
                         self.flow_running_state.flow = Some(flow);
+                        self.flow_running_state.start_flow();
                     }
                     self.state = next_state;
                 }

@@ -2,7 +2,7 @@ use std::{
     fs::{self, File},
     io::BufReader,
     path::PathBuf,
-    rc::Rc,
+    sync::Arc,
 };
 
 use egui_file::FileDialog;
@@ -30,7 +30,7 @@ impl Into<ParameterSource> for PossibleOutput {
 
 #[derive(Default)]
 pub(crate) struct ActionState {
-    engine_map: Rc<EngineMap>,
+    engine_map: Arc<EngineMap>,
     target: Option<Action>,
     error: String,
     trigger_error: bool,
@@ -42,7 +42,7 @@ pub(crate) struct ActionState {
 }
 
 impl ActionState {
-    pub fn new(engine_map: Rc<EngineMap>) -> Self {
+    pub fn new(engine_map: Arc<EngineMap>) -> Self {
         Self {
             engine_map,
             all_instructions_available: true,
@@ -392,7 +392,7 @@ impl UiComponent for ActionState {
             for instruction_config in &mut target.instructions {
                 let instruction = self
                     .engine_map
-                    .get_instruction_by_id(instruction_config.instruction_id.clone());
+                    .get_instruction_by_id(&instruction_config.instruction_id);
                 if let None = instruction {
                     self.all_instructions_available = false;
                     continue;

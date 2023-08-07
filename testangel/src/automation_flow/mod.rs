@@ -2,7 +2,7 @@ use std::{
     fs::{self, File},
     io::BufReader,
     path::PathBuf,
-    rc::Rc,
+    sync::Arc,
 };
 
 use egui_file::FileDialog;
@@ -17,7 +17,7 @@ pub mod types;
 struct PossibleOutput {
     step: usize,
     kind: ParameterKind,
-    id: String,
+    id: usize,
     friendly_name: String,
 }
 
@@ -29,7 +29,7 @@ impl Into<ParameterSource> for PossibleOutput {
 
 #[derive(Default)]
 pub(crate) struct AutomationFlowState {
-    action_map: Rc<ActionMap>,
+    action_map: Arc<ActionMap>,
     target: Option<AutomationFlow>,
     error: String,
     trigger_error: bool,
@@ -40,7 +40,7 @@ pub(crate) struct AutomationFlowState {
 }
 
 impl AutomationFlowState {
-    pub fn new(action_map: Rc<ActionMap>) -> Self {
+    pub fn new(action_map: Arc<ActionMap>) -> Self {
         Self {
             action_map,
             all_instructions_available: true,
@@ -58,7 +58,7 @@ impl AutomationFlowState {
                         self.target
                             .as_mut()
                             .unwrap()
-                            .instructions
+                            .actions
                             .insert(index, ActionConfiguration::from(action.clone()));
                     }
                 }
@@ -67,7 +67,7 @@ impl AutomationFlowState {
     }
 
     fn delete_action_menu(&mut self, ui: &mut egui::Ui) {
-        let instructions = &mut self.target.as_mut().unwrap().instructions;
+        let instructions = &mut self.target.as_mut().unwrap().actions;
         for index in 0..instructions.len() {
             if ui.button(format!("Step {}", index + 1)).clicked() {
                 ui.close_menu();
@@ -231,10 +231,8 @@ impl UiComponent for AutomationFlowState {
             self.all_instructions_available = true;
             let mut index = 0;
             let mut possible_outputs: Vec<PossibleOutput> = Vec::new();
-            for action_config in &mut target.instructions {
-                let instruction = self
-                    .action_map
-                    .get_action_by_id(action_config.action_id.clone());
+            for action_config in &mut target.actions {
+                let instruction = self.action_map.get_action_by_id(&action_config.action_id);
                 if let None = instruction {
                     self.all_instructions_available = false;
                     continue;
@@ -312,14 +310,14 @@ impl UiComponent for AutomationFlowState {
                     possible_outputs.push(PossibleOutput {
                         step: index,
                         kind: output_kind.clone(),
-                        id: format!("{output_id}"),
+                        id: output_id,
                         friendly_name: output_name.clone(),
                     });
                     output_id += 1;
                 }
                 index += 1;
             }
-            let last_index = target.instructions.len();
+            let last_index = target.actions.len();
             ui.horizontal_wrapped(|ui| {
                 ui.menu_button("+ Add action", |ui| self.add_action_menu(ui, last_index));
                 ui.menu_button("× Delete action", |ui| self.delete_action_menu(ui));
