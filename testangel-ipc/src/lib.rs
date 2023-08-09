@@ -15,9 +15,11 @@ mod instruction;
 mod value;
 
 use prelude::*;
+#[cfg(feature="schemas")] use schemars::JsonSchema;
 
 /// The possible request messages that could be sent over the JSON IPC channel.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schemas", derive(JsonSchema))]
 #[serde(tag = "type")]
 pub enum Request {
     /// Request the list of available instructions from this engine plugin.
@@ -45,6 +47,7 @@ impl TryFrom<String> for Request {
 
 /// The possible response messages that could be sent over the JSON IPC channel.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schemas", derive(JsonSchema))]
 #[serde(tag = "type")]
 pub enum Response {
     /// The list of instructions this engine is capable of.
@@ -81,6 +84,7 @@ impl TryFrom<String> for Response {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "schemas", derive(JsonSchema))]
 pub enum ErrorKind {
     /// The IPC JSON request couldn't be parsed.
     FailedToParseIPCJson,
