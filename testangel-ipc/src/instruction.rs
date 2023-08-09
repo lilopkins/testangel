@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+#[cfg(feature="schemas")] use schemars::JsonSchema;
 
 use crate::{prelude::*, value::ParameterValue};
 
 /// An instruction that this engine is capable of providing.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schemas", derive(JsonSchema))]
 pub struct Instruction {
     /// The internal ID of this instruction. Must be unique.
     id: String,
@@ -114,6 +116,7 @@ impl Instruction {
 
 /// An instruction with it's parameters.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schemas", derive(JsonSchema))]
 pub struct InstructionWithParameters {
     /// The ID of the instruction to run.
     pub instruction: String,
