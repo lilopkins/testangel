@@ -7,6 +7,7 @@ use std::{
 
 use egui_file::FileDialog;
 use testangel_ipc::prelude::ParameterKind;
+use itertools::Itertools;
 
 use crate::{action_loader::ActionMap, UiComponent};
 use types::{ActionConfiguration, AutomationFlow, ParameterSource};
@@ -49,8 +50,11 @@ impl AutomationFlowState {
     }
 
     pub fn add_action_menu(&mut self, ui: &mut egui::Ui, index: usize) {
-        for (group, actions) in self.action_map.get_by_group() {
+        let groups = self.action_map.get_by_group();
+        for group in groups.keys().sorted() {
             ui.menu_button(group.clone(), |ui| {
+                let mut actions = groups[group].clone();
+                actions.sort_by(|a, b| a.friendly_name.cmp(&b.friendly_name));
                 for action in &actions {
                     if ui.button(action.friendly_name.clone()).clicked() {
                         // add action
