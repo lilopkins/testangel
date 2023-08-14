@@ -48,7 +48,7 @@ impl FlowRunningState {
             let mut evidence = Vec::new();
 
             for engine in engine_map.inner() {
-                if let Ok(_) = engine.reset_state() {
+                if let Err(_) = engine.reset_state() {
                     evidence.push(Evidence {
                         label: String::from("WARNING: State Warning"),
                         content: EvidenceContent::Textual(String::from("For this test execution, the state couldn't be correctly reset. Some results may not be accurate."))
@@ -67,6 +67,11 @@ impl FlowRunningState {
             }
             Ok(FlowExecutionResult { evidence })
         }));
+    }
+
+    /// Update the action map in this state.
+    pub(crate) fn update_actions(&mut self, new_action_map: Arc<ActionMap>) {
+        self.action_map = new_action_map;
     }
 }
 
@@ -157,6 +162,7 @@ impl UiComponent for FlowRunningState {
                     // Set the worker thread to None, the flow to None, and return a new state of the editor.
                     self.worker_thread = None;
                     self.flow = None;
+                    self.save_dialog = None;
                     return Some(crate::State::AutomationFlowEditor);
                 }
             }

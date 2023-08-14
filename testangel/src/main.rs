@@ -61,6 +61,16 @@ impl App {
             ..Default::default()
         }
     }
+
+    fn change_state(&mut self, next_state: State) {
+        if next_state == State::AutomationFlowEditor {
+            // reload actions
+            let actions_rc = Arc::new(action_loader::get_actions());
+            self.test_flow_state.update_actions(actions_rc.clone());
+            self.flow_running_state.update_actions(actions_rc);
+        }
+        self.state = next_state;
+    }
 }
 
 impl eframe::App for App {
@@ -87,16 +97,16 @@ impl eframe::App for App {
                         self.flow_running_state.flow = Some(flow);
                         self.flow_running_state.start_flow();
                     }
-                    self.state = next_state;
+                    self.change_state(next_state);
                 }
                 if let Some(next_state) = self.flow_running_state.menu_bar(ui) {
-                    self.state = next_state;
+                    self.change_state(next_state);
                 }
                 if let Some(next_state) = self.action_state.menu_bar(ui) {
                     if next_state != State::ActionEditor {
                         self.action_state.close();
                     }
-                    self.state = next_state;
+                    self.change_state(next_state);
                 }
 
                 ui.menu_button("Help", |ui| {
@@ -116,16 +126,16 @@ impl eframe::App for App {
             {
                 self.test_flow_state.close();
             }
-            self.state = next_state;
+            self.change_state(next_state);
         }
         if let Some(next_state) = self.flow_running_state.always_ui(ctx) {
-            self.state = next_state;
+            self.change_state(next_state);
         }
         if let Some(next_state) = self.action_state.always_ui(ctx) {
             if next_state != State::ActionEditor {
                 self.action_state.close();
             }
-            self.state = next_state;
+            self.change_state(next_state);
         }
 
         // Render content
@@ -140,12 +150,12 @@ impl eframe::App for App {
                     {
                         self.test_flow_state.close();
                     }
-                    self.state = next_state;
+                    self.change_state(next_state);
                 }
             }
             State::AutomationFlowRunning => {
                 if let Some(next_state) = self.flow_running_state.ui(ctx, ui) {
-                    self.state = next_state;
+                    self.change_state(next_state);
                 }
             }
             State::ActionEditor => {
@@ -153,7 +163,7 @@ impl eframe::App for App {
                     if next_state != State::ActionEditor {
                         self.action_state.close();
                     }
-                    self.state = next_state;
+                    self.change_state(next_state);
                 }
             }
         });
