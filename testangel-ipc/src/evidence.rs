@@ -1,5 +1,6 @@
+#[cfg(feature = "schemas")]
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-#[cfg(feature="schemas")] use schemars::JsonSchema;
 
 /// A piece of evidence.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

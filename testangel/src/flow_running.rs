@@ -9,13 +9,16 @@ use genpdf::{
 use testangel_ipc::prelude::*;
 
 use crate::{
-    action_loader::ActionMap, automation_flow::types::AutomationFlow, ipc::EngineMap, UiComponent,
+    action_loader::ActionMap,
+    automation_flow::types::AutomationFlow,
+    ipc::{EngineList, IpcError},
+    UiComponent,
 };
 
 #[derive(Default)]
 pub struct FlowRunningState {
     action_map: Arc<ActionMap>,
-    engine_map: Arc<EngineMap>,
+    engine_map: Arc<EngineList>,
     pub flow: Option<AutomationFlow>,
     running: bool,
     num_dots_ellipsis: f32,
@@ -24,7 +27,7 @@ pub struct FlowRunningState {
 }
 
 impl FlowRunningState {
-    pub fn new(action_map: Arc<ActionMap>, engine_map: Arc<EngineMap>) -> Self {
+    pub fn new(action_map: Arc<ActionMap>, engine_map: Arc<EngineList>) -> Self {
         Self {
             action_map,
             engine_map,
@@ -189,19 +192,18 @@ struct FlowExecutionResult {
     evidence: Vec<Evidence>,
 }
 
-#[derive(Clone, PartialEq)]
 pub enum FlowError {
     FromInstruction {
         error_kind: ErrorKind,
         reason: String,
     },
-    IPCFailure,
+    IPCFailure(IpcError),
 }
 
 impl fmt::Display for FlowError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::IPCFailure => write!(f, "An IPC call failed."),
+            Self::IPCFailure(e) => write!(f, "An IPC call failed ({e:?})."),
             Self::FromInstruction { error_kind, reason } => write!(
                 f,
                 "An instruction returned an error: {error_kind:?}: {reason}"

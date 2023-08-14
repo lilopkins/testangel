@@ -5,7 +5,7 @@ use testangel_ipc::prelude::*;
 
 use crate::{
     flow_running::FlowError,
-    ipc::{self, EngineMap},
+    ipc::{self, EngineList},
 };
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -35,13 +35,13 @@ pub struct InstructionConfiguration {
 impl InstructionConfiguration {
     pub fn execute(
         &self,
-        engine_map: Arc<EngineMap>,
+        engine_map: Arc<EngineList>,
         action_parameters: &HashMap<usize, ParameterValue>,
         previous_outputs: Vec<HashMap<String, ParameterValue>>,
     ) -> Result<(HashMap<String, ParameterValue>, Vec<Evidence>), FlowError> {
         // Get instruction
-        let (_instruction, engine_path) = engine_map
-            .get_instruction_and_engine_path_by_id(&self.instruction_id)
+        let engine = engine_map
+            .get_engine_by_instruction_id(&self.instruction_id)
             .unwrap();
 
         // Build input parameters
@@ -64,18 +64,15 @@ impl InstructionConfiguration {
 
         // Make IPC call
         let response = ipc::ipc_call(
-            engine_path,
+            engine,
             Request::RunInstructions {
                 instructions: vec![InstructionWithParameters {
                     instruction: self.instruction_id.clone(),
                     parameters,
                 }],
             },
-        );
-        if response.is_err() {
-            return Err(FlowError::IPCFailure);
-        }
-        let response = response.unwrap();
+        )
+        .map_err(|e| FlowError::IPCFailure(e))?;
 
         // Generate output table and return
         match response {

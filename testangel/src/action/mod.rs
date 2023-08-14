@@ -9,7 +9,7 @@ use egui_file::FileDialog;
 use testangel_ipc::prelude::ParameterKind;
 use uuid::Uuid;
 
-use crate::{ipc::EngineMap, UiComponent};
+use crate::{ipc::EngineList, UiComponent};
 use types::{Action, InstructionConfiguration, ParameterSource};
 
 pub mod types;
@@ -30,7 +30,7 @@ impl Into<ParameterSource> for PossibleOutput {
 
 #[derive(Default)]
 pub(crate) struct ActionState {
-    engine_map: Arc<EngineMap>,
+    engine_map: Arc<EngineList>,
     target: Option<Action>,
     error: String,
     trigger_error: bool,
@@ -42,7 +42,7 @@ pub(crate) struct ActionState {
 }
 
 impl ActionState {
-    pub fn new(engine_map: Arc<EngineMap>) -> Self {
+    pub fn new(engine_map: Arc<EngineList>) -> Self {
         Self {
             engine_map,
             all_instructions_available: true,
@@ -51,7 +51,7 @@ impl ActionState {
     }
 
     pub fn add_instruction_menu(&mut self, ui: &mut egui::Ui, index: usize) {
-        for (_path, engine) in self.engine_map.inner() {
+        for engine in self.engine_map.inner() {
             ui.menu_button(engine.name.clone(), |ui| {
                 for instruction in &engine.instructions {
                     if ui.button(instruction.friendly_name()).clicked() {
