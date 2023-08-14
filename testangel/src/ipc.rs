@@ -72,17 +72,16 @@ impl Engine {
     fn read_until_eol(&self) -> Result<String, IpcError> {
         let stdout = self.stdout.as_ref().ok_or(IpcError::EngineNotStarted)?;
         let mut stdout = stdout.lock().map_err(|_| IpcError::CantLockEngineIo)?;
-        let mut buf = String::new();
+        let mut buf = Vec::new();
         loop {
             let mut one_byte = [0u8];
             stdout
                 .read_exact(&mut one_byte)
                 .map_err(|e| IpcError::IoError(e))?;
             if one_byte[0] != ('\n' as u8) {
-                let ch = one_byte[0] as char;
-                buf.push(ch);
+                buf.push(one_byte[0]);
             } else {
-                return Ok(buf);
+                return Ok(String::from_utf8(buf).map_err(|_| IpcError::InvalidResponseFromEngine)?);
             }
         }
     }
