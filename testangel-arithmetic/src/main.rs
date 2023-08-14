@@ -126,6 +126,11 @@ fn repl_loop() -> io::Result<()> {
 
 fn process_request(state: &mut State, request: Request) {
     match request {
+        Request::ResetState => {
+            // Reset the state.
+            *state = State::default();
+            println!("{}", Response::StateReset.to_json());
+        }
         Request::Instructions => {
             // Provide a list of instructions this engine can run.
             println!(
@@ -203,7 +208,7 @@ fn process_request(state: &mut State, request: Request) {
                     let result = val1.value_i32() * val2.value_i32();
                     evidence.push(vec![Evidence {
                         label: "Arithmetic Operation".to_owned(),
-                        content: EvidenceContent::Textual(format!("{val1} × {val2} = {result}")),
+                        content: EvidenceContent::Textual(format!("{val1} x {val2} = {result}")),
                     }]);
                     let mut map = HashMap::new();
                     map.insert("result".to_owned(), ParameterValue::Integer(result));
@@ -223,7 +228,7 @@ fn process_request(state: &mut State, request: Request) {
                     let result = val1.value_i32() / val2.value_i32();
                     evidence.push(vec![Evidence {
                         label: "Arithmetic Operation".to_owned(),
-                        content: EvidenceContent::Textual(format!("{val1} ÷ {val2} = {result}")),
+                        content: EvidenceContent::Textual(format!("{val1} / {val2} = {result}")),
                     }]);
                     let mut map = HashMap::new();
                     map.insert("result".to_owned(), ParameterValue::Integer(result));
