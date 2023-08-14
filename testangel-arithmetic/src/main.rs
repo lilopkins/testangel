@@ -278,7 +278,8 @@ fn process_request(state: &mut State, request: Request) {
                             ),
                         }
                         .to_json()
-                    )
+                    );
+                    return;
                 }
             }
             // Print output

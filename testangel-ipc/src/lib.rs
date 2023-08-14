@@ -99,4 +99,6 @@ pub enum ErrorKind {
     MissingParameter,
     /// You have submitted a parameter with an invalid type.
     InvalidParameterType,
+    /// An error occurred within the engine whilst processing the request.
+    EngineProcessingError,
 }

@@ -2773,7 +2773,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "base64 0.21.2",
  "chrono",
@@ -2794,7 +2794,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-arithmetic"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap",
  "lazy_static",
@@ -2803,7 +2803,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "schemars",
  "serde",
