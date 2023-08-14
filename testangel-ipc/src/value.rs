@@ -1,7 +1,8 @@
 use std::fmt;
 
+#[cfg(feature = "schemas")]
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-#[cfg(feature="schemas")] use schemars::JsonSchema;
 
 /// A type of a parameter
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

@@ -7,7 +7,7 @@ use crate::{
     action::{self, types::Action},
     action_loader::ActionMap,
     flow_running::FlowError,
-    ipc::EngineMap,
+    ipc::EngineList,
 };
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -27,7 +27,7 @@ impl ActionConfiguration {
     pub fn execute(
         &self,
         action_map: Arc<ActionMap>,
-        engine_map: Arc<EngineMap>,
+        engine_map: Arc<EngineList>,
         previous_action_outputs: Vec<HashMap<usize, ParameterValue>>,
     ) -> Result<(HashMap<usize, ParameterValue>, Vec<Evidence>), FlowError> {
         // Find action by ID

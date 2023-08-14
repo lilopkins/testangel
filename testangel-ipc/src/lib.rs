@@ -15,7 +15,8 @@ mod instruction;
 mod value;
 
 use prelude::*;
-#[cfg(feature="schemas")] use schemars::JsonSchema;
+#[cfg(feature = "schemas")]
+use schemars::JsonSchema;
 
 /// The possible request messages that could be sent over the JSON IPC channel.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

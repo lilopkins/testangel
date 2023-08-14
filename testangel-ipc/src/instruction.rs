@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
+#[cfg(feature = "schemas")]
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-#[cfg(feature="schemas")] use schemars::JsonSchema;
 
 use crate::{prelude::*, value::ParameterValue};
 
