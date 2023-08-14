@@ -5,6 +5,7 @@ use egui_file::FileDialog;
 use genpdf::{
     elements,
     style::{Style, StyledString},
+    Element,
 };
 use testangel_ipc::prelude::*;
 
@@ -136,7 +137,9 @@ impl UiComponent for FlowRunningState {
                     let res = self.worker_thread.take().unwrap().join().unwrap();
                     if let Ok(fer) = res {
                         for ev in &fer.evidence {
-                            doc.push(elements::Paragraph::new(ev.label.clone()));
+                            doc.push(
+                                elements::Paragraph::new(ev.label.clone()).padded((3, 0, 0, 0)),
+                            );
                             match &ev.content {
                                 EvidenceContent::Textual(text) => {
                                     doc.push(elements::Paragraph::new(text))

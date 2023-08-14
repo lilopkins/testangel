@@ -6,8 +6,8 @@ use std::{
 };
 
 use egui_file::FileDialog;
-use testangel_ipc::prelude::ParameterKind;
 use itertools::Itertools;
+use testangel_ipc::prelude::ParameterKind;
 
 use crate::{action_loader::ActionMap, UiComponent};
 use types::{ActionConfiguration, AutomationFlow, ParameterSource};
