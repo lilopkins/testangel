@@ -115,6 +115,11 @@ impl AutomationFlowState {
     pub(crate) fn test_flow(&self) -> AutomationFlow {
         self.target.as_ref().unwrap().clone()
     }
+
+    /// Update the action map in this state.
+    pub(crate) fn update_actions(&mut self, new_action_map: Arc<ActionMap>) {
+        self.action_map = new_action_map;
+    }
 }
 
 impl UiComponent for AutomationFlowState {
