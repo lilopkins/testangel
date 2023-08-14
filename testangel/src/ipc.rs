@@ -86,6 +86,11 @@ impl Engine {
             }
         }
     }
+
+    /// Ask the engine to reset it's state for test repeatability.
+    pub fn reset_state(&self) -> Result<(), IpcError> {
+        ipc_call(self, Request::ResetState).map(|_| ())
+    }
 }
 
 impl fmt::Display for Engine {

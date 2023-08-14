@@ -29,6 +29,8 @@ pub enum Request {
     RunInstructions {
         instructions: Vec<InstructionWithParameters>,
     },
+    /// Reset the state of this engine to the default.
+    ResetState,
 }
 
 impl Request {
@@ -65,6 +67,8 @@ pub enum Response {
         /// The evidence output. Order matches the list of instructions sent originally.
         evidence: Vec<Vec<Evidence>>,
     },
+    /// The state of this engine has been reset.
+    StateReset,
     /// An error occured.
     Error { kind: ErrorKind, reason: String },
 }

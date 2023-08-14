@@ -41,10 +41,21 @@ impl FlowRunningState {
         let flow = self.flow.as_ref().unwrap().clone();
         let action_map = self.action_map.clone();
         let engine_map = self.engine_map.clone();
+
         self.worker_thread = Some(thread::spawn(move || {
             let flow = flow;
             let mut outputs: Vec<HashMap<usize, ParameterValue>> = Vec::new();
             let mut evidence = Vec::new();
+
+            for engine in engine_map.inner() {
+                if let Ok(_) = engine.reset_state() {
+                    evidence.push(Evidence {
+                        label: String::from("WARNING: State Warning"),
+                        content: EvidenceContent::Textual(String::from("For this test execution, the state couldn't be correctly reset. Some results may not be accurate."))
+                    });
+                }
+            }
+
             for action_config in flow.actions {
                 let (output, ev) = action_config.execute(
                     action_map.clone(),
