@@ -28,9 +28,11 @@ jobs:
           # Strip metadata
           strip target/release/testangel
           strip target/release/testangel-arithmetic
+          strip target/release/testangel-executor
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
+          cp target/release/testangel-executor build/
           # Prepare engines
           mkdir -p build/engines || exit 1
           cp target/release/testangel-arithmetic build/engines
@@ -70,6 +72,7 @@ jobs:
           cargo build --all --release
           mkdir build
           copy target/release/testangel.exe build/
+          copy target/release/testangel-executor.exe build/
           mkdir build/engines
           copy target/release/testangel-arithmetic.exe build/engines/
 
@@ -110,10 +113,12 @@ jobs:
           cargo build --all --release
           # Strip metadata
           strip target/release/testangel
+          strip target/release/testangel-executor
           strip target/release/testangel-arithmetic
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
+          cp target/release/testangel-executor build/
           # Prepare engines
           mkdir -p build/engines || exit 1
           cp target/release/testangel-arithmetic build/engines

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env, fs, path::PathBuf};
 
-use crate::action::types::Action;
+use crate::types::Action;
 
 #[derive(Default)]
 pub struct ActionMap(HashMap<PathBuf, Action>);
