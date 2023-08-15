@@ -5,7 +5,7 @@ pub fn about_modal(ctx: &egui::Context) -> Modal {
     about_modal.show(|ui| {
         about_modal.title(ui, "About TestAngel");
         about_modal.frame(ui, |ui| {
-            let text = format!("TestAngel automates testing across a number of tools by providing a standardised interface to communicate actions to perform.\n\nFont Licenses:\n{}", include_str!("./fonts/LICENSE"));
+            let text = format!("TestAngel automates testing across a number of tools by providing a standardised interface to communicate actions to perform.");
             about_modal.body_and_icon(ui, text, Icon::Info);
         });
         about_modal.buttons(ui, |ui| {

@@ -45,5 +45,5 @@ fn main() {
         evidence = vec![evidence, ev].concat();
     }
 
-    // TODO Produce output
+    report_generation::save_report(cli.report, evidence);
 }
