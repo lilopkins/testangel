@@ -9,10 +9,8 @@ use egui_file::FileDialog;
 use itertools::Itertools;
 use testangel_ipc::prelude::ParameterKind;
 
-use crate::{action_loader::ActionMap, UiComponent};
-use types::{ActionConfiguration, AutomationFlow, ParameterSource};
-
-pub mod types;
+use super::{action_loader::ActionMap, UiComponent};
+use testangel::types::{ActionConfiguration, ActionParameterSource, AutomationFlow};
 
 #[derive(Clone)]
 struct PossibleOutput {
@@ -22,9 +20,9 @@ struct PossibleOutput {
     friendly_name: String,
 }
 
-impl Into<ParameterSource> for PossibleOutput {
-    fn into(self) -> ParameterSource {
-        ParameterSource::FromOutput(self.step, self.id, self.friendly_name)
+impl Into<ActionParameterSource> for PossibleOutput {
+    fn into(self) -> ActionParameterSource {
+        ActionParameterSource::FromOutput(self.step, self.id, self.friendly_name)
     }
 }
 
@@ -79,9 +77,9 @@ impl AutomationFlowState {
                 // reshuffle `FromOutput`s
                 for step in instructions.iter_mut() {
                     for (_param_id, param_source) in &mut step.parameter_sources {
-                        if let ParameterSource::FromOutput(step, _id, _name) = param_source {
+                        if let ActionParameterSource::FromOutput(step, _id, _name) = param_source {
                             if *step == index {
-                                *param_source = ParameterSource::Literal;
+                                *param_source = ActionParameterSource::Literal;
                             } else if *step > index {
                                 *step -= 1;
                             }
@@ -123,13 +121,13 @@ impl AutomationFlowState {
 }
 
 impl UiComponent for AutomationFlowState {
-    fn menu_bar(&mut self, ui: &mut egui::Ui) -> Option<crate::State> {
+    fn menu_bar(&mut self, ui: &mut egui::Ui) -> Option<super::State> {
         let mut next_state = None;
         ui.menu_button("Automation Flow", |ui| {
             if ui.button("New").clicked() {
                 ui.close_menu();
                 self.target = Some(AutomationFlow::default());
-                next_state = Some(crate::State::AutomationFlowEditor);
+                next_state = Some(super::State::AutomationFlowEditor);
             }
             if ui.button("Open...").clicked() {
                 ui.close_menu();
@@ -140,7 +138,7 @@ impl UiComponent for AutomationFlowState {
             ui.add_enabled_ui(self.target.is_some(), |ui| {
                 if ui.button("Run Flow").clicked() {
                     ui.close_menu();
-                    next_state = Some(crate::State::AutomationFlowRunning);
+                    next_state = Some(super::State::AutomationFlowRunning);
                 }
                 if ui.button("Save").clicked() {
                     ui.close_menu();
@@ -164,19 +162,19 @@ impl UiComponent for AutomationFlowState {
                 if ui.button("Close").clicked() {
                     ui.close_menu();
                     self.target = None;
-                    next_state = Some(crate::State::Nothing);
+                    next_state = Some(super::State::Nothing);
                 }
             });
         });
         next_state
     }
 
-    fn always_ui(&mut self, ctx: &egui::Context) -> Option<crate::State> {
+    fn always_ui(&mut self, ctx: &egui::Context) -> Option<super::State> {
         let mut next_state = None;
 
         // handle error modal
         let error_modal =
-            crate::modals::error_modal(ctx, "test_flow_editor_error_modal", &self.error);
+            super::modals::error_modal(ctx, "test_flow_editor_error_modal", &self.error);
         if self.trigger_error {
             error_modal.open();
             self.trigger_error = false;
@@ -197,7 +195,7 @@ impl UiComponent for AutomationFlowState {
                             if let Ok(action) = res {
                                 self.save_path = Some(path.to_path_buf());
                                 self.target = Some(action);
-                                next_state = Some(crate::State::AutomationFlowEditor);
+                                next_state = Some(super::State::AutomationFlowEditor);
                             } else {
                                 self.error =
                                     format!("Failed to parse action. ({:?})", res.unwrap_err());
@@ -231,7 +229,7 @@ impl UiComponent for AutomationFlowState {
         next_state
     }
 
-    fn ui(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) -> Option<crate::State> {
+    fn ui(&mut self, _ctx: &egui::Context, ui: &mut egui::Ui) -> Option<super::State> {
         // produce UI for action editor
         egui::ScrollArea::vertical().show(ui, |ui| {
             if let None = self.target {
@@ -267,14 +265,14 @@ impl UiComponent for AutomationFlowState {
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
                                         param_source,
-                                        ParameterSource::Literal,
-                                        ParameterSource::Literal.text_repr(),
+                                        ActionParameterSource::Literal,
+                                        ActionParameterSource::Literal.text_repr(),
                                     );
 
                                     // Filter possible_outputs by same ParameterKind.
                                     for po in &possible_outputs {
                                         if po.kind == param_kind {
-                                            let ps: ParameterSource = po.clone().into();
+                                            let ps: ActionParameterSource = po.clone().into();
                                             ui.selectable_value(
                                                 param_source,
                                                 ps.clone(),
@@ -284,7 +282,7 @@ impl UiComponent for AutomationFlowState {
                                     }
                                 });
 
-                            if let ParameterSource::Literal = param_source {
+                            if let ActionParameterSource::Literal = param_source {
                                 // Literal
                                 let param_value =
                                     action_config.parameter_values.get_mut(&param_id).unwrap();

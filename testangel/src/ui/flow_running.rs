@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, fs, io::Cursor, sync::Arc, thread};
+use std::{collections::HashMap, fs, io::Cursor, sync::Arc, thread};
 
 use base64::Engine;
 use egui_file::FileDialog;
@@ -7,14 +7,10 @@ use genpdf::{
     style::{Style, StyledString},
     Element,
 };
+use testangel::types::{AutomationFlow, FlowError};
 use testangel_ipc::prelude::*;
 
-use crate::{
-    action_loader::ActionMap,
-    automation_flow::types::AutomationFlow,
-    ipc::{EngineList, IpcError},
-    UiComponent,
-};
+use super::{action_loader::ActionMap, ipc::EngineList, UiComponent};
 
 #[derive(Default)]
 pub struct FlowRunningState {
@@ -77,11 +73,11 @@ impl FlowRunningState {
 }
 
 impl UiComponent for FlowRunningState {
-    fn menu_bar(&mut self, _ui: &mut egui::Ui) -> Option<crate::State> {
+    fn menu_bar(&mut self, _ui: &mut egui::Ui) -> Option<super::State> {
         None
     }
 
-    fn always_ui(&mut self, ctx: &egui::Context) -> Option<crate::State> {
+    fn always_ui(&mut self, ctx: &egui::Context) -> Option<super::State> {
         if let Some(dialog) = &mut self.save_dialog {
             if dialog.show(ctx).selected() {
                 if let Some(path) = dialog.path() {
@@ -166,7 +162,7 @@ impl UiComponent for FlowRunningState {
                     self.worker_thread = None;
                     self.flow = None;
                     self.save_dialog = None;
-                    return Some(crate::State::AutomationFlowEditor);
+                    return Some(super::State::AutomationFlowEditor);
                 }
             }
         }
@@ -174,7 +170,7 @@ impl UiComponent for FlowRunningState {
         None
     }
 
-    fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) -> Option<crate::State> {
+    fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) -> Option<super::State> {
         if self.running {
             self.num_dots_ellipsis =
                 ctx.animate_value_with_time(egui::Id::new("flowrunning-ellipses"), 3.99, 3.0);
@@ -210,24 +206,4 @@ impl UiComponent for FlowRunningState {
 
 struct FlowExecutionResult {
     evidence: Vec<Evidence>,
-}
-
-pub enum FlowError {
-    FromInstruction {
-        error_kind: ErrorKind,
-        reason: String,
-    },
-    IPCFailure(IpcError),
-}
-
-impl fmt::Display for FlowError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::IPCFailure(e) => write!(f, "An IPC call failed ({e:?})."),
-            Self::FromInstruction { error_kind, reason } => write!(
-                f,
-                "An instruction returned an error: {error_kind:?}: {reason}"
-            ),
-        }
-    }
 }
