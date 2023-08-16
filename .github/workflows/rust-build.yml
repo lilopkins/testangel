@@ -25,6 +25,7 @@ jobs:
         run: |
           # Build
           cargo build --all --release
+          cargo build --bin testangel-executor --features executor --release
           # Strip metadata
           strip target/release/testangel
           strip target/release/testangel-arithmetic
@@ -70,6 +71,7 @@ jobs:
       - name: Build
         run: |
           cargo build --all --release
+          cargo build --bin testangel-executor --features executor --release
           mkdir build
           copy target/release/testangel.exe build/
           copy target/release/testangel-executor.exe build/
@@ -111,6 +113,7 @@ jobs:
         run: |
           # Build
           cargo build --all --release
+          cargo build --bin testangel-executor --features executor --release
           # Strip metadata
           strip target/release/testangel
           strip target/release/testangel-executor
