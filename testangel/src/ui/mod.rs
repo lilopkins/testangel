@@ -3,8 +3,6 @@ use std::{env, fmt::Debug, sync::Arc};
 use iced::{settings::Settings, window::icon, Element, Sandbox};
 use testangel::*;
 
-use self::action_editor::ActionEditor;
-
 mod action_editor;
 mod flow_editor;
 mod get_started;
@@ -62,6 +60,7 @@ impl Sandbox for App {
         let engines_rc = Arc::new(ipc::get_engines());
         let actions_rc = Arc::new(action_loader::get_actions());
         Self {
+            action_editor: action_editor::ActionEditor::new(engines_rc),
             ..Default::default()
         }
     }

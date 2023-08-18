@@ -1,9 +1,13 @@
-use std::{env, fmt, fs, path::PathBuf};
+use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
 use iced::widget::{
     column, row, Button, Column, Container, PickList, Rule, Scrollable, Text, TextInput,
 };
-use testangel::types::Action;
+use iced_aw::Card;
+use testangel::{
+    ipc::EngineList,
+    types::{Action, InstructionParameterSource},
+};
 use testangel_ipc::prelude::ParameterKind;
 
 use super::UiComponent;
@@ -24,6 +28,13 @@ pub enum ActionEditorMessage {
     ParameterMoveUp(usize),
     ParameterMoveDown(usize),
     ParameterDelete(usize),
+
+    OutputCreate,
+    OutputNameChange(usize, String),
+    OutputTypeChange(usize, ParameterKind),
+    OutputMoveUp(usize),
+    OutputMoveDown(usize),
+    OutputDelete(usize),
 }
 
 #[derive(Clone, Debug)]
@@ -36,6 +47,7 @@ pub enum SaveOrOpenActionError {
     ParsingError(ron::error::SpannedError),
     SerializingError(ron::Error),
     ActionNotVersionCompatible,
+    MissingInstruction(String),
 }
 
 impl fmt::Display for SaveOrOpenActionError {
@@ -48,18 +60,32 @@ impl fmt::Display for SaveOrOpenActionError {
                 f,
                 "This action is not compatible with this version of TestAngel."
             ),
+            Self::MissingInstruction(instruction_id) => write!(
+                f,
+                "The action contains an instruction ({instruction_id}) which could not be loaded."
+            ),
         }
     }
 }
 
 #[derive(Default)]
 pub struct ActionEditor {
+    engines_list: Arc<EngineList>,
+
     currently_open: Option<Action>,
     current_path: Option<PathBuf>,
     needs_saving: bool,
 }
 
 impl ActionEditor {
+    /// Initialise a new ActionEditor with the provided [`ActionMap`].
+    pub(crate) fn new(engines_list: Arc<EngineList>) -> Self {
+        Self {
+            engines_list,
+            ..Default::default()
+        }
+    }
+
     /// Create a new action and open it
     pub(crate) fn new_action(&mut self) {
         self.offer_to_save_default_error_handling();
@@ -77,6 +103,17 @@ impl ActionEditor {
         .map_err(|e| SaveOrOpenActionError::ParsingError(e))?;
         if action.version() != 1 {
             return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
+        }
+        for ic in &action.instructions {
+            if self
+                .engines_list
+                .get_instruction_by_id(&ic.instruction_id)
+                .is_none()
+            {
+                return Err(SaveOrOpenActionError::MissingInstruction(
+                    ic.instruction_id.clone(),
+                ));
+            }
         }
         self.currently_open = Some(action);
         self.current_path = Some(file);
@@ -196,13 +233,87 @@ impl ActionEditor {
     }
 
     fn ui_steps(&self) -> iced::Element<'_, ActionEditorMessage> {
-        let mut col = Column::new();
+        let mut col = Column::new().spacing(4);
+        let action = self.currently_open.as_ref().unwrap();
+
+        for (idx, instruction_config) in action.instructions.iter().enumerate() {
+            let instruction = self
+                .engines_list
+                .get_instruction_by_id(&instruction_config.instruction_id)
+                .unwrap();
+            let mut outputs_text = String::new();
+            for (_id, (name, kind)) in instruction.outputs() {
+                outputs_text.push_str(&format!("{name}: {kind}"));
+            }
+            col = col.push(Card::new(
+                Text::new(format!("Step {}: {}", idx + 1, instruction.friendly_name())),
+                column![
+                    row![
+                        // TODO Change these to step rather than parameter
+                        Button::new("×").on_press(ActionEditorMessage::ParameterDelete(idx)),
+                        Button::new("ʌ").on_press_maybe(if idx == 0 {
+                            None
+                        } else {
+                            Some(ActionEditorMessage::ParameterMoveUp(idx))
+                        }),
+                        Button::new("v").on_press_maybe(
+                            if (idx + 1) == action.instructions.len() {
+                                None
+                            } else {
+                                Some(ActionEditorMessage::ParameterMoveDown(idx))
+                            }
+                        ),
+                        Text::new(instruction.description().clone()),
+                    ]
+                    .spacing(4),
+                    Text::new("Inputs"),
+                    // TODO Input controls
+                    Text::new("Outputs"),
+                    Text::new(outputs_text),
+                ]
+                .spacing(4),
+            ));
+        }
 
         col.into()
     }
 
     fn ui_outputs(&self) -> iced::Element<'_, ActionEditorMessage> {
-        let mut col = Column::new();
+        let mut col = Column::new().spacing(4);
+        let action = self.currently_open.as_ref().unwrap();
+
+        for (idx, (name, kind, source)) in action.outputs.iter().enumerate() {
+            col = col.push(
+                row![
+                    Button::new("×").on_press(ActionEditorMessage::OutputDelete(idx)),
+                    Button::new("ʌ").on_press_maybe(if idx == 0 {
+                        None
+                    } else {
+                        Some(ActionEditorMessage::OutputMoveUp(idx))
+                    }),
+                    Button::new("v").on_press_maybe(if (idx + 1) == action.outputs.len() {
+                        None
+                    } else {
+                        Some(ActionEditorMessage::OutputMoveDown(idx))
+                    }),
+                    TextInput::new("Output Name", name)
+                        .on_input(move |s| ActionEditorMessage::OutputNameChange(idx, s)),
+                    PickList::new(
+                        &[
+                            ParameterKind::String,
+                            ParameterKind::Integer,
+                            ParameterKind::Decimal,
+                        ][..],
+                        Some(kind.clone()),
+                        move |k| ActionEditorMessage::OutputTypeChange(idx, k)
+                    )
+                    .placeholder("Output Kind"),
+                    // TODO Output source
+                ]
+                .spacing(4)
+                .align_items(iced::Alignment::Center),
+            );
+        }
 
         col.into()
     }
@@ -246,14 +357,13 @@ impl UiComponent for ActionEditor {
                     Button::new("+ New parameter").on_press(ActionEditorMessage::ParameterCreate),
                     Rule::horizontal(2),
                     // Instructions
-                    Text::new("Steps"),
                     self.ui_steps(),
                     Button::new("+ Add step"),
                     Rule::horizontal(2),
                     // Outputs
                     Text::new("Action Outputs"),
                     self.ui_outputs(),
-                    Button::new("+ New output"),
+                    Button::new("+ New output").on_press(ActionEditorMessage::OutputCreate),
                 ]
                 .spacing(8),
             )
@@ -301,14 +411,14 @@ impl UiComponent for ActionEditor {
                 self.currently_open.as_mut().unwrap().description = new_description;
                 self.modified();
             }
-            ActionEditorMessage::ParameterTypeChange(idx, new_type) => {
-                let (name, _) = &self.currently_open.as_mut().unwrap().parameters[idx];
-                self.currently_open.as_mut().unwrap().parameters[idx] = (name.clone(), new_type);
-                self.modified();
-            }
             ActionEditorMessage::ParameterNameChange(idx, new_name) => {
                 let (_, kind) = &self.currently_open.as_mut().unwrap().parameters[idx];
                 self.currently_open.as_mut().unwrap().parameters[idx] = (new_name, kind.clone());
+                self.modified();
+            }
+            ActionEditorMessage::ParameterTypeChange(idx, new_type) => {
+                let (name, _) = &self.currently_open.as_mut().unwrap().parameters[idx];
+                self.currently_open.as_mut().unwrap().parameters[idx] = (name.clone(), new_type);
                 self.modified();
             }
             ActionEditorMessage::ParameterCreate => {
@@ -335,6 +445,45 @@ impl UiComponent for ActionEditor {
             }
             ActionEditorMessage::ParameterDelete(idx) => {
                 self.currently_open.as_mut().unwrap().parameters.remove(idx);
+                // TODO Renumber
+                self.modified();
+            }
+            ActionEditorMessage::OutputNameChange(idx, new_name) => {
+                let (_, kind, src) = &self.currently_open.as_mut().unwrap().outputs[idx];
+                self.currently_open.as_mut().unwrap().outputs[idx] =
+                    (new_name, kind.clone(), src.clone());
+                self.modified();
+            }
+            ActionEditorMessage::OutputTypeChange(idx, new_type) => {
+                let (name, _, src) = &self.currently_open.as_mut().unwrap().outputs[idx];
+                self.currently_open.as_mut().unwrap().outputs[idx] =
+                    (name.clone(), new_type, src.clone());
+                self.modified();
+            }
+            ActionEditorMessage::OutputCreate => {
+                self.currently_open.as_mut().unwrap().outputs.push((
+                    String::new(),
+                    ParameterKind::String,
+                    InstructionParameterSource::Literal,
+                ));
+                self.modified();
+            }
+            ActionEditorMessage::OutputMoveUp(idx) => {
+                let outputs = &mut self.currently_open.as_mut().unwrap().outputs;
+                let val = outputs.remove(idx);
+                outputs.insert((idx - 1).max(0), val);
+                // TODO Renumber
+                self.modified();
+            }
+            ActionEditorMessage::OutputMoveDown(idx) => {
+                let outputs = &mut self.currently_open.as_mut().unwrap().outputs;
+                let val = outputs.remove(idx);
+                outputs.insert((idx + 1).min(outputs.len()), val);
+                // TODO Renumber
+                self.modified();
+            }
+            ActionEditorMessage::OutputDelete(idx) => {
+                self.currently_open.as_mut().unwrap().outputs.remove(idx);
                 // TODO Renumber
                 self.modified();
             }
