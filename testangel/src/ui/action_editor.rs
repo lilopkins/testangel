@@ -1,6 +1,8 @@
 use std::{env, fmt, fs, path::PathBuf};
 
-use iced::widget::{column, row, Button, Container, Rule, Scrollable, Text, TextInput, Column, ComboBox, PickList};
+use iced::widget::{
+    column, row, Button, Column, Container, PickList, Rule, Scrollable, Text, TextInput,
+};
 use testangel::types::Action;
 use testangel_ipc::prelude::ParameterKind;
 
@@ -15,7 +17,13 @@ pub enum ActionEditorMessage {
     NameChanged(String),
     GroupChanged(String),
     DescriptionChanged(String),
+
+    ParameterCreate,
+    ParameterNameChange(usize, String),
     ParameterTypeChange(usize, ParameterKind),
+    ParameterMoveUp(usize),
+    ParameterMoveDown(usize),
+    ParameterDelete(usize),
 }
 
 #[derive(Clone, Debug)]
@@ -27,6 +35,7 @@ pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
     ParsingError(ron::error::SpannedError),
     SerializingError(ron::Error),
+    ActionNotVersionCompatible,
 }
 
 impl fmt::Display for SaveOrOpenActionError {
@@ -35,6 +44,10 @@ impl fmt::Display for SaveOrOpenActionError {
             Self::IoError(e) => write!(f, "I/O Error: {e}"),
             Self::ParsingError(e) => write!(f, "Parsing Error: {e}"),
             Self::SerializingError(e) => write!(f, "Serializing error: {e}"),
+            Self::ActionNotVersionCompatible => write!(
+                f,
+                "This action is not compatible with this version of TestAngel."
+            ),
         }
     }
 }
@@ -47,6 +60,7 @@ pub struct ActionEditor {
 }
 
 impl ActionEditor {
+    /// Create a new action and open it
     pub(crate) fn new_action(&mut self) {
         self.offer_to_save_default_error_handling();
         self.currently_open = Some(Action::default());
@@ -54,18 +68,23 @@ impl ActionEditor {
         self.needs_saving = true;
     }
 
+    /// Open an action
     pub(crate) fn open_action(&mut self, file: PathBuf) -> Result<(), SaveOrOpenActionError> {
         self.offer_to_save_default_error_handling();
         let action: Action = ron::from_str(
             &fs::read_to_string(&file).map_err(|e| SaveOrOpenActionError::IoError(e))?,
         )
         .map_err(|e| SaveOrOpenActionError::ParsingError(e))?;
+        if action.version() != 1 {
+            return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
+        }
         self.currently_open = Some(action);
         self.current_path = Some(file);
         self.needs_saving = false;
         Ok(())
     }
 
+    /// Offer to save if it is needed
     fn offer_to_save(&mut self) -> Result<(), SaveOrOpenActionError> {
         if self.needs_saving {
             if rfd::MessageDialog::new()
@@ -81,6 +100,7 @@ impl ActionEditor {
         Ok(())
     }
 
+    /// Offer to save if it is needed with default error handling
     fn offer_to_save_default_error_handling(&mut self) {
         if let Err(e) = self.offer_to_save() {
             rfd::MessageDialog::new()
@@ -92,6 +112,7 @@ impl ActionEditor {
         }
     }
 
+    /// Save the currently opened action
     fn save_action(&mut self, always_prompt_where: bool) -> Result<(), SaveOrOpenActionError> {
         self.needs_saving = false;
         if always_prompt_where || self.current_path.is_none() {
@@ -121,6 +142,7 @@ impl ActionEditor {
         Ok(())
     }
 
+    /// Close the currently opened action
     fn close_action(&mut self) {
         self.offer_to_save_default_error_handling();
         self.currently_open = None;
@@ -133,17 +155,41 @@ impl ActionEditor {
         self.needs_saving = true;
     }
 
+    /// Generate the UI for the action parameters
     fn ui_parameters(&self) -> iced::Element<'_, ActionEditorMessage> {
-        let mut col = Column::new();
+        let mut col = Column::new().spacing(4);
         let action = self.currently_open.as_ref().unwrap();
 
-        let slice = &ParameterKind::ALL[..];
         for (idx, (name, kind)) in action.parameters.iter().enumerate() {
-            col = col.push(row![
-                Text::new(format!("Parameter {idx}")),
-                TextInput::new("Name", name),
-                PickList::new(slice, Some(kind.clone()), move |k| ActionEditorMessage::ParameterTypeChange(idx, k)),
-            ]);
+            col = col.push(
+                row![
+                    Button::new("×").on_press(ActionEditorMessage::ParameterDelete(idx)),
+                    Button::new("ʌ").on_press_maybe(if idx == 0 {
+                        None
+                    } else {
+                        Some(ActionEditorMessage::ParameterMoveUp(idx))
+                    }),
+                    Button::new("v").on_press_maybe(if (idx + 1) == action.parameters.len() {
+                        None
+                    } else {
+                        Some(ActionEditorMessage::ParameterMoveDown(idx))
+                    }),
+                    TextInput::new("Parameter Name", name)
+                        .on_input(move |s| ActionEditorMessage::ParameterNameChange(idx, s)),
+                    PickList::new(
+                        &[
+                            ParameterKind::String,
+                            ParameterKind::Integer,
+                            ParameterKind::Decimal,
+                        ][..],
+                        Some(kind.clone()),
+                        move |k| ActionEditorMessage::ParameterTypeChange(idx, k)
+                    )
+                    .placeholder("Parameter Kind"),
+                ]
+                .spacing(4)
+                .align_items(iced::Alignment::Center),
+            );
         }
 
         col.into()
@@ -197,7 +243,7 @@ impl UiComponent for ActionEditor {
                     // Parameters
                     Text::new("Action Parameters"),
                     self.ui_parameters(),
-                    Button::new("+ New parameter"),
+                    Button::new("+ New parameter").on_press(ActionEditorMessage::ParameterCreate),
                     Rule::horizontal(2),
                     // Instructions
                     Text::new("Steps"),
@@ -253,6 +299,43 @@ impl UiComponent for ActionEditor {
             }
             ActionEditorMessage::DescriptionChanged(new_description) => {
                 self.currently_open.as_mut().unwrap().description = new_description;
+                self.modified();
+            }
+            ActionEditorMessage::ParameterTypeChange(idx, new_type) => {
+                let (name, _) = &self.currently_open.as_mut().unwrap().parameters[idx];
+                self.currently_open.as_mut().unwrap().parameters[idx] = (name.clone(), new_type);
+                self.modified();
+            }
+            ActionEditorMessage::ParameterNameChange(idx, new_name) => {
+                let (_, kind) = &self.currently_open.as_mut().unwrap().parameters[idx];
+                self.currently_open.as_mut().unwrap().parameters[idx] = (new_name, kind.clone());
+                self.modified();
+            }
+            ActionEditorMessage::ParameterCreate => {
+                self.currently_open
+                    .as_mut()
+                    .unwrap()
+                    .parameters
+                    .push((String::new(), ParameterKind::String));
+                self.modified();
+            }
+            ActionEditorMessage::ParameterMoveUp(idx) => {
+                let params = &mut self.currently_open.as_mut().unwrap().parameters;
+                let val = params.remove(idx);
+                params.insert((idx - 1).max(0), val);
+                // TODO Renumber
+                self.modified();
+            }
+            ActionEditorMessage::ParameterMoveDown(idx) => {
+                let params = &mut self.currently_open.as_mut().unwrap().parameters;
+                let val = params.remove(idx);
+                params.insert((idx + 1).min(params.len()), val);
+                // TODO Renumber
+                self.modified();
+            }
+            ActionEditorMessage::ParameterDelete(idx) => {
+                self.currently_open.as_mut().unwrap().parameters.remove(idx);
+                // TODO Renumber
                 self.modified();
             }
         };

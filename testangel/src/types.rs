@@ -43,6 +43,13 @@ impl Default for Action {
     }
 }
 
+impl Action {
+    /// Get the version of this action.
+    pub fn version(&self) -> usize {
+        self.version
+    }
+}
+
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct InstructionConfiguration {
     pub instruction_id: String,
