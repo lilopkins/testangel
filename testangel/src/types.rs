@@ -8,8 +8,10 @@ use crate::{
     ipc::{self, EngineList, IpcError},
 };
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
+    /// The data version of this action.
+    version: usize,
     /// The internal ID of this action. Must be unique.
     pub id: String,
     /// The friendly name of this action.
@@ -24,6 +26,21 @@ pub struct Action {
     pub outputs: Vec<(String, ParameterKind, InstructionParameterSource)>,
     /// The instructions called by this action
     pub instructions: Vec<InstructionConfiguration>,
+}
+
+impl Default for Action {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            id: uuid::Uuid::new_v4().to_string(),
+            friendly_name: String::new(),
+            description: String::new(),
+            group: String::new(),
+            parameters: Vec::new(),
+            outputs: Vec::new(),
+            instructions: Vec::new(),
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]

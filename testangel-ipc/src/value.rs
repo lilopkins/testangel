@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A type of a parameter
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "schemas", derive(JsonSchema))]
 #[serde(tag = "t", content = "v")]
 pub enum ParameterKind {
@@ -24,6 +24,13 @@ pub enum ParameterKind {
     },
 }
 impl ParameterKind {
+    pub const ALL: [ParameterKind; 4] = [
+        Self::String,
+        Self::Integer,
+        Self::Decimal,
+        Self::SpecialType { id: String::new(), friendly_name: String::new() },
+    ];
+
     pub fn default_value(&self) -> ParameterValue {
         match self {
             Self::String => ParameterValue::String(String::new()),

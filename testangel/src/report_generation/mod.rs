@@ -1,10 +1,10 @@
+use std::fs;
 use std::io::Cursor;
 use std::path::Path;
-use std::fs;
 
 use base64::Engine;
-use genpdf::{elements, Element};
 use genpdf::style::{Style, StyledString};
+use genpdf::{elements, Element};
 use testangel_ipc::prelude::*;
 
 // TODO Remove so many assumptions
@@ -31,8 +31,7 @@ pub fn save_report<P: AsRef<Path>>(to: P, evidence: Vec<Evidence>) {
     )
     .unwrap();
 
-    let font_family =
-        genpdf::fonts::from_files("./.tafonts", "LiberationSans", None).unwrap();
+    let font_family = genpdf::fonts::from_files("./.tafonts", "LiberationSans", None).unwrap();
     let mut doc = genpdf::Document::new(font_family);
     doc.set_title("TestAngel Evidence");
     let mut decorator = genpdf::SimplePageDecorator::new();
@@ -57,24 +56,19 @@ pub fn save_report<P: AsRef<Path>>(to: P, evidence: Vec<Evidence>) {
     doc.set_page_decorator(decorator);
 
     for ev in &evidence {
-        doc.push(
-            elements::Paragraph::new(ev.label.clone()).padded((3, 0, 0, 0)),
-        );
+        doc.push(elements::Paragraph::new(ev.label.clone()).padded((3, 0, 0, 0)));
         match &ev.content {
-            EvidenceContent::Textual(text) => {
-                doc.push(elements::Paragraph::new(text))
-            }
+            EvidenceContent::Textual(text) => doc.push(elements::Paragraph::new(text)),
             EvidenceContent::ImageAsPngBase64(base64) => {
                 let data = base64::engine::general_purpose::STANDARD
                     .decode(base64)
                     .unwrap();
-                doc.push(
-                    elements::Image::from_reader(Cursor::new(data)).unwrap(),
-                );
+                doc.push(elements::Image::from_reader(Cursor::new(data)).unwrap());
             }
         }
     }
 
-    doc.render_to_file(to.as_ref().with_extension("pdf")).unwrap();
+    doc.render_to_file(to.as_ref().with_extension("pdf"))
+        .unwrap();
     fs::remove_dir_all("./.tafonts").unwrap();
 }
