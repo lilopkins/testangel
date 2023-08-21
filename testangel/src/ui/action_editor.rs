@@ -275,34 +275,38 @@ impl ActionEditor {
         instruction_config: &InstructionConfiguration,
         instruction: Instruction,
     ) -> iced::Element<'_, ActionEditorMessage> {
-        instruction.parameter_order().iter().fold(Column::new().spacing(4), |col, id| {
-            let (name, kind) = &instruction.parameters()[id];
-            let param_source = &instruction_config.parameter_sources[id];
-            let param_value = &instruction_config.parameter_values[id];
-            let param_source_val = param_source.clone().into();
+        instruction
+            .parameter_order()
+            .iter()
+            .fold(Column::new().spacing(4), |col, id| {
+                let (name, kind) = &instruction.parameters()[id];
+                let param_source = &instruction_config.parameter_sources[id];
+                let param_value = &instruction_config.parameter_values[id];
+                let param_source_val = param_source.clone().into();
 
-            col.push(
-                row![
-                    Text::new(format!("{name} ({kind})")),
-                    PickList::new(
-                        &[
-                            StepParameterSourceOptions::Literal,
-                            StepParameterSourceOptions::FromOutput,
-                            StepParameterSourceOptions::FromParameter,
-                        ][..],
-                        Some(param_source_val),
-                        move |k| ActionEditorMessage::StepParameterSourceChange(
-                            idx,
-                            id.clone(),
-                            k.clone()
+                col.push(
+                    row![
+                        Text::new(format!("{name} ({kind})")),
+                        PickList::new(
+                            &[
+                                StepParameterSourceOptions::Literal,
+                                StepParameterSourceOptions::FromOutput,
+                                StepParameterSourceOptions::FromParameter,
+                            ][..],
+                            Some(param_source_val),
+                            move |k| ActionEditorMessage::StepParameterSourceChange(
+                                idx,
+                                id.clone(),
+                                k.clone()
+                            )
                         )
-                    )
-                    .placeholder("Parameter Kind"),
-                ]
-                .spacing(4)
-                .align_items(iced::Alignment::Center),
-            )
-        }).into()
+                        .placeholder("Parameter Kind"),
+                    ]
+                    .spacing(4)
+                    .align_items(iced::Alignment::Center),
+                )
+            })
+            .into()
     }
 
     fn ui_steps(&self) -> iced::Element<'_, ActionEditorMessage> {
