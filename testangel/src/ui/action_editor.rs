@@ -229,42 +229,44 @@ impl ActionEditor {
 
     /// Generate the UI for the action parameters
     fn ui_parameters(&self) -> iced::Element<'_, ActionEditorMessage> {
-        let mut col = Column::new().spacing(4);
         let action = self.currently_open.as_ref().unwrap();
 
-        for (idx, (name, kind)) in action.parameters.iter().enumerate() {
-            col = col.push(
-                row![
-                    Button::new("×").on_press(ActionEditorMessage::ParameterDelete(idx)),
-                    Button::new("ʌ").on_press_maybe(if idx == 0 {
-                        None
-                    } else {
-                        Some(ActionEditorMessage::ParameterMoveUp(idx))
-                    }),
-                    Button::new("v").on_press_maybe(if (idx + 1) == action.parameters.len() {
-                        None
-                    } else {
-                        Some(ActionEditorMessage::ParameterMoveDown(idx))
-                    }),
-                    TextInput::new("Parameter Name", name)
-                        .on_input(move |s| ActionEditorMessage::ParameterNameChange(idx, s)),
-                    PickList::new(
-                        &[
-                            ParameterKind::String,
-                            ParameterKind::Integer,
-                            ParameterKind::Decimal,
-                        ][..],
-                        Some(kind.clone()),
-                        move |k| ActionEditorMessage::ParameterTypeChange(idx, k)
-                    )
-                    .placeholder("Parameter Kind"),
-                ]
-                .spacing(4)
-                .align_items(iced::Alignment::Center),
-            );
-        }
-
-        col.into()
+        action
+            .parameters
+            .iter()
+            .enumerate()
+            .fold(Column::new().spacing(4), |col, (idx, (name, kind))| {
+                col.push(
+                    row![
+                        Button::new("×").on_press(ActionEditorMessage::ParameterDelete(idx)),
+                        Button::new("ʌ").on_press_maybe(if idx == 0 {
+                            None
+                        } else {
+                            Some(ActionEditorMessage::ParameterMoveUp(idx))
+                        }),
+                        Button::new("v").on_press_maybe(if (idx + 1) == action.parameters.len() {
+                            None
+                        } else {
+                            Some(ActionEditorMessage::ParameterMoveDown(idx))
+                        }),
+                        TextInput::new("Parameter Name", name)
+                            .on_input(move |s| ActionEditorMessage::ParameterNameChange(idx, s)),
+                        PickList::new(
+                            &[
+                                ParameterKind::String,
+                                ParameterKind::Integer,
+                                ParameterKind::Decimal,
+                            ][..],
+                            Some(kind.clone()),
+                            move |k| ActionEditorMessage::ParameterTypeChange(idx, k)
+                        )
+                        .placeholder("Parameter Kind"),
+                    ]
+                    .spacing(4)
+                    .align_items(iced::Alignment::Center),
+                )
+            })
+            .into()
     }
 
     fn ui_instruction_inputs(
@@ -273,15 +275,13 @@ impl ActionEditor {
         instruction_config: &InstructionConfiguration,
         instruction: Instruction,
     ) -> iced::Element<'_, ActionEditorMessage> {
-        let mut col = Column::new().spacing(4);
-
-        for id in instruction.parameter_order() {
+        instruction.parameter_order().iter().fold(Column::new().spacing(4), |col, id| {
             let (name, kind) = &instruction.parameters()[id];
             let param_source = &instruction_config.parameter_sources[id];
             let param_value = &instruction_config.parameter_values[id];
             let param_source_val = param_source.clone().into();
 
-            col = col.push(
+            col.push(
                 row![
                     Text::new(format!("{name} ({kind})")),
                     PickList::new(
@@ -301,55 +301,62 @@ impl ActionEditor {
                 ]
                 .spacing(4)
                 .align_items(iced::Alignment::Center),
-            );
-        }
-
-        col.into()
+            )
+        }).into()
     }
 
     fn ui_steps(&self) -> iced::Element<'_, ActionEditorMessage> {
-        let mut col = Column::new().spacing(4);
         let action = self.currently_open.as_ref().unwrap();
 
-        for (idx, instruction_config) in action.instructions.iter().enumerate() {
-            let instruction = self
-                .engines_list
-                .get_instruction_by_id(&instruction_config.instruction_id)
-                .unwrap();
-            let mut outputs_text = String::new();
-            for (_id, (name, kind)) in instruction.outputs() {
-                outputs_text.push_str(&format!("{name}: {kind}"));
-            }
-            col = col.push(Card::new(
-                Text::new(format!("Step {}: {}", idx + 1, instruction.friendly_name())),
-                column![
-                    row![
-                        Button::new("×").on_press(ActionEditorMessage::StepDelete(idx)),
-                        Button::new("ʌ").on_press_maybe(if idx == 0 {
-                            None
-                        } else {
-                            Some(ActionEditorMessage::StepMoveUp(idx))
-                        }),
-                        Button::new("v").on_press_maybe(
-                            if (idx + 1) == action.instructions.len() {
-                                None
-                            } else {
-                                Some(ActionEditorMessage::StepMoveDown(idx))
-                            }
-                        ),
-                        Text::new(instruction.description().clone()),
-                    ]
-                    .spacing(4),
-                    Text::new("Inputs"),
-                    self.ui_instruction_inputs(idx, instruction_config, instruction.clone()),
-                    Text::new("Outputs"),
-                    Text::new(outputs_text),
-                ]
-                .spacing(4),
-            ));
-        }
-
-        col.into()
+        action
+            .instructions
+            .iter()
+            .enumerate()
+            .fold(
+                Column::new().spacing(4),
+                |col, (idx, instruction_config)| {
+                    let instruction = self
+                        .engines_list
+                        .get_instruction_by_id(&instruction_config.instruction_id)
+                        .unwrap();
+                    let mut outputs_text = String::new();
+                    for (_id, (name, kind)) in instruction.outputs() {
+                        outputs_text.push_str(&format!("{name}: {kind}"));
+                    }
+                    col.push(Card::new(
+                        Text::new(format!("Step {}: {}", idx + 1, instruction.friendly_name())),
+                        column![
+                            row![
+                                Button::new("×").on_press(ActionEditorMessage::StepDelete(idx)),
+                                Button::new("ʌ").on_press_maybe(if idx == 0 {
+                                    None
+                                } else {
+                                    Some(ActionEditorMessage::StepMoveUp(idx))
+                                }),
+                                Button::new("v").on_press_maybe(
+                                    if (idx + 1) == action.instructions.len() {
+                                        None
+                                    } else {
+                                        Some(ActionEditorMessage::StepMoveDown(idx))
+                                    }
+                                ),
+                                Text::new(instruction.description().clone()),
+                            ]
+                            .spacing(4),
+                            Text::new("Inputs"),
+                            self.ui_instruction_inputs(
+                                idx,
+                                instruction_config,
+                                instruction.clone()
+                            ),
+                            Text::new("Outputs"),
+                            Text::new(outputs_text),
+                        ]
+                        .spacing(4),
+                    ))
+                },
+            )
+            .into()
     }
 
     fn ui_outputs(&self) -> iced::Element<'_, ActionEditorMessage> {
