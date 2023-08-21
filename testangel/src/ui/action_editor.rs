@@ -132,10 +132,9 @@ impl ActionEditor {
     /// Open an action
     pub(crate) fn open_action(&mut self, file: PathBuf) -> Result<(), SaveOrOpenActionError> {
         self.offer_to_save_default_error_handling();
-        let action: Action = ron::from_str(
-            &fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?,
-        )
-        .map_err(SaveOrOpenActionError::ParsingError)?;
+        let action: Action =
+            ron::from_str(&fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?)
+                .map_err(SaveOrOpenActionError::ParsingError)?;
         if action.version() != 1 {
             return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }

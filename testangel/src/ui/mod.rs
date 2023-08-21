@@ -147,18 +147,9 @@ impl Sandbox for App {
     fn view(&self) -> Element<'_, Self::Message> {
         // Render content
         let content: Element<'_, AppMessage> = match self.state {
-            State::GetStarted => self
-                .get_started
-                .view()
-                .map(AppMessage::GetStarted),
-            State::ActionEditor => self
-                .action_editor
-                .view()
-                .map(AppMessage::ActionEditor),
-            State::AutomationFlowEditor => self
-                .flow_editor
-                .view()
-                .map(AppMessage::FlowEditor),
+            State::GetStarted => self.get_started.view().map(AppMessage::GetStarted),
+            State::ActionEditor => self.action_editor.view().map(AppMessage::ActionEditor),
+            State::AutomationFlowEditor => self.flow_editor.view().map(AppMessage::FlowEditor),
             _ => todo!(),
         };
 

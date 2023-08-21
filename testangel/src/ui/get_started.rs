@@ -1,4 +1,4 @@
-use iced::widget::{column, row, Button, Container, Rule, Text};
+use iced::widget::{column, row, Button, Container, Rule, Space, Text};
 
 use super::UiComponent;
 
@@ -44,6 +44,9 @@ impl UiComponent for GetStarted {
                     Button::new("Open existing action")
                         .on_press(GetStartedMessage::OpenAction),
                 ].spacing(8),
+
+                Space::with_height(64),
+                Text::new(format!("TestAngel v{}", env!("CARGO_PKG_VERSION"))).size(10),
             ].spacing(4)
         )
         .padding([32, 32, 32, 32])
