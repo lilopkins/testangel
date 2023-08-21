@@ -105,12 +105,10 @@ impl InstructionConfiguration {
             Response::ExecutionOutput { output, evidence } => {
                 Ok((output[0].clone(), evidence[0].clone()))
             }
-            Response::Error { kind, reason } => {
-                Err(FlowError::FromInstruction {
-                    error_kind: kind,
-                    reason,
-                })
-            }
+            Response::Error { kind, reason } => Err(FlowError::FromInstruction {
+                error_kind: kind,
+                reason,
+            }),
             _ => unreachable!(),
         }
     }

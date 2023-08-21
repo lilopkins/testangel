@@ -43,7 +43,7 @@ pub enum ActionEditorMessage {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-enum StepParameterSourceOptions {
+pub enum StepParameterSourceOptions {
     Literal,
     FromOutput,
     FromParameter,
@@ -133,9 +133,9 @@ impl ActionEditor {
     pub(crate) fn open_action(&mut self, file: PathBuf) -> Result<(), SaveOrOpenActionError> {
         self.offer_to_save_default_error_handling();
         let action: Action = ron::from_str(
-            &fs::read_to_string(&file).map_err(|e| SaveOrOpenActionError::IoError(e))?,
+            &fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?,
         )
-        .map_err(|e| SaveOrOpenActionError::ParsingError(e))?;
+        .map_err(SaveOrOpenActionError::ParsingError)?;
         if action.version() != 1 {
             return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }
@@ -158,16 +158,15 @@ impl ActionEditor {
 
     /// Offer to save if it is needed
     fn offer_to_save(&mut self) -> Result<(), SaveOrOpenActionError> {
-        if self.needs_saving {
-            if rfd::MessageDialog::new()
+        if self.needs_saving
+            && rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Info)
                 .set_title("Do you want to save this action?")
                 .set_description("This action has been modified. Do you want to save it?")
                 .set_buttons(rfd::MessageButtons::YesNo)
                 .show()
-            {
-                self.save_action(false)?;
-            }
+        {
+            self.save_action(false)?;
         }
         Ok(())
     }
@@ -208,8 +207,8 @@ impl ActionEditor {
         // Save
         let save_path = self.current_path.as_ref().unwrap();
         let data = ron::to_string(self.currently_open.as_ref().unwrap())
-            .map_err(|e| SaveOrOpenActionError::SerializingError(e))?;
-        fs::write(save_path, data).map_err(|e| SaveOrOpenActionError::IoError(e))?;
+            .map_err(SaveOrOpenActionError::SerializingError)?;
+        fs::write(save_path, data).map_err(SaveOrOpenActionError::IoError)?;
         self.needs_saving = false;
         Ok(())
     }
@@ -272,7 +271,7 @@ impl ActionEditor {
     fn ui_instruction_inputs(
         &self,
         idx: usize,
-        instruction_config: &InstructionConfiguration,
+        instruction_config: InstructionConfiguration,
         instruction: Instruction,
     ) -> iced::Element<'_, ActionEditorMessage> {
         instruction
@@ -281,8 +280,9 @@ impl ActionEditor {
             .fold(Column::new().spacing(4), |col, id| {
                 let (name, kind) = &instruction.parameters()[id];
                 let param_source = &instruction_config.parameter_sources[id];
-                let param_value = &instruction_config.parameter_values[id];
-                let param_source_val = param_source.clone().into();
+                let _param_value = &instruction_config.parameter_values[id];
+                let param_source_val: StepParameterSourceOptions = param_source.clone().into();
+                let id = id.clone();
 
                 col.push(
                     row![
@@ -324,7 +324,7 @@ impl ActionEditor {
                         .get_instruction_by_id(&instruction_config.instruction_id)
                         .unwrap();
                     let mut outputs_text = String::new();
-                    for (_id, (name, kind)) in instruction.outputs() {
+                    for (name, kind) in instruction.outputs().values() {
                         outputs_text.push_str(&format!("{name}: {kind}"));
                     }
                     col.push(Card::new(
@@ -350,7 +350,7 @@ impl ActionEditor {
                             Text::new("Inputs"),
                             self.ui_instruction_inputs(
                                 idx,
-                                instruction_config,
+                                instruction_config.clone(),
                                 instruction.clone()
                             ),
                             Text::new("Outputs"),
@@ -367,7 +367,7 @@ impl ActionEditor {
         let mut col = Column::new().spacing(4);
         let action = self.currently_open.as_ref().unwrap();
 
-        for (idx, (name, kind, source)) in action.outputs.iter().enumerate() {
+        for (idx, (name, kind, _source)) in action.outputs.iter().enumerate() {
             col = col.push(
                 row![
                     Button::new("×").on_press(ActionEditorMessage::OutputDelete(idx)),

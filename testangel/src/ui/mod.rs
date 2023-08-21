@@ -25,9 +25,9 @@ pub struct App {
 
 #[derive(Debug, Clone)]
 pub enum AppMessage {
-    ActionEditorMessage(action_editor::ActionEditorMessage),
-    FlowEditorMessage(flow_editor::FlowEditorMessage),
-    GetStartedMessage(get_started::GetStartedMessage),
+    ActionEditor(action_editor::ActionEditorMessage),
+    FlowEditor(flow_editor::FlowEditorMessage),
+    GetStarted(get_started::GetStartedMessage),
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
@@ -79,7 +79,7 @@ impl Sandbox for App {
 
     fn update(&mut self, message: Self::Message) {
         match message {
-            AppMessage::ActionEditorMessage(msg) => {
+            AppMessage::ActionEditor(msg) => {
                 if let Some(msg_out) = self.action_editor.update(msg) {
                     match msg_out {
                         action_editor::ActionEditorMessageOut::CloseActionEditor => {
@@ -88,10 +88,10 @@ impl Sandbox for App {
                     }
                 }
             }
-            AppMessage::FlowEditorMessage(msg) => {
+            AppMessage::FlowEditor(msg) => {
                 self.flow_editor.update(msg);
             }
-            AppMessage::GetStartedMessage(msg) => {
+            AppMessage::GetStarted(msg) => {
                 if let Some(msg_out) = self.get_started.update(msg) {
                     match msg_out {
                         get_started::GetStartedMessage::NewAction => {
@@ -150,15 +150,15 @@ impl Sandbox for App {
             State::GetStarted => self
                 .get_started
                 .view()
-                .map(|m| AppMessage::GetStartedMessage(m)),
+                .map(AppMessage::GetStarted),
             State::ActionEditor => self
                 .action_editor
                 .view()
-                .map(|m| AppMessage::ActionEditorMessage(m)),
+                .map(AppMessage::ActionEditor),
             State::AutomationFlowEditor => self
                 .flow_editor
                 .view()
-                .map(|m| AppMessage::FlowEditorMessage(m)),
+                .map(AppMessage::FlowEditor),
             _ => todo!(),
         };
 
