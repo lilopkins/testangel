@@ -8,18 +8,18 @@ pub struct ActionMap(HashMap<PathBuf, Action>);
 impl ActionMap {
     /// Get an action from an action ID by iterating through available actions.
     pub fn get_action_by_id(&self, action_id: &String) -> Option<Action> {
-        for (_path, action) in &self.0 {
+        for action in self.0.values() {
             if action.id == *action_id {
                 return Some(action.clone());
             }
         }
-        return None;
+        None
     }
 
     /// Get actions grouped by action group
     pub fn get_by_group(&self) -> HashMap<String, Vec<Action>> {
         let mut map = HashMap::new();
-        for (_path, action) in &self.0 {
+        for action in self.0.values() {
             map.entry(action.group.clone()).or_default();
             map.entry(action.group.clone())
                 .and_modify(|vec: &mut Vec<Action>| vec.push(action.clone()));

@@ -29,7 +29,7 @@ fn main() {
     let mut evidence = Vec::new();
 
     for engine in engine_map.inner() {
-        if let Err(_) = engine.reset_state() {
+        if engine.reset_state().is_err() {
             evidence.push(Evidence {
                 label: String::from("WARNING: State Warning"),
                 content: EvidenceContent::Textual(String::from("For this test execution, the state couldn't be correctly reset. Some results may not be accurate."))

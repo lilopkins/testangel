@@ -43,7 +43,7 @@ impl App {
     fn change_state(&mut self, next_state: State) {
         if next_state == State::AutomationFlowEditor {
             // reload actions
-            let actions_rc = Arc::new(action_loader::get_actions());
+            let _actions_rc = Arc::new(action_loader::get_actions());
         }
         self.state = next_state;
     }
@@ -58,7 +58,7 @@ impl Sandbox for App {
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
         let engines_rc = Arc::new(ipc::get_engines());
-        let actions_rc = Arc::new(action_loader::get_actions());
+        let _actions_rc = Arc::new(action_loader::get_actions());
         Self {
             action_editor: action_editor::ActionEditor::new(engines_rc),
             ..Default::default()

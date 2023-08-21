@@ -98,15 +98,15 @@ impl InstructionConfiguration {
                 }],
             },
         )
-        .map_err(|e| FlowError::IPCFailure(e))?;
+        .map_err(FlowError::IPCFailure)?;
 
         // Generate output table and return
         match response {
             Response::ExecutionOutput { output, evidence } => {
-                return Ok((output[0].clone(), evidence[0].clone()));
+                Ok((output[0].clone(), evidence[0].clone()))
             }
             Response::Error { kind, reason } => {
-                return Err(FlowError::FromInstruction {
+                Err(FlowError::FromInstruction {
                     error_kind: kind,
                     reason,
                 })
@@ -212,7 +212,7 @@ impl ActionConfiguration {
                         .clone()
                 }
             };
-            action_parameters.insert(id.clone(), value);
+            action_parameters.insert(*id, value);
         }
 
         // Iterate through instructions
@@ -231,8 +231,7 @@ impl ActionConfiguration {
 
         // Generate output map
         let mut output = HashMap::new();
-        let mut index = 0;
-        for (_friendly_name, _kind, src) in &action.outputs {
+        for (index, (_friendly_name, _kind, src)) in action.outputs.iter().enumerate() {
             let value = match src {
                 InstructionParameterSource::Literal => panic!("Output set to literal."),
                 InstructionParameterSource::FromOutput(step, id) => instruction_outputs
@@ -246,7 +245,6 @@ impl ActionConfiguration {
                 }
             };
             output.insert(index, value);
-            index += 1;
         }
 
         Ok((output, evidence))
@@ -257,11 +255,9 @@ impl From<Action> for ActionConfiguration {
     fn from(value: Action) -> Self {
         let mut parameter_sources = HashMap::new();
         let mut parameter_values = HashMap::new();
-        let mut id = 0;
-        for (_friendly_name, kind) in value.parameters {
+        for (id, (_friendly_name, kind)) in value.parameters.iter().enumerate() {
             parameter_sources.insert(id, ActionParameterSource::Literal);
             parameter_values.insert(id, kind.default_value());
-            id += 1;
         }
         Self {
             action_id: value.id.clone(),

@@ -102,7 +102,7 @@ fn repl_loop() -> io::Result<()> {
             return Ok(());
         }
 
-        if buf.len() == 0 {
+        if buf.is_empty() {
             continue;
         }
 

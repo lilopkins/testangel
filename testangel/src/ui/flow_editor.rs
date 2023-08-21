@@ -11,7 +11,7 @@ impl FlowEditor {
         todo!()
     }
 
-    pub(crate) fn open_flow(&self, file: std::path::PathBuf) {
+    pub(crate) fn open_flow(&self, _file: std::path::PathBuf) {
         todo!()
     }
 }
@@ -28,7 +28,7 @@ impl UiComponent for FlowEditor {
         todo!()
     }
 
-    fn update(&mut self, message: Self::Message) -> Option<Self::MessageOut> {
+    fn update(&mut self, _message: Self::Message) -> Option<Self::MessageOut> {
         todo!()
     }
 }
