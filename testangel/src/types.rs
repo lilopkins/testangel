@@ -75,15 +75,13 @@ impl InstructionConfiguration {
                 InstructionParameterSource::Literal => {
                     self.parameter_values.get(id).unwrap().clone()
                 }
-                InstructionParameterSource::FromOutput(step, id, _friendly_name) => {
-                    previous_outputs
-                        .get(*step)
-                        .unwrap()
-                        .get(id)
-                        .unwrap()
-                        .clone()
-                }
-                InstructionParameterSource::FromParameter(id, _friendly_name) => {
+                InstructionParameterSource::FromOutput(step, id) => previous_outputs
+                    .get(*step)
+                    .unwrap()
+                    .get(id)
+                    .unwrap()
+                    .clone(),
+                InstructionParameterSource::FromParameter(id) => {
                     action_parameters.get(id).unwrap().clone()
                 }
             };
@@ -138,21 +136,20 @@ impl From<Instruction> for InstructionConfiguration {
 pub enum InstructionParameterSource {
     #[default]
     Literal,
-    FromParameter(usize, String),
-    FromOutput(usize, String, String),
+    FromParameter(usize),
+    FromOutput(usize, String),
 }
 
-impl InstructionParameterSource {
-    /// Get a text representation of this [`ParameterSource`]
-    pub fn text_repr(&self) -> String {
+impl fmt::Display for InstructionParameterSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::FromOutput(step, _id, friendly_name) => {
-                format!("From Step {}: {}", step + 1, friendly_name)
+            Self::FromOutput(step, id) => {
+                write!(f, "From Step {}: {}", step + 1, id)
             }
-            Self::FromParameter(_id, friendly_name) => {
-                format!("Parameter: {friendly_name}")
+            Self::FromParameter(id) => {
+                write!(f, "Parameter {id}")
             }
-            Self::Literal => "Literal".to_owned(),
+            Self::Literal => write!(f, "Literal"),
         }
     }
 }
@@ -238,15 +235,13 @@ impl ActionConfiguration {
         for (_friendly_name, _kind, src) in &action.outputs {
             let value = match src {
                 InstructionParameterSource::Literal => panic!("Output set to literal."),
-                InstructionParameterSource::FromOutput(step, id, _friendly_name) => {
-                    instruction_outputs
-                        .get(*step)
-                        .unwrap()
-                        .get(id)
-                        .unwrap()
-                        .clone()
-                }
-                InstructionParameterSource::FromParameter(id, _friendly_name) => {
+                InstructionParameterSource::FromOutput(step, id) => instruction_outputs
+                    .get(*step)
+                    .unwrap()
+                    .get(id)
+                    .unwrap()
+                    .clone(),
+                InstructionParameterSource::FromParameter(id) => {
                     action_parameters.get(id).unwrap().clone()
                 }
             };

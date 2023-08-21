@@ -6,9 +6,9 @@ use iced::widget::{
 use iced_aw::Card;
 use testangel::{
     ipc::EngineList,
-    types::{Action, InstructionParameterSource},
+    types::{Action, InstructionConfiguration, InstructionParameterSource},
 };
-use testangel_ipc::prelude::ParameterKind;
+use testangel_ipc::prelude::{Instruction, ParameterKind};
 
 use super::UiComponent;
 
@@ -29,12 +29,47 @@ pub enum ActionEditorMessage {
     ParameterMoveDown(usize),
     ParameterDelete(usize),
 
+    StepParameterSourceChange(usize, String, StepParameterSourceOptions),
+    StepMoveUp(usize),
+    StepMoveDown(usize),
+    StepDelete(usize),
+
     OutputCreate,
     OutputNameChange(usize, String),
     OutputTypeChange(usize, ParameterKind),
     OutputMoveUp(usize),
     OutputMoveDown(usize),
     OutputDelete(usize),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum StepParameterSourceOptions {
+    Literal,
+    FromOutput,
+    FromParameter,
+}
+
+impl ToString for StepParameterSourceOptions {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Literal => "Literal",
+            Self::FromOutput => "From the output of a previous step",
+            Self::FromParameter => "From an action parameter",
+        }
+        .to_owned()
+    }
+}
+
+impl From<InstructionParameterSource> for StepParameterSourceOptions {
+    fn from(value: InstructionParameterSource) -> Self {
+        match value {
+            InstructionParameterSource::Literal => StepParameterSourceOptions::Literal,
+            InstructionParameterSource::FromOutput(_, _) => StepParameterSourceOptions::FromOutput,
+            InstructionParameterSource::FromParameter(_) => {
+                StepParameterSourceOptions::FromParameter
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -232,6 +267,46 @@ impl ActionEditor {
         col.into()
     }
 
+    fn ui_instruction_inputs(
+        &self,
+        idx: usize,
+        instruction_config: &InstructionConfiguration,
+        instruction: Instruction,
+    ) -> iced::Element<'_, ActionEditorMessage> {
+        let mut col = Column::new().spacing(4);
+
+        for id in instruction.parameter_order() {
+            let (name, kind) = &instruction.parameters()[id];
+            let param_source = &instruction_config.parameter_sources[id];
+            let param_value = &instruction_config.parameter_values[id];
+            let param_source_val = param_source.clone().into();
+
+            col = col.push(
+                row![
+                    Text::new(format!("{name} ({kind})")),
+                    PickList::new(
+                        &[
+                            StepParameterSourceOptions::Literal,
+                            StepParameterSourceOptions::FromOutput,
+                            StepParameterSourceOptions::FromParameter,
+                        ][..],
+                        Some(param_source_val),
+                        move |k| ActionEditorMessage::StepParameterSourceChange(
+                            idx,
+                            id.clone(),
+                            k.clone()
+                        )
+                    )
+                    .placeholder("Parameter Kind"),
+                ]
+                .spacing(4)
+                .align_items(iced::Alignment::Center),
+            );
+        }
+
+        col.into()
+    }
+
     fn ui_steps(&self) -> iced::Element<'_, ActionEditorMessage> {
         let mut col = Column::new().spacing(4);
         let action = self.currently_open.as_ref().unwrap();
@@ -249,25 +324,24 @@ impl ActionEditor {
                 Text::new(format!("Step {}: {}", idx + 1, instruction.friendly_name())),
                 column![
                     row![
-                        // TODO Change these to step rather than parameter
-                        Button::new("×").on_press(ActionEditorMessage::ParameterDelete(idx)),
+                        Button::new("×").on_press(ActionEditorMessage::StepDelete(idx)),
                         Button::new("ʌ").on_press_maybe(if idx == 0 {
                             None
                         } else {
-                            Some(ActionEditorMessage::ParameterMoveUp(idx))
+                            Some(ActionEditorMessage::StepMoveUp(idx))
                         }),
                         Button::new("v").on_press_maybe(
                             if (idx + 1) == action.instructions.len() {
                                 None
                             } else {
-                                Some(ActionEditorMessage::ParameterMoveDown(idx))
+                                Some(ActionEditorMessage::StepMoveDown(idx))
                             }
                         ),
                         Text::new(instruction.description().clone()),
                     ]
                     .spacing(4),
                     Text::new("Inputs"),
-                    // TODO Input controls
+                    self.ui_instruction_inputs(idx, instruction_config, instruction.clone()),
                     Text::new("Outputs"),
                     Text::new(outputs_text),
                 ]
@@ -448,6 +522,50 @@ impl UiComponent for ActionEditor {
                 // TODO Renumber
                 self.modified();
             }
+
+            ActionEditorMessage::StepParameterSourceChange(idx, id, new_source) => {
+                self.currently_open.as_mut().unwrap().instructions[idx]
+                    .parameter_sources
+                    .entry(id)
+                    .and_modify(|v| {
+                        *v = match new_source {
+                            StepParameterSourceOptions::Literal => {
+                                InstructionParameterSource::Literal
+                            }
+                            StepParameterSourceOptions::FromParameter => {
+                                InstructionParameterSource::FromParameter(0)
+                            }
+                            StepParameterSourceOptions::FromOutput => {
+                                InstructionParameterSource::FromOutput(0, String::new())
+                            }
+                        };
+                    });
+                self.modified();
+            }
+            ActionEditorMessage::StepMoveUp(idx) => {
+                let steps = &mut self.currently_open.as_mut().unwrap().instructions;
+                let val = steps.remove(idx);
+                steps.insert((idx - 1).max(0), val);
+                // TODO Renumber
+                self.modified();
+            }
+            ActionEditorMessage::StepMoveDown(idx) => {
+                let steps = &mut self.currently_open.as_mut().unwrap().instructions;
+                let val = steps.remove(idx);
+                steps.insert((idx + 1).min(steps.len()), val);
+                // TODO Renumber
+                self.modified();
+            }
+            ActionEditorMessage::StepDelete(idx) => {
+                self.currently_open
+                    .as_mut()
+                    .unwrap()
+                    .instructions
+                    .remove(idx);
+                // TODO Renumber
+                self.modified();
+            }
+
             ActionEditorMessage::OutputNameChange(idx, new_name) => {
                 let (_, kind, src) = &self.currently_open.as_mut().unwrap().outputs[idx];
                 self.currently_open.as_mut().unwrap().outputs[idx] =
