@@ -796,26 +796,100 @@ impl UiComponent for ActionEditor {
                 self.modified();
             }
             ActionEditorMessage::StepMoveUp(idx) => {
-                let steps = &mut self.currently_open.as_mut().unwrap().instructions;
+                let action = self.currently_open.as_mut().unwrap();
+                let steps = &mut action.instructions;
                 let val = steps.remove(idx);
                 steps.insert((idx - 1).max(0), val);
-                // TODO Renumber
+
+                // Swap idx and (idx - 1)
+                for instruction_config in action.instructions.iter_mut() {
+                    for (_, src) in instruction_config.parameter_sources.iter_mut() {
+                        if let InstructionParameterSource::FromParameter(p_idx) = src {
+                            if *p_idx == idx {
+                                *p_idx = idx - 1;
+                            } else if *p_idx == (idx - 1) {
+                                *p_idx = idx;
+                            }
+                        }
+                    }
+                }
+                for (_, _, src) in action.outputs.iter_mut() {
+                    if let InstructionParameterSource::FromParameter(p_idx) = src {
+                        if *p_idx == idx {
+                            *p_idx = idx - 1;
+                        } else if *p_idx == (idx - 1) {
+                            *p_idx = idx;
+                        }
+                    }
+                }
+
                 self.modified();
             }
             ActionEditorMessage::StepMoveDown(idx) => {
-                let steps = &mut self.currently_open.as_mut().unwrap().instructions;
+                let action = self.currently_open.as_mut().unwrap();
+                let steps = &mut action.instructions;
                 let val = steps.remove(idx);
                 steps.insert((idx + 1).min(steps.len()), val);
-                // TODO Renumber
+
+                // Swap idx and (idx + 1)
+                for instruction_config in action.instructions.iter_mut() {
+                    for (_, src) in instruction_config.parameter_sources.iter_mut() {
+                        if let InstructionParameterSource::FromOutput(p_idx, _) = src {
+                            if *p_idx == idx {
+                                *p_idx = idx + 1;
+                            } else if *p_idx == (idx + 1) {
+                                *p_idx = idx;
+                            }
+                        }
+                    }
+                }
+                for (_, _, src) in action.outputs.iter_mut() {
+                    if let InstructionParameterSource::FromOutput(p_idx, _) = src {
+                        if *p_idx == idx {
+                            *p_idx = idx + 1;
+                        } else if *p_idx == (idx + 1) {
+                            *p_idx = idx;
+                        }
+                    }
+                }
+
                 self.modified();
             }
             ActionEditorMessage::StepDelete(idx) => {
-                self.currently_open
-                    .as_mut()
-                    .unwrap()
-                    .instructions
-                    .remove(idx);
-                // TODO Renumber
+                let action = self.currently_open.as_mut().unwrap();
+                action.instructions.remove(idx);
+
+                // Reset delete outputs referring to this step.
+                action.outputs.retain_mut(|(_, _, src)| match src {
+                    InstructionParameterSource::FromOutput(p_idx, _) => *p_idx != idx,
+                    _ => true,
+                });
+
+                // Renumber outputs referring to steps afterwards
+                for (_, _, src) in action.outputs.iter_mut() {
+                    if let InstructionParameterSource::FromOutput(p_idx, _) = src {
+                        if *p_idx > idx {
+                            *p_idx -= 1
+                        }
+                    }
+                }
+
+                // Reset instruction parameters that referred to idx to Literal
+                // Renumber all items after idx to (idx - 1).
+                for instruction_config in action.instructions.iter_mut() {
+                    for src in instruction_config.parameter_sources.values_mut() {
+                        if let InstructionParameterSource::FromOutput(p_idx, _) = src {
+                            match (*p_idx).cmp(&idx) {
+                                std::cmp::Ordering::Equal => {
+                                    *src = InstructionParameterSource::Literal
+                                }
+                                std::cmp::Ordering::Greater => *p_idx -= 1,
+                                _ => (),
+                            }
+                        }
+                    }
+                }
+
                 self.modified();
             }
 
