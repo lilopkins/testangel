@@ -22,14 +22,14 @@ fn main() {
     let flow: AutomationFlow =
         ron::from_str(&fs::read_to_string(cli.flow).expect("Failed to read flow."))
             .expect("Failed to parse flow.");
-    let action_map = Arc::new(action_loader::get_actions());
     let engine_map = Arc::new(ipc::get_engines());
+    let action_map = Arc::new(action_loader::get_actions(engine_map.clone()));
 
     let mut outputs: Vec<HashMap<usize, ParameterValue>> = Vec::new();
     let mut evidence = Vec::new();
 
     for engine in engine_map.inner() {
-        if let Err(_) = engine.reset_state() {
+        if engine.reset_state().is_err() {
             evidence.push(Evidence {
                 label: String::from("WARNING: State Warning"),
                 content: EvidenceContent::Textual(String::from("For this test execution, the state couldn't be correctly reset. Some results may not be accurate."))

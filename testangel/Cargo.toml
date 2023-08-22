@@ -1,6 +1,6 @@
 [package]
 name = "testangel"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -12,16 +12,15 @@ path = "src/bin/executor.rs"
 [dependencies]
 testangel-ipc = { path = "../testangel-ipc" }
 clap = "4.3.19"
-eframe = "0.22.0"
-egui = "0.22.0"
 log = "0.4.19"
 pretty_env_logger = "0.5.0"
-egui_file = "0.10.0"
 serde = { version = "1.0.180", features = ["derive"] }
-egui-modal = "0.2.4"
 uuid = { version = "1.4.1", features = ["v4"] }
 ron = "0.8.0"
 genpdf = { version = "0.2.0", features = ["images"] }
 chrono = "0.4.26"
 base64 = "0.21.2"
 itertools = "0.11.0"
+iced = { version = "0.10.0", features = [ "image", "smol" ] }
+iced_aw = { version = "0.6.0", default-features = false, features = [ "card" ] }
+rfd = "0.11.4"
