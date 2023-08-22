@@ -1,10 +1,13 @@
 use std::{env, fmt::Debug, sync::Arc};
 
-use iced::{settings::Settings, window::icon, Element, Sandbox};
+use iced::{
+    executor, settings::Settings, window::icon, Application, Command, Element, Subscription, Theme,
+};
 use testangel::{ipc::EngineList, *};
 
 mod action_editor;
 mod flow_editor;
+mod flow_running;
 mod get_started;
 
 pub(crate) fn initialise_ui() {
@@ -23,6 +26,7 @@ pub struct App {
     state: State,
     action_editor: action_editor::ActionEditor,
     flow_editor: flow_editor::FlowEditor,
+    flow_running: flow_running::FlowRunning,
     get_started: get_started::GetStarted,
 }
 
@@ -30,6 +34,7 @@ pub struct App {
 pub enum AppMessage {
     ActionEditor(action_editor::ActionEditorMessage),
     FlowEditor(flow_editor::FlowEditorMessage),
+    FlowRunning(flow_running::FlowRunningMessage),
     GetStarted(get_started::GetStartedMessage),
 }
 
@@ -49,22 +54,25 @@ impl App {
     }
 }
 
-impl Sandbox for App {
+impl Application for App {
     type Message = AppMessage;
+    type Flags = ();
+    type Executor = executor::Default;
+    type Theme = Theme;
 
-    fn new() -> Self {
-        // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
-        // Restore app state using cc.storage (requires the "persistence" feature).
-        // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
-        // for e.g. egui::PaintCallback.
+    fn new(_flags: ()) -> (Self, Command<Self::Message>) {
         let engines_rc = Arc::new(ipc::get_engines());
         let actions_rc = Arc::new(action_loader::get_actions(engines_rc.clone()));
-        Self {
-            engine_list: engines_rc.clone(),
-            action_editor: action_editor::ActionEditor::new(engines_rc),
-            flow_editor: flow_editor::FlowEditor::new(actions_rc),
-            ..Default::default()
-        }
+        (
+            Self {
+                engine_list: engines_rc.clone(),
+                action_editor: action_editor::ActionEditor::new(engines_rc.clone()),
+                flow_editor: flow_editor::FlowEditor::new(actions_rc.clone()),
+                flow_running: flow_running::FlowRunning::new(actions_rc, engines_rc),
+                ..Default::default()
+            },
+            Command::none(),
+        )
     }
 
     fn title(&self) -> String {
@@ -72,14 +80,31 @@ impl Sandbox for App {
             State::GetStarted => self.get_started.title(),
             State::ActionEditor => self.action_editor.title(),
             State::AutomationFlowEditor => self.flow_editor.title(),
-            _ => todo!(),
+            State::AutomationFlowRunning => self.flow_running.title(),
         };
         let separator = if sub_title.is_some() { " :: " } else { "" };
         let sub_title = sub_title.unwrap_or_default();
         format!("TestAngel{separator}{sub_title}")
     }
 
-    fn update(&mut self, message: Self::Message) {
+    fn subscription(&self) -> Subscription<Self::Message> {
+        match self.state {
+            State::GetStarted => self.get_started.subscription().map(AppMessage::GetStarted),
+            State::ActionEditor => self
+                .action_editor
+                .subscription()
+                .map(AppMessage::ActionEditor),
+            State::AutomationFlowEditor => {
+                self.flow_editor.subscription().map(AppMessage::FlowEditor)
+            }
+            State::AutomationFlowRunning => self
+                .flow_running
+                .subscription()
+                .map(AppMessage::FlowRunning),
+        }
+    }
+
+    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             AppMessage::ActionEditor(msg) => {
                 if let Some(msg_out) = self.action_editor.update(msg) {
@@ -91,7 +116,26 @@ impl Sandbox for App {
                 }
             }
             AppMessage::FlowEditor(msg) => {
-                self.flow_editor.update(msg);
+                if let Some(msg_out) = self.flow_editor.update(msg) {
+                    match msg_out {
+                        flow_editor::FlowEditorMessageOut::CloseFlowEditor => {
+                            self.state = State::GetStarted;
+                        }
+                        flow_editor::FlowEditorMessageOut::RunFlow(flow) => {
+                            self.state = State::AutomationFlowRunning;
+                            self.flow_running.start_flow(flow);
+                        }
+                    }
+                }
+            }
+            AppMessage::FlowRunning(msg) => {
+                if let Some(msg_out) = self.flow_running.update(msg) {
+                    match msg_out {
+                        flow_running::FlowRunningMessageOut::BackToEditor => {
+                            self.state = State::AutomationFlowEditor;
+                        }
+                    }
+                }
             }
             AppMessage::GetStarted(msg) => {
                 if let Some(msg_out) = self.get_started.update(msg) {
@@ -154,6 +198,7 @@ impl Sandbox for App {
                 }
             }
         }
+        Command::none()
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
@@ -162,7 +207,7 @@ impl Sandbox for App {
             State::GetStarted => self.get_started.view().map(AppMessage::GetStarted),
             State::ActionEditor => self.action_editor.view().map(AppMessage::ActionEditor),
             State::AutomationFlowEditor => self.flow_editor.view().map(AppMessage::FlowEditor),
-            _ => todo!(),
+            State::AutomationFlowRunning => self.flow_running.view().map(AppMessage::FlowRunning),
         };
 
         content
@@ -177,6 +222,10 @@ trait UiComponent {
 
     /// Handle a message.
     fn update(&mut self, message: Self::Message) -> Option<Self::MessageOut>;
+
+    fn subscription(&self) -> Subscription<Self::Message> {
+        Subscription::none()
+    }
 
     /// Render the central panel UI.
     fn view(&self) -> Element<'_, Self::Message>;

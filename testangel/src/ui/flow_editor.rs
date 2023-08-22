@@ -15,6 +15,7 @@ use super::UiComponent;
 
 #[derive(Clone, Debug)]
 pub enum FlowEditorMessage {
+    RunFlow,
     SaveFlow,
     SaveAsFlow,
     CloseFlow,
@@ -29,6 +30,7 @@ pub enum FlowEditorMessage {
 
 #[derive(Clone, Debug)]
 pub enum FlowEditorMessageOut {
+    RunFlow(AutomationFlow),
     CloseFlowEditor,
 }
 
@@ -386,6 +388,7 @@ impl UiComponent for FlowEditor {
                 column![
                     // Toolbar
                     row![
+                        Button::new("Run Flow").on_press(FlowEditorMessage::RunFlow),
                         Button::new("Save").on_press(FlowEditorMessage::SaveFlow),
                         Button::new("Save as").on_press(FlowEditorMessage::SaveAsFlow),
                         Button::new("Close Flow").on_press(FlowEditorMessage::CloseFlow),
@@ -409,6 +412,11 @@ impl UiComponent for FlowEditor {
 
     fn update(&mut self, message: Self::Message) -> Option<Self::MessageOut> {
         match message {
+            FlowEditorMessage::RunFlow => {
+                return Some(FlowEditorMessageOut::RunFlow(
+                    self.currently_open.as_ref().unwrap().clone(),
+                ));
+            }
             FlowEditorMessage::SaveFlow => {
                 if let Err(e) = self.save_flow(false) {
                     rfd::MessageDialog::new()
