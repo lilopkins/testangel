@@ -1,8 +1,8 @@
 use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
 use iced::widget::{
-    column, row, scrollable, Button, Column, Container, PickList, Row, Rule, Scrollable, Text,
-    TextInput,
+    column, combo_box, row, scrollable, Button, Column, Container, PickList, Row, Rule, Scrollable,
+    Text, TextInput,
 };
 use iced_aw::Card;
 use testangel::{
@@ -30,6 +30,7 @@ pub enum ActionEditorMessage {
     ParameterMoveDown(usize),
     ParameterDelete(usize),
 
+    StepCreate(AvailableInstruction),
     StepParameterSourceChange(usize, String, InstructionParameterSource),
     StepMoveUp(usize),
     StepMoveDown(usize),
@@ -74,21 +75,62 @@ impl fmt::Display for SaveOrOpenActionError {
     }
 }
 
-#[derive(Default)]
+#[derive(Clone, Debug)]
+pub struct AvailableInstruction {
+    /// The friendly name of this instruction.
+    engine_name: String,
+    /// The friendly name of this instruction.
+    friendly_name: String,
+    /// The instruction this is based on.
+    base_instruction: Instruction,
+}
+
+impl fmt::Display for AvailableInstruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.engine_name, self.friendly_name)
+    }
+}
+
 pub struct ActionEditor {
     engines_list: Arc<EngineList>,
     output_list: Vec<(isize, ParameterKind, InstructionParameterSource)>,
+    add_instruction_combo: combo_box::State<AvailableInstruction>,
 
     currently_open: Option<Action>,
     current_path: Option<PathBuf>,
     needs_saving: bool,
 }
 
+impl Default for ActionEditor {
+    fn default() -> Self {
+        Self {
+            engines_list: Arc::new(EngineList::default()),
+            output_list: vec![],
+            add_instruction_combo: combo_box::State::new(Vec::new()),
+            currently_open: None,
+            current_path: None,
+            needs_saving: false,
+        }
+    }
+}
+
 impl ActionEditor {
     /// Initialise a new ActionEditor with the provided [`ActionMap`].
     pub(crate) fn new(engines_list: Arc<EngineList>) -> Self {
+        let mut available_instructions = vec![];
+        for engine in engines_list.inner() {
+            for instruction in &engine.instructions {
+                available_instructions.push(AvailableInstruction {
+                    engine_name: engine.name.clone(),
+                    friendly_name: instruction.friendly_name().clone(),
+                    base_instruction: instruction.clone(),
+                });
+            }
+        }
+
         Self {
             engines_list,
+            add_instruction_combo: combo_box::State::new(available_instructions),
             ..Default::default()
         }
     }
@@ -497,7 +539,12 @@ impl UiComponent for ActionEditor {
                     Rule::horizontal(2),
                     // Instructions
                     self.ui_steps(),
-                    Button::new("+ Add step"),
+                    combo_box(
+                        &self.add_instruction_combo,
+                        "+ Add a step...",
+                        None,
+                        ActionEditorMessage::StepCreate
+                    ),
                     Rule::horizontal(2),
                     // Outputs
                     Text::new("Action Outputs"),
@@ -626,6 +673,15 @@ impl UiComponent for ActionEditor {
                 self.modified();
             }
 
+            ActionEditorMessage::StepCreate(instruction) => {
+                self.currently_open
+                    .as_mut()
+                    .unwrap()
+                    .instructions
+                    .push(InstructionConfiguration::from(instruction.base_instruction));
+                self.modified();
+                self.add_instruction_combo.unfocus();
+            }
             ActionEditorMessage::StepParameterSourceChange(idx, id, new_source) => {
                 self.currently_open.as_mut().unwrap().instructions[idx]
                     .parameter_sources
