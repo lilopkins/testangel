@@ -1,5 +1,6 @@
-use std::{collections::HashMap, env, fs, path::PathBuf};
+use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc};
 
+use crate::ipc::EngineList;
 use crate::types::Action;
 
 #[derive(Default)]
@@ -29,7 +30,7 @@ impl ActionMap {
 }
 
 /// Get the list of available engines.
-pub fn get_actions() -> ActionMap {
+pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
     let mut actions = HashMap::new();
     let action_dir = env::var("ACTION_DIR").unwrap_or("./actions".to_owned());
     fs::create_dir_all(action_dir.clone()).unwrap();
@@ -50,8 +51,23 @@ pub fn get_actions() -> ActionMap {
                         log::info!(
                             "Discovered action {} at {:?}",
                             action.friendly_name,
-                            path.path()
+                            path.path(),
                         );
+
+                        for instruction_config in &action.instructions {
+                            if engine_list
+                                .get_instruction_by_id(&instruction_config.instruction_id)
+                                .is_none()
+                            {
+                                log::warn!(
+                                    "Couldn't load action {} because instruction {} isn't available.",
+                                    action.friendly_name,
+                                    instruction_config.instruction_id,
+                                );
+                                continue;
+                            }
+                        }
+
                         actions.insert(path.path(), action);
                     }
                 }

@@ -22,8 +22,8 @@ fn main() {
     let flow: AutomationFlow =
         ron::from_str(&fs::read_to_string(cli.flow).expect("Failed to read flow."))
             .expect("Failed to parse flow.");
-    let action_map = Arc::new(action_loader::get_actions());
     let engine_map = Arc::new(ipc::get_engines());
+    let action_map = Arc::new(action_loader::get_actions(engine_map.clone()));
 
     let mut outputs: Vec<HashMap<usize, ParameterValue>> = Vec::new();
     let mut evidence = Vec::new();

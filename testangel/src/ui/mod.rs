@@ -1,7 +1,7 @@
 use std::{env, fmt::Debug, sync::Arc};
 
 use iced::{settings::Settings, window::icon, Element, Sandbox};
-use testangel::*;
+use testangel::{ipc::EngineList, *};
 
 mod action_editor;
 mod flow_editor;
@@ -18,6 +18,8 @@ pub(crate) fn initialise_ui() {
 
 #[derive(Default)]
 pub struct App {
+    engine_list: Arc<EngineList>,
+
     state: State,
     action_editor: action_editor::ActionEditor,
     flow_editor: flow_editor::FlowEditor,
@@ -41,12 +43,9 @@ enum State {
 }
 
 impl App {
-    fn change_state(&mut self, next_state: State) {
-        if next_state == State::AutomationFlowEditor {
-            // reload actions
-            let _actions_rc = Arc::new(action_loader::get_actions());
-        }
-        self.state = next_state;
+    fn update_action_list(&mut self) {
+        let actions_rc = Arc::new(action_loader::get_actions(self.engine_list.clone()));
+        self.flow_editor.update_action_map(actions_rc);
     }
 }
 
@@ -59,9 +58,11 @@ impl Sandbox for App {
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
         let engines_rc = Arc::new(ipc::get_engines());
-        let _actions_rc = Arc::new(action_loader::get_actions());
+        let actions_rc = Arc::new(action_loader::get_actions(engines_rc.clone()));
         Self {
+            engine_list: engines_rc.clone(),
             action_editor: action_editor::ActionEditor::new(engines_rc),
+            flow_editor: flow_editor::FlowEditor::new(actions_rc),
             ..Default::default()
         }
     }
@@ -101,6 +102,7 @@ impl Sandbox for App {
                         }
                         get_started::GetStartedMessage::NewFlow => {
                             self.state = State::AutomationFlowEditor;
+                            self.update_action_list();
                             self.flow_editor.new_flow();
                         }
                         get_started::GetStartedMessage::OpenAction => {
@@ -135,8 +137,17 @@ impl Sandbox for App {
                                 )
                                 .pick_file()
                             {
-                                self.state = State::AutomationFlowEditor;
-                                self.flow_editor.open_flow(file);
+                                self.update_action_list();
+                                if let Err(e) = self.flow_editor.open_flow(file) {
+                                    rfd::MessageDialog::new()
+                                        .set_level(rfd::MessageLevel::Error)
+                                        .set_title("Failed to open flow")
+                                        .set_description(&format!("{e}"))
+                                        .set_buttons(rfd::MessageButtons::Ok)
+                                        .show();
+                                } else {
+                                    self.state = State::AutomationFlowEditor;
+                                }
                             }
                         }
                     }

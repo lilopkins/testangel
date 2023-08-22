@@ -175,8 +175,17 @@ impl fmt::Display for FlowError {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct AutomationFlow {
+    /// The version of this automation flow file
+    version: usize,
     /// The actions called by this flow
     pub actions: Vec<ActionConfiguration>,
+}
+
+impl AutomationFlow {
+    /// Get the version of this flow.
+    pub fn version(&self) -> usize {
+        self.version
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -201,14 +210,12 @@ impl ActionConfiguration {
         for (id, src) in &self.parameter_sources {
             let value = match src {
                 ActionParameterSource::Literal => self.parameter_values.get(id).unwrap().clone(),
-                ActionParameterSource::FromOutput(step, id, _friendly_name) => {
-                    previous_action_outputs
-                        .get(*step)
-                        .unwrap()
-                        .get(id)
-                        .unwrap()
-                        .clone()
-                }
+                ActionParameterSource::FromOutput(step, id) => previous_action_outputs
+                    .get(*step)
+                    .unwrap()
+                    .get(id)
+                    .unwrap()
+                    .clone(),
             };
             action_parameters.insert(*id, value);
         }
@@ -269,17 +276,16 @@ impl From<Action> for ActionConfiguration {
 pub enum ActionParameterSource {
     #[default]
     Literal,
-    FromOutput(usize, usize, String),
+    FromOutput(usize, usize),
 }
 
-impl ActionParameterSource {
-    /// Get a text representation of this [`ActionParameterSource`].
-    pub fn text_repr(&self) -> String {
+impl fmt::Display for ActionParameterSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::FromOutput(step, _id, friendly_name) => {
-                format!("From Step {}: {}", step + 1, friendly_name)
+            Self::FromOutput(step, id) => {
+                write!(f, "From Step {}: Output {}", step + 1, id + 1)
             }
-            Self::Literal => "Literal".to_owned(),
+            Self::Literal => write!(f, "Literal"),
         }
     }
 }
