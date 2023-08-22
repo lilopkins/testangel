@@ -15,7 +15,10 @@ pub(crate) fn initialise_ui() {
     settings.window.icon = Some(
         icon::from_file_data(include_bytes!("../../../icon.png"), None).expect("icon was invalid!"),
     );
-    settings.window.platform_specific.application_id = String::from("TestAngel");
+    #[cfg(target_os = "linux")]
+    {
+        settings.window.platform_specific.application_id = String::from("TestAngel");
+    }
     App::run(settings).expect("Couldn't open UI");
 }
 

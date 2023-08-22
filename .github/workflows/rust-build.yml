@@ -21,6 +21,10 @@ jobs:
           default: true
           override: true
 
+      - name: Install dependencies
+        run: |
+          apt -y update && apt -y install libatk1.0-dev
+
       - name: Build
         run: |
           # Build
