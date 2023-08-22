@@ -648,12 +648,21 @@ impl UiComponent for ActionEditor {
                 self.modified();
             }
             ActionEditorMessage::OutputCreate => {
-                self.currently_open.as_mut().unwrap().outputs.push((
-                    String::new(),
-                    ParameterKind::String,
-                    InstructionParameterSource::Literal,
-                ));
-                self.modified();
+                if let Some((_, kind, default_output)) = self.output_list.get(0) {
+                    self.currently_open.as_mut().unwrap().outputs.push((
+                        String::new(),
+                        kind.clone(),
+                        default_output.clone(),
+                    ));
+                    self.modified();
+                } else {
+                    rfd::MessageDialog::new()
+                        .set_level(rfd::MessageLevel::Warning)
+                        .set_buttons(rfd::MessageButtons::Ok)
+                        .set_title("No source")
+                        .set_description("No source for output data. Add a parameter or a step.")
+                        .show();
+                }
             }
             ActionEditorMessage::OutputMoveUp(idx) => {
                 let outputs = &mut self.currently_open.as_mut().unwrap().outputs;
