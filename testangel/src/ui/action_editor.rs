@@ -1,7 +1,9 @@
 use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
 use iced::widget::{
-    column, row, Button, Column, Container, PickList, Rule, Scrollable, Text, TextInput,
+    column, row,
+    scrollable::{Direction, Properties},
+    Button, Column, Container, PickList, Row, Rule, Scrollable, Text, TextInput,
 };
 use iced_aw::Card;
 use testangel::{
@@ -29,7 +31,7 @@ pub enum ActionEditorMessage {
     ParameterMoveDown(usize),
     ParameterDelete(usize),
 
-    StepParameterSourceChange(usize, String, StepParameterSourceOptions),
+    StepParameterSourceChange(usize, String, InstructionParameterSource),
     StepMoveUp(usize),
     StepMoveDown(usize),
     StepDelete(usize),
@@ -40,36 +42,6 @@ pub enum ActionEditorMessage {
     OutputMoveUp(usize),
     OutputMoveDown(usize),
     OutputDelete(usize),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum StepParameterSourceOptions {
-    Literal,
-    FromOutput,
-    FromParameter,
-}
-
-impl ToString for StepParameterSourceOptions {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Literal => "Literal",
-            Self::FromOutput => "From the output of a previous step",
-            Self::FromParameter => "From an action parameter",
-        }
-        .to_owned()
-    }
-}
-
-impl From<InstructionParameterSource> for StepParameterSourceOptions {
-    fn from(value: InstructionParameterSource) -> Self {
-        match value {
-            InstructionParameterSource::Literal => StepParameterSourceOptions::Literal,
-            InstructionParameterSource::FromOutput(_, _) => StepParameterSourceOptions::FromOutput,
-            InstructionParameterSource::FromParameter(_) => {
-                StepParameterSourceOptions::FromParameter
-            }
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -106,6 +78,7 @@ impl fmt::Display for SaveOrOpenActionError {
 #[derive(Default)]
 pub struct ActionEditor {
     engines_list: Arc<EngineList>,
+    output_list: Vec<(isize, ParameterKind, InstructionParameterSource)>,
 
     currently_open: Option<Action>,
     current_path: Option<PathBuf>,
@@ -276,30 +249,32 @@ impl ActionEditor {
         instruction
             .parameter_order()
             .iter()
-            .fold(Column::new().spacing(4), |col, id| {
+            .enumerate()
+            .fold(Column::new().spacing(4), |col, (step, id)| {
                 let (name, kind) = &instruction.parameters()[id];
                 let param_source = &instruction_config.parameter_sources[id];
                 let _param_value = &instruction_config.parameter_values[id];
-                let param_source_val: StepParameterSourceOptions = param_source.clone().into();
                 let id = id.clone();
+
+                let source_opts = self
+                    .output_list
+                    .iter()
+                    .filter(|(from_step, p_kind, _)| *from_step < (step as isize) && p_kind == kind)
+                    .fold(Row::new(), |row, (_, _, src)| {
+                        row.push(Button::new(Text::new(format!("{src}"))).on_press(
+                            ActionEditorMessage::StepParameterSourceChange(
+                                step,
+                                id.clone(),
+                                src.clone(),
+                            ),
+                        ))
+                    });
 
                 col.push(
                     row![
-                        Text::new(format!("{name} ({kind})")),
-                        PickList::new(
-                            &[
-                                StepParameterSourceOptions::Literal,
-                                StepParameterSourceOptions::FromOutput,
-                                StepParameterSourceOptions::FromParameter,
-                            ][..],
-                            Some(param_source_val),
-                            move |k| ActionEditorMessage::StepParameterSourceChange(
-                                idx,
-                                id.clone(),
-                                k.clone()
-                            )
-                        )
-                        .placeholder("Parameter Kind"),
+                        Text::new(format!("{name} ({kind}) {param_source}")),
+                        Scrollable::new(source_opts)
+                            .direction(Direction::Horizontal(Properties::new())),
                     ]
                     .spacing(4)
                     .align_items(iced::Alignment::Center),
@@ -400,6 +375,35 @@ impl ActionEditor {
         }
 
         col.into()
+    }
+
+    /// Update the possible outputs
+    fn update_outputs(&mut self) {
+        self.output_list.clear();
+
+        if let Some(action) = &self.currently_open {
+            for (index, (_name, kind)) in action.parameters.iter().enumerate() {
+                self.output_list.push((
+                    -1,
+                    kind.clone(),
+                    InstructionParameterSource::FromParameter(index),
+                ));
+            }
+
+            for (step, instruction_config) in action.instructions.iter().enumerate() {
+                let instruction = self
+                    .engines_list
+                    .get_instruction_by_id(&instruction_config.instruction_id)
+                    .unwrap();
+                for (id, (_name, kind)) in instruction.outputs() {
+                    self.output_list.push((
+                        step as isize,
+                        kind.clone(),
+                        InstructionParameterSource::FromOutput(step, id.clone()),
+                    ));
+                }
+            }
+        }
     }
 }
 
@@ -538,17 +542,7 @@ impl UiComponent for ActionEditor {
                     .parameter_sources
                     .entry(id)
                     .and_modify(|v| {
-                        *v = match new_source {
-                            StepParameterSourceOptions::Literal => {
-                                InstructionParameterSource::Literal
-                            }
-                            StepParameterSourceOptions::FromParameter => {
-                                InstructionParameterSource::FromParameter(0)
-                            }
-                            StepParameterSourceOptions::FromOutput => {
-                                InstructionParameterSource::FromOutput(0, String::new())
-                            }
-                        };
+                        *v = new_source;
                     });
                 self.modified();
             }
@@ -616,6 +610,7 @@ impl UiComponent for ActionEditor {
                 self.modified();
             }
         };
+        self.update_outputs();
         None
     }
 }
