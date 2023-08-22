@@ -1,7 +1,10 @@
 use std::{env, fmt::Debug, sync::Arc};
 
 use iced::{
-    executor, settings::Settings, window::icon, Application, Command, Element, Subscription, Theme,
+    executor,
+    settings::Settings,
+    window::{self, icon},
+    Application, Command, Element, Event, Subscription, Theme,
 };
 use testangel::{ipc::EngineList, *};
 
@@ -15,6 +18,7 @@ pub(crate) fn initialise_ui() {
     settings.window.icon = Some(
         icon::from_file_data(include_bytes!("../../../icon.png"), None).expect("icon was invalid!"),
     );
+    settings.exit_on_close_request = false;
     #[cfg(target_os = "linux")]
     {
         settings.window.platform_specific.application_id = String::from("TestAngel");
@@ -35,6 +39,7 @@ pub struct App {
 
 #[derive(Debug, Clone)]
 pub enum AppMessage {
+    Event(iced::Event),
     ActionEditor(action_editor::ActionEditorMessage),
     FlowEditor(flow_editor::FlowEditorMessage),
     FlowRunning(flow_running::FlowRunningMessage),
@@ -91,24 +96,35 @@ impl Application for App {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        match self.state {
-            State::GetStarted => self.get_started.subscription().map(AppMessage::GetStarted),
-            State::ActionEditor => self
-                .action_editor
-                .subscription()
-                .map(AppMessage::ActionEditor),
-            State::AutomationFlowEditor => {
-                self.flow_editor.subscription().map(AppMessage::FlowEditor)
-            }
-            State::AutomationFlowRunning => self
-                .flow_running
-                .subscription()
-                .map(AppMessage::FlowRunning),
-        }
+        Subscription::batch(vec![
+            match self.state {
+                State::GetStarted => self.get_started.subscription().map(AppMessage::GetStarted),
+                State::ActionEditor => self
+                    .action_editor
+                    .subscription()
+                    .map(AppMessage::ActionEditor),
+                State::AutomationFlowEditor => {
+                    self.flow_editor.subscription().map(AppMessage::FlowEditor)
+                }
+                State::AutomationFlowRunning => self
+                    .flow_running
+                    .subscription()
+                    .map(AppMessage::FlowRunning),
+            },
+            iced::subscription::events().map(AppMessage::Event),
+        ])
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
+            AppMessage::Event(event) => {
+                if let Event::Window(window::Event::CloseRequested) = event {
+                    for engine in self.engine_list.inner() {
+                        engine.shut_down();
+                    }
+                    std::process::exit(0);
+                }
+            }
             AppMessage::ActionEditor(msg) => {
                 if let Some(msg_out) = self.action_editor.update(msg) {
                     match msg_out {

@@ -131,6 +131,9 @@ fn process_request(state: &mut State, request: Request) {
             *state = State::default();
             println!("{}", Response::StateReset.to_json());
         }
+        Request::ShutDown => {
+            std::process::exit(0);
+        }
         Request::Instructions => {
             // Provide a list of instructions this engine can run.
             println!(
