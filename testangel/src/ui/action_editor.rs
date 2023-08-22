@@ -2,14 +2,14 @@ use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
 use iced::widget::{
     column, combo_box, row, scrollable, Button, Column, Container, PickList, Row, Rule, Scrollable,
-    Text, TextInput,
+    Space, Text, TextInput,
 };
 use iced_aw::Card;
 use testangel::{
     ipc::EngineList,
     types::{Action, InstructionConfiguration, InstructionParameterSource},
 };
-use testangel_ipc::prelude::{Instruction, ParameterKind};
+use testangel_ipc::prelude::{Instruction, ParameterKind, ParameterValue};
 
 use super::UiComponent;
 
@@ -32,6 +32,7 @@ pub enum ActionEditorMessage {
 
     StepCreate(AvailableInstruction),
     StepParameterSourceChange(usize, String, InstructionParameterSource),
+    StepParameterValueChange(usize, String, String),
     StepMoveUp(usize),
     StepMoveDown(usize),
     StepDelete(usize),
@@ -295,7 +296,7 @@ impl ActionEditor {
             .fold(Column::new().spacing(4), |col, (_param_idx, id)| {
                 let (name, kind) = &instruction.parameters()[id];
                 let param_source = &instruction_config.parameter_sources[id];
-                let _param_value = &instruction_config.parameter_values[id];
+                let param_value = &instruction_config.parameter_values[id];
                 let id = id.clone();
 
                 let source_opts = self
@@ -304,21 +305,47 @@ impl ActionEditor {
                     .filter(|(from_step, param_kind, _)| {
                         *from_step < (step_idx as isize) && param_kind == kind
                     })
-                    .fold(Row::new().spacing(2), |row, (_, _, src)| {
-                        row.push(
-                            Button::new(Text::new(format!(
-                                "Set {}",
-                                self.friendly_source_string(src)
-                            )))
-                            .on_press(
+                    .fold(
+                        Row::new()
+                            .spacing(2)
+                            .push(Button::new(Text::new("Use Literal")).on_press(
                                 ActionEditorMessage::StepParameterSourceChange(
                                     step_idx,
                                     id.clone(),
-                                    src.clone(),
+                                    InstructionParameterSource::Literal,
                                 ),
-                            ),
-                        )
-                    });
+                            )),
+                        |row, (_, _, src)| {
+                            row.push(
+                                Button::new(Text::new(format!(
+                                    "Set {}",
+                                    self.friendly_source_string(src)
+                                )))
+                                .on_press(
+                                    ActionEditorMessage::StepParameterSourceChange(
+                                        step_idx,
+                                        id.clone(),
+                                        src.clone(),
+                                    ),
+                                ),
+                            )
+                        },
+                    );
+
+                let literal_input: iced::Element<'_, _> = match param_source {
+                    InstructionParameterSource::Literal => {
+                        TextInput::new("Literal value", &param_value.to_string())
+                            .on_input(move |new_val| {
+                                ActionEditorMessage::StepParameterValueChange(
+                                    step_idx,
+                                    id.clone(),
+                                    new_val,
+                                )
+                            })
+                            .into()
+                    }
+                    _ => Space::new(0, 0).into(),
+                };
 
                 col.push(
                     row![
@@ -326,6 +353,7 @@ impl ActionEditor {
                             "{name} ({kind}) from {}",
                             self.friendly_source_string(param_source)
                         )),
+                        literal_input,
                         Scrollable::new(source_opts).direction(scrollable::Direction::Horizontal(
                             scrollable::Properties::new()
                         )),
@@ -482,7 +510,7 @@ impl ActionEditor {
     fn friendly_source_string(&self, source: &InstructionParameterSource) -> String {
         if let Some(action) = &self.currently_open {
             return match source {
-                InstructionParameterSource::Literal => format!("Literal value"),
+                InstructionParameterSource::Literal => "Literal value".to_owned(),
                 InstructionParameterSource::FromParameter(idx) => {
                     format!("From Parameter {}", action.parameters[*idx].0)
                 }
@@ -610,28 +638,22 @@ impl UiComponent for ActionEditor {
                 // Updated any instruction parameters to literals
                 for instruction_config in action.instructions.iter_mut() {
                     for (_, parameter_source) in instruction_config.parameter_sources.iter_mut() {
-                        match parameter_source {
-                            InstructionParameterSource::FromParameter(p_idx) => {
-                                if idx == *p_idx {
-                                    // Change to literal
-                                    *parameter_source = InstructionParameterSource::Literal;
-                                }
+                        if let InstructionParameterSource::FromParameter(p_idx) = parameter_source {
+                            if idx == *p_idx {
+                                // Change to literal
+                                *parameter_source = InstructionParameterSource::Literal;
                             }
-                            _ => (),
                         }
                     }
                 }
 
                 // Update any output kinds
                 for (_, kind, src) in action.outputs.iter_mut() {
-                    match src {
-                        InstructionParameterSource::FromParameter(p_idx) => {
-                            if idx == *p_idx {
-                                // Change output type.
-                                *kind = new_type.clone();
-                            }
+                    if let InstructionParameterSource::FromParameter(p_idx) = src {
+                        if idx == *p_idx {
+                            // Change output type.
+                            *kind = new_type.clone();
                         }
-                        _ => (),
                     }
                 }
 
@@ -688,6 +710,18 @@ impl UiComponent for ActionEditor {
                     .entry(id)
                     .and_modify(|v| {
                         *v = new_source;
+                    });
+                self.modified();
+            }
+            ActionEditorMessage::StepParameterValueChange(idx, id, new_value) => {
+                self.currently_open.as_mut().unwrap().instructions[idx]
+                    .parameter_values
+                    .entry(id)
+                    .and_modify(|v| match v {
+                        ParameterValue::String(v) => *v = new_value,
+                        ParameterValue::SpecialType { id: _, value } => *value = new_value,
+                        ParameterValue::Integer(v) => *v = new_value.parse().unwrap_or(*v),
+                        ParameterValue::Decimal(v) => *v = new_value.parse().unwrap_or(*v),
                     });
                 self.modified();
             }
