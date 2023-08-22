@@ -90,6 +90,12 @@ impl Engine {
     pub fn reset_state(&self) -> Result<(), IpcError> {
         ipc_call(self, Request::ResetState).map(|_| ())
     }
+
+    /// Ask the engine to shut down.
+    pub fn shut_down(&self) {
+        // We don't expect any response from the engine so we can't determine if it worked or not.
+        let _ = ipc_call(self, Request::ShutDown);
+    }
 }
 
 impl fmt::Display for Engine {
