@@ -37,11 +37,10 @@ pub enum ActionEditorMessage {
 
     OutputCreate,
     OutputNameChange(usize, String),
-    OutputTypeChange(usize, ParameterKind),
     OutputMoveUp(usize),
     OutputMoveDown(usize),
     OutputDelete(usize),
-    OutputSourceChange(usize, InstructionParameterSource),
+    OutputSourceChange(usize, ParameterKind, InstructionParameterSource),
 }
 
 #[derive(Clone, Debug)]
@@ -360,21 +359,24 @@ impl ActionEditor {
             .fold(
                 Column::new().spacing(4),
                 |col, (idx, (name, kind, source))| {
-                    let source_opts = self
-                        .output_list
-                        .iter()
-                        .filter(|(_, param_kind, _)| param_kind == kind)
-                        .fold(Row::new().spacing(2), |row, (_, _, src)| {
+                    let source_opts = self.output_list.iter().fold(
+                        Row::new().spacing(2),
+                        |row, (_, kind, src)| {
                             row.push(
                                 Button::new(Text::new(format!(
                                     "Set {}",
                                     self.friendly_source_string(src)
                                 )))
                                 .on_press(
-                                    ActionEditorMessage::OutputSourceChange(idx, src.clone()),
+                                    ActionEditorMessage::OutputSourceChange(
+                                        idx,
+                                        kind.clone(),
+                                        src.clone(),
+                                    ),
                                 ),
                             )
-                        });
+                        },
+                    );
 
                     col.push(
                         row![
@@ -391,17 +393,7 @@ impl ActionEditor {
                             }),
                             TextInput::new("Output Name", name)
                                 .on_input(move |s| ActionEditorMessage::OutputNameChange(idx, s)),
-                            PickList::new(
-                                &[
-                                    ParameterKind::String,
-                                    ParameterKind::Integer,
-                                    ParameterKind::Decimal,
-                                ][..],
-                                Some(kind.clone()),
-                                move |k| ActionEditorMessage::OutputTypeChange(idx, k)
-                            )
-                            .placeholder("Output Kind"),
-                            Text::new(format!("{}", self.friendly_source_string(source))),
+                            Text::new(format!("({kind}) {}", self.friendly_source_string(source))),
                             Scrollable::new(source_opts).direction(
                                 scrollable::Direction::Horizontal(scrollable::Properties::new())
                             ),
@@ -564,8 +556,38 @@ impl UiComponent for ActionEditor {
                 self.modified();
             }
             ActionEditorMessage::ParameterTypeChange(idx, new_type) => {
-                let (name, _) = &self.currently_open.as_mut().unwrap().parameters[idx];
-                self.currently_open.as_mut().unwrap().parameters[idx] = (name.clone(), new_type);
+                let action = self.currently_open.as_mut().unwrap();
+                let (name, _) = &action.parameters[idx];
+                action.parameters[idx] = (name.clone(), new_type.clone());
+
+                // Updated any instruction parameters to literals
+                for instruction_config in action.instructions.iter_mut() {
+                    for (_, parameter_source) in instruction_config.parameter_sources.iter_mut() {
+                        match parameter_source {
+                            InstructionParameterSource::FromParameter(p_idx) => {
+                                if idx == *p_idx {
+                                    // Change to literal
+                                    *parameter_source = InstructionParameterSource::Literal;
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+
+                // Update any output kinds
+                for (_, kind, src) in action.outputs.iter_mut() {
+                    match src {
+                        InstructionParameterSource::FromParameter(p_idx) => {
+                            if idx == *p_idx {
+                                // Change output type.
+                                *kind = new_type.clone();
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+
                 self.modified();
             }
             ActionEditorMessage::ParameterCreate => {
@@ -577,22 +599,30 @@ impl UiComponent for ActionEditor {
                 self.modified();
             }
             ActionEditorMessage::ParameterMoveUp(idx) => {
-                let params = &mut self.currently_open.as_mut().unwrap().parameters;
+                let action = self.currently_open.as_mut().unwrap();
+                let params = &mut action.parameters;
                 let val = params.remove(idx);
                 params.insert((idx - 1).max(0), val);
+
                 // TODO Renumber
+
                 self.modified();
             }
             ActionEditorMessage::ParameterMoveDown(idx) => {
                 let params = &mut self.currently_open.as_mut().unwrap().parameters;
                 let val = params.remove(idx);
                 params.insert((idx + 1).min(params.len()), val);
+
                 // TODO Renumber
+
                 self.modified();
             }
             ActionEditorMessage::ParameterDelete(idx) => {
-                self.currently_open.as_mut().unwrap().parameters.remove(idx);
+                let action = self.currently_open.as_mut().unwrap();
+                action.parameters.remove(idx);
+
                 // TODO Renumber
+
                 self.modified();
             }
 
@@ -635,16 +665,10 @@ impl UiComponent for ActionEditor {
                     (new_name, kind.clone(), src.clone());
                 self.modified();
             }
-            ActionEditorMessage::OutputTypeChange(idx, new_type) => {
-                let (name, _, src) = &self.currently_open.as_mut().unwrap().outputs[idx];
+            ActionEditorMessage::OutputSourceChange(idx, new_type, new_source) => {
+                let (name, _, _) = &self.currently_open.as_mut().unwrap().outputs[idx];
                 self.currently_open.as_mut().unwrap().outputs[idx] =
-                    (name.clone(), new_type, src.clone());
-                self.modified();
-            }
-            ActionEditorMessage::OutputSourceChange(idx, new_source) => {
-                let (name, kind, _) = &self.currently_open.as_mut().unwrap().outputs[idx];
-                self.currently_open.as_mut().unwrap().outputs[idx] =
-                    (name.clone(), kind.clone(), new_source);
+                    (name.clone(), new_type, new_source);
                 self.modified();
             }
             ActionEditorMessage::OutputCreate => {
@@ -668,19 +692,16 @@ impl UiComponent for ActionEditor {
                 let outputs = &mut self.currently_open.as_mut().unwrap().outputs;
                 let val = outputs.remove(idx);
                 outputs.insert((idx - 1).max(0), val);
-                // TODO Renumber
                 self.modified();
             }
             ActionEditorMessage::OutputMoveDown(idx) => {
                 let outputs = &mut self.currently_open.as_mut().unwrap().outputs;
                 let val = outputs.remove(idx);
                 outputs.insert((idx + 1).min(outputs.len()), val);
-                // TODO Renumber
                 self.modified();
             }
             ActionEditorMessage::OutputDelete(idx) => {
                 self.currently_open.as_mut().unwrap().outputs.remove(idx);
-                // TODO Renumber
                 self.modified();
             }
         };
