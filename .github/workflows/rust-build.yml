@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          apt -y update && apt -y install libatk1.0-dev
+          sudo apt -y update && sudo apt -y install libatk1.0-dev
 
       - name: Build
         run: |
