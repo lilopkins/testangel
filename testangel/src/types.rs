@@ -173,12 +173,21 @@ impl fmt::Display for FlowError {
     }
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AutomationFlow {
     /// The version of this automation flow file
     version: usize,
     /// The actions called by this flow
     pub actions: Vec<ActionConfiguration>,
+}
+
+impl Default for AutomationFlow {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            actions: vec![],
+        }
+    }
 }
 
 impl AutomationFlow {

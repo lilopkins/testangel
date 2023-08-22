@@ -48,12 +48,6 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
                 log::debug!("Detected possible action {str}");
                 if let Ok(res) = fs::read_to_string(path.path()) {
                     if let Ok(action) = ron::from_str::<Action>(&res) {
-                        log::info!(
-                            "Discovered action {} at {:?}",
-                            action.friendly_name,
-                            path.path(),
-                        );
-
                         for instruction_config in &action.instructions {
                             if engine_list
                                 .get_instruction_by_id(&instruction_config.instruction_id)
@@ -67,6 +61,13 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
                                 continue;
                             }
                         }
+
+                        log::info!(
+                            "Discovered action {} ({}) at {:?}",
+                            action.friendly_name,
+                            action.id,
+                            path.path(),
+                        );
 
                         actions.insert(path.path(), action);
                     }

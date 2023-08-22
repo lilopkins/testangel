@@ -213,7 +213,7 @@ impl ActionEditor {
                 )
                 .save_file()
             {
-                self.current_path = Some(file);
+                self.current_path = Some(file.with_extension("taaction"));
             } else {
                 return Ok(());
             }

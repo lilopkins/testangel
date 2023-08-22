@@ -1,7 +1,7 @@
 use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
 use iced::widget::{
-    column, combo_box, row, scrollable, Button, Column, Container, Row, Rule, Scrollable, Space,
+    column, combo_box, row, scrollable, Button, Column, Container, Row, Scrollable, Space,
     Text, TextInput,
 };
 use iced_aw::Card;
@@ -52,7 +52,7 @@ impl fmt::Display for SaveOrOpenFlowError {
             ),
             Self::MissingAction(action_id) => write!(
                 f,
-                "The action contains an action ({action_id}) which could not be loaded. This may be because that action refers to an instruction that is not available."
+                "The flow contains an action ({action_id}) which could not be loaded. This may be because that action refers to an instruction that is not available."
             ),
         }
     }
@@ -137,7 +137,7 @@ impl FlowEditor {
             return Err(SaveOrOpenFlowError::FlowNotVersionCompatible);
         }
         for ac in &flow.actions {
-            if true {
+            if self.actions_list.get_action_by_id(&ac.action_id).is_none() {
                 return Err(SaveOrOpenFlowError::MissingAction(ac.action_id.clone()));
             }
         }
@@ -186,7 +186,7 @@ impl FlowEditor {
                 .set_directory(env::current_dir().expect("Failed to read current directory"))
                 .save_file()
             {
-                self.current_path = Some(file);
+                self.current_path = Some(file.with_extension("taflow"));
             } else {
                 return Ok(());
             }
@@ -265,11 +265,7 @@ impl FlowEditor {
                     ActionParameterSource::Literal => {
                         TextInput::new("Literal value", &param_value.to_string())
                             .on_input(move |new_val| {
-                                FlowEditorMessage::StepParameterValueChange(
-                                    step_idx,
-                                    id,
-                                    new_val,
-                                )
+                                FlowEditorMessage::StepParameterValueChange(step_idx, id, new_val)
                             })
                             .into()
                     }
@@ -381,7 +377,7 @@ impl UiComponent for FlowEditor {
     type MessageOut = FlowEditorMessageOut;
 
     fn title(&self) -> Option<&str> {
-        Some("Action Editor")
+        Some("Flow Editor")
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
@@ -403,7 +399,6 @@ impl UiComponent for FlowEditor {
                         None,
                         FlowEditorMessage::StepCreate
                     ),
-                    Rule::horizontal(2),
                 ]
                 .spacing(8),
             )
