@@ -804,7 +804,7 @@ impl UiComponent for ActionEditor {
                 // Swap idx and (idx - 1)
                 for instruction_config in action.instructions.iter_mut() {
                     for (_, src) in instruction_config.parameter_sources.iter_mut() {
-                        if let InstructionParameterSource::FromParameter(p_idx) = src {
+                        if let InstructionParameterSource::FromOutput(p_idx, _) = src {
                             if *p_idx == idx {
                                 *p_idx = idx - 1;
                             } else if *p_idx == (idx - 1) {
@@ -814,7 +814,7 @@ impl UiComponent for ActionEditor {
                     }
                 }
                 for (_, _, src) in action.outputs.iter_mut() {
-                    if let InstructionParameterSource::FromParameter(p_idx) = src {
+                    if let InstructionParameterSource::FromOutput(p_idx, _) = src {
                         if *p_idx == idx {
                             *p_idx = idx - 1;
                         } else if *p_idx == (idx - 1) {
