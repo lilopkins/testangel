@@ -1,8 +1,8 @@
 use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
 use iced::widget::{
-    column, combo_box, row, scrollable, Button, Column, Container, Row, Scrollable, Space,
-    Text, TextInput,
+    column, combo_box, row, scrollable, Button, Column, Container, Row, Scrollable, Space, Text,
+    TextInput,
 };
 use iced_aw::Card;
 use testangel::{
