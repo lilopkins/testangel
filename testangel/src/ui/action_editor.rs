@@ -1,9 +1,8 @@
 use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
 use iced::widget::{
-    column, row,
-    scrollable::{Direction, Properties},
-    Button, Column, Container, PickList, Row, Rule, Scrollable, Text, TextInput,
+    column, row, scrollable, Button, Column, Container, PickList, Row, Rule, Scrollable, Text,
+    TextInput,
 };
 use iced_aw::Card;
 use testangel::{
@@ -42,6 +41,7 @@ pub enum ActionEditorMessage {
     OutputMoveUp(usize),
     OutputMoveDown(usize),
     OutputDelete(usize),
+    OutputSourceChange(usize, InstructionParameterSource),
 }
 
 #[derive(Clone, Debug)]
@@ -125,6 +125,7 @@ impl ActionEditor {
         self.currently_open = Some(action);
         self.current_path = Some(file);
         self.needs_saving = false;
+        self.update_outputs();
         Ok(())
     }
 
@@ -242,7 +243,7 @@ impl ActionEditor {
 
     fn ui_instruction_inputs(
         &self,
-        idx: usize,
+        step_idx: usize,
         instruction_config: InstructionConfiguration,
         instruction: Instruction,
     ) -> iced::Element<'_, ActionEditorMessage> {
@@ -250,7 +251,7 @@ impl ActionEditor {
             .parameter_order()
             .iter()
             .enumerate()
-            .fold(Column::new().spacing(4), |col, (step, id)| {
+            .fold(Column::new().spacing(4), |col, (_param_idx, id)| {
                 let (name, kind) = &instruction.parameters()[id];
                 let param_source = &instruction_config.parameter_sources[id];
                 let _param_value = &instruction_config.parameter_values[id];
@@ -259,22 +260,34 @@ impl ActionEditor {
                 let source_opts = self
                     .output_list
                     .iter()
-                    .filter(|(from_step, p_kind, _)| *from_step < (step as isize) && p_kind == kind)
-                    .fold(Row::new(), |row, (_, _, src)| {
-                        row.push(Button::new(Text::new(format!("{src}"))).on_press(
-                            ActionEditorMessage::StepParameterSourceChange(
-                                step,
-                                id.clone(),
-                                src.clone(),
+                    .filter(|(from_step, param_kind, _)| {
+                        *from_step < (step_idx as isize) && param_kind == kind
+                    })
+                    .fold(Row::new().spacing(2), |row, (_, _, src)| {
+                        row.push(
+                            Button::new(Text::new(format!(
+                                "Set {}",
+                                self.friendly_source_string(src)
+                            )))
+                            .on_press(
+                                ActionEditorMessage::StepParameterSourceChange(
+                                    step_idx,
+                                    id.clone(),
+                                    src.clone(),
+                                ),
                             ),
-                        ))
+                        )
                     });
 
                 col.push(
                     row![
-                        Text::new(format!("{name} ({kind}) {param_source}")),
-                        Scrollable::new(source_opts)
-                            .direction(Direction::Horizontal(Properties::new())),
+                        Text::new(format!(
+                            "{name} ({kind}) from {}",
+                            self.friendly_source_string(param_source)
+                        )),
+                        Scrollable::new(source_opts).direction(scrollable::Direction::Horizontal(
+                            scrollable::Properties::new()
+                        )),
                     ]
                     .spacing(4)
                     .align_items(iced::Alignment::Center),
@@ -338,43 +351,67 @@ impl ActionEditor {
     }
 
     fn ui_outputs(&self) -> iced::Element<'_, ActionEditorMessage> {
-        let mut col = Column::new().spacing(4);
         let action = self.currently_open.as_ref().unwrap();
 
-        for (idx, (name, kind, _source)) in action.outputs.iter().enumerate() {
-            col = col.push(
-                row![
-                    Button::new("×").on_press(ActionEditorMessage::OutputDelete(idx)),
-                    Button::new("ʌ").on_press_maybe(if idx == 0 {
-                        None
-                    } else {
-                        Some(ActionEditorMessage::OutputMoveUp(idx))
-                    }),
-                    Button::new("v").on_press_maybe(if (idx + 1) == action.outputs.len() {
-                        None
-                    } else {
-                        Some(ActionEditorMessage::OutputMoveDown(idx))
-                    }),
-                    TextInput::new("Output Name", name)
-                        .on_input(move |s| ActionEditorMessage::OutputNameChange(idx, s)),
-                    PickList::new(
-                        &[
-                            ParameterKind::String,
-                            ParameterKind::Integer,
-                            ParameterKind::Decimal,
-                        ][..],
-                        Some(kind.clone()),
-                        move |k| ActionEditorMessage::OutputTypeChange(idx, k)
-                    )
-                    .placeholder("Output Kind"),
-                    // TODO Output source
-                ]
-                .spacing(4)
-                .align_items(iced::Alignment::Center),
-            );
-        }
+        action
+            .outputs
+            .iter()
+            .enumerate()
+            .fold(
+                Column::new().spacing(4),
+                |col, (idx, (name, kind, source))| {
+                    let source_opts = self
+                        .output_list
+                        .iter()
+                        .filter(|(_, param_kind, _)| param_kind == kind)
+                        .fold(Row::new().spacing(2), |row, (_, _, src)| {
+                            row.push(
+                                Button::new(Text::new(format!(
+                                    "Set {}",
+                                    self.friendly_source_string(src)
+                                )))
+                                .on_press(
+                                    ActionEditorMessage::OutputSourceChange(idx, src.clone()),
+                                ),
+                            )
+                        });
 
-        col.into()
+                    col.push(
+                        row![
+                            Button::new("×").on_press(ActionEditorMessage::OutputDelete(idx)),
+                            Button::new("ʌ").on_press_maybe(if idx == 0 {
+                                None
+                            } else {
+                                Some(ActionEditorMessage::OutputMoveUp(idx))
+                            }),
+                            Button::new("v").on_press_maybe(if (idx + 1) == action.outputs.len() {
+                                None
+                            } else {
+                                Some(ActionEditorMessage::OutputMoveDown(idx))
+                            }),
+                            TextInput::new("Output Name", name)
+                                .on_input(move |s| ActionEditorMessage::OutputNameChange(idx, s)),
+                            PickList::new(
+                                &[
+                                    ParameterKind::String,
+                                    ParameterKind::Integer,
+                                    ParameterKind::Decimal,
+                                ][..],
+                                Some(kind.clone()),
+                                move |k| ActionEditorMessage::OutputTypeChange(idx, k)
+                            )
+                            .placeholder("Output Kind"),
+                            Text::new(format!("{}", self.friendly_source_string(source))),
+                            Scrollable::new(source_opts).direction(
+                                scrollable::Direction::Horizontal(scrollable::Properties::new())
+                            ),
+                        ]
+                        .spacing(4)
+                        .align_items(iced::Alignment::Center),
+                    )
+                },
+            )
+            .into()
     }
 
     /// Update the possible outputs
@@ -404,6 +441,28 @@ impl ActionEditor {
                 }
             }
         }
+    }
+
+    /// Convert an [`InstructionParameterSource`] to a friendly String by fetching names of parameters
+    /// and results from the currently opened action.
+    fn friendly_source_string(&self, source: &InstructionParameterSource) -> String {
+        if let Some(action) = &self.currently_open {
+            return match source {
+                InstructionParameterSource::Literal => format!("Literal value"),
+                InstructionParameterSource::FromParameter(idx) => {
+                    format!("From Parameter {}", action.parameters[*idx].0)
+                }
+                InstructionParameterSource::FromOutput(step, id) => {
+                    let ic = &action.instructions[*step];
+                    let instruction = self
+                        .engines_list
+                        .get_instruction_by_id(&ic.instruction_id)
+                        .unwrap();
+                    format!("From Step {}: {}", step + 1, instruction.outputs()[id].0)
+                }
+            };
+        }
+        source.to_string()
     }
 }
 
@@ -580,6 +639,12 @@ impl UiComponent for ActionEditor {
                 let (name, _, src) = &self.currently_open.as_mut().unwrap().outputs[idx];
                 self.currently_open.as_mut().unwrap().outputs[idx] =
                     (name.clone(), new_type, src.clone());
+                self.modified();
+            }
+            ActionEditorMessage::OutputSourceChange(idx, new_source) => {
+                let (name, kind, _) = &self.currently_open.as_mut().unwrap().outputs[idx];
+                self.currently_open.as_mut().unwrap().outputs[idx] =
+                    (name.clone(), kind.clone(), new_source);
                 self.modified();
             }
             ActionEditorMessage::OutputCreate => {
