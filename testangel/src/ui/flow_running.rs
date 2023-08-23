@@ -61,19 +61,29 @@ impl FlowRunning {
             }
 
             for (step, action_config) in flow.actions.iter().enumerate() {
-                if let Ok((output, ev)) = action_config.execute(
+                let mut proceed = true;
+                match action_config.execute(
                     actions_list.clone(),
                     engines_list.clone(),
                     outputs.clone(),
                 ) {
-                    outputs.push(output);
-                    evidence = vec![evidence, ev].concat();
-                } else {
-                    rfd::MessageDialog::new()
-                        .set_level(rfd::MessageLevel::Error)
-                        .set_title("Failed to execute")
-                        .set_description(&format!("Failed to execute flow at step {}", step + 1))
-                        .show();
+                    Ok((output, ev)) => {
+                        outputs.push(output);
+                        evidence = vec![evidence, ev].concat();
+                    }
+                    Err(e) => {
+                        rfd::MessageDialog::new()
+                            .set_level(rfd::MessageLevel::Error)
+                            .set_title("Failed to execute")
+                            .set_description(&format!(
+                                "Failed to execute flow at step {}: {e}",
+                                step + 1
+                            ))
+                            .show();
+                        proceed = false;
+                    }
+                }
+                if !proceed {
                     return None;
                 }
             }

@@ -38,11 +38,15 @@ fn main() {
     }
 
     for action_config in flow.actions {
-        let (output, ev) = action_config
-            .execute(action_map.clone(), engine_map.clone(), outputs.clone())
-            .expect("Failed to execute.");
-        outputs.push(output);
-        evidence = vec![evidence, ev].concat();
+        match action_config.execute(action_map.clone(), engine_map.clone(), outputs.clone()) {
+            Ok((output, ev)) => {
+                outputs.push(output);
+                evidence = vec![evidence, ev].concat();
+            }
+            Err(e) => {
+                panic!("Failed to execute: {e}");
+            }
+        }
     }
 
     report_generation::save_report(cli.report, evidence);
