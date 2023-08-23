@@ -58,7 +58,8 @@ enum State {
 impl App {
     fn update_action_list(&mut self) {
         let actions_rc = Arc::new(action_loader::get_actions(self.engine_list.clone()));
-        self.flow_editor.update_action_map(actions_rc);
+        self.flow_editor.update_action_map(actions_rc.clone());
+        self.flow_running.update_action_map(actions_rc);
     }
 }
 
