@@ -384,6 +384,10 @@ impl ActionEditor {
                     for (name, kind) in instruction.outputs().values() {
                         outputs_text.push_str(&format!("{name}: {kind}"));
                     }
+                    if !outputs_text.is_empty() {
+                        // remove last newline
+                        outputs_text.remove(outputs_text.len() - 1);
+                    }
                     col.push(Card::new(
                         Text::new(format!("Step {}: {}", idx + 1, instruction.friendly_name())),
                         column![
