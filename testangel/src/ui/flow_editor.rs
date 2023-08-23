@@ -118,7 +118,16 @@ impl FlowEditor {
     }
 
     pub(crate) fn update_action_map(&mut self, actions_list: Arc<ActionMap>) {
-        self.actions_list = actions_list;
+        self.actions_list = actions_list.clone();
+        let mut available_actions = vec![];
+        for (group_name, actions) in actions_list.get_by_group() {
+            for action in actions {
+                available_actions.push(AvailableAction {
+                    friendly_name: format!("{group_name}: {}", action.friendly_name),
+                    base_action: action.clone(),
+                });
+            }
+        }
     }
 
     /// Create a new flow and open it

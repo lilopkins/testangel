@@ -81,6 +81,10 @@ impl FlowRunning {
             Some(evidence)
         }));
     }
+
+    pub(crate) fn update_action_map(&mut self, actions_list: Arc<ActionMap>) {
+        self.actions_list = actions_list;
+    }
 }
 
 impl UiComponent for FlowRunning {
