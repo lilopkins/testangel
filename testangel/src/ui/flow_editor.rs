@@ -278,6 +278,7 @@ impl FlowEditor {
                             .on_input(move |new_val| {
                                 FlowEditorMessage::StepParameterValueChange(step_idx, id, new_val)
                             })
+                            .width(250)
                             .into()
                     }
                     _ => Space::new(0, 0).into(),
