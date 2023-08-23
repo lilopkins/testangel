@@ -34,7 +34,7 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
     let mut actions = HashMap::new();
     let action_dir = env::var("ACTION_DIR").unwrap_or("./actions".to_owned());
     fs::create_dir_all(action_dir.clone()).unwrap();
-    for path in fs::read_dir(action_dir).unwrap() {
+    'action_loop: for path in fs::read_dir(action_dir).unwrap() {
         let path = path.unwrap();
         let filename = path.file_name();
         if let Ok(meta) = path.metadata() {
@@ -58,7 +58,7 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
                                     action.friendly_name,
                                     instruction_config.instruction_id,
                                 );
-                                continue;
+                                continue 'action_loop;
                             }
                         }
 
@@ -70,7 +70,11 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
                         );
 
                         actions.insert(path.path(), action);
+                    } else {
+                        log::warn!("Couldn't parse action");
                     }
+                } else {
+                    log::warn!("Couldn't read action");
                 }
             }
         }
