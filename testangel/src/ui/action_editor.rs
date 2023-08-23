@@ -342,6 +342,7 @@ impl ActionEditor {
                                     new_val,
                                 )
                             })
+                            .width(250)
                             .into()
                     }
                     _ => Space::new(0, 0).into(),
