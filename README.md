@@ -13,3 +13,24 @@ In TestAngel, you start off creating a Test Flow. This will be the instructions 
 |`testangel`|The main executable and UI that controls the platform ("the controller").|
 |`testangel-ipc`|The library that contains the serialisable messages that can be exchanged between the controller and the engine plugins.|
 |`testangel-arithmetic`|An arithmetic engine plugin.|
+
+## Engine Communication
+
+Engines are dynamically linked libraries (`.dll`s on Windows, `.dylib`s on Mac, `.so`s on Linux systems) which have a single function, `call`.
+The call function has the signature:
+```c
+int ta_call(char* input, char** output);
+```
+
+It has the following return values:
+
+Return Value | Meaning
+------------:|:-------
+0            | Ok
+1            | `output` is already set
+
+These strings are JSON formatted and comply with the schema defined in `testangel-ipc`.
+You can generate up-to-date JSON schemas by cloning this repository and running:
+```
+cargo run -p testangel-ipc --features schemas
+```
