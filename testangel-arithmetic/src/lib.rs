@@ -1,16 +1,11 @@
-use std::{collections::HashMap, io};
+use std::{
+    collections::HashMap,
+    ffi::{c_char, CStr, CString},
+    sync::Mutex,
+};
 
-use clap::Parser;
 use lazy_static::lazy_static;
 use testangel_ipc::prelude::*;
-
-#[derive(Parser)]
-#[command(author, about, version)]
-struct Cli {
-    /// Rather than running as a REPL loop, process a single request
-    #[arg(short, long)]
-    request: Option<String>,
-}
 
 #[derive(Default)]
 struct State {
@@ -62,92 +57,54 @@ lazy_static! {
         "Decrease a counter.",
     )
     .with_output("value", "Counter Value", ParameterKind::Integer);
+    static ref STATE: Mutex<State> = Mutex::new(State::default());
 }
 
-fn main() {
-    let cli = Cli::parse();
+#[no_mangle]
+pub unsafe extern "C" fn ta_call(input: *const c_char, result: *mut *const c_char) -> isize {
+    if result.is_null() || !(*result).is_null() {
+        return 1; // result isn't null
+    }
 
-    // Parse the request
-    if let Some(request) = cli.request {
-        let request = Request::try_from(request);
-        if let Err(e) = request {
-            // Return a well-formatted error if the request couldn't be parsed.
-            println!(
-                "{}",
-                Response::Error {
-                    kind: ErrorKind::FailedToParseIPCJson,
-                    reason: format!("The IPC message was invalid. ({:?})", e)
-                }
-                .to_json()
-            );
-            return;
+    let input = CStr::from_ptr(input);
+    let response = call_internal(String::from_utf8_lossy(input.to_bytes()).to_string());
+    let c_response = CString::new(response).expect("valid response");
+    *result = c_response.as_ptr();
+
+    0
+}
+
+fn call_internal(request: String) -> String {
+    match Request::try_from(request) {
+        Err(e) => Response::Error {
+            kind: ErrorKind::FailedToParseIPCJson,
+            reason: format!("The IPC message was invalid. ({:?})", e),
         }
-        let request = request.unwrap();
-        process_request(&mut State::default(), request);
-    } else {
-        // Start REPL loop
-        repl_loop().expect("io failure");
+        .to_json(),
+        Ok(request) => process_request(STATE.lock().as_deref_mut().unwrap(), request).to_json(),
     }
 }
 
-fn repl_loop() -> io::Result<()> {
-    let mut state = State::default();
-    loop {
-        let mut buf = String::new();
-        io::stdin().read_line(&mut buf)?;
-        let buf = buf.trim();
-
-        if buf == "\x04" {
-            // EOF
-            return Ok(());
-        }
-
-        if buf.len() == 0 {
-            continue;
-        }
-
-        let request = Request::try_from(buf.to_owned());
-        if let Err(e) = request {
-            // Return a well-formatted error if the request couldn't be parsed.
-            println!(
-                "{}",
-                Response::Error {
-                    kind: ErrorKind::FailedToParseIPCJson,
-                    reason: format!("The IPC message was invalid. ({:?})", e)
-                }
-                .to_json()
-            );
-            continue;
-        }
-        let request = request.unwrap();
-        process_request(&mut state, request);
-    }
-}
-
-fn process_request(state: &mut State, request: Request) {
+fn process_request(state: &mut State, request: Request) -> Response {
     match request {
         Request::ResetState => {
             // Reset the state.
             *state = State::default();
-            println!("{}", Response::StateReset.to_json());
+            Response::StateReset
         }
         Request::Instructions => {
             // Provide a list of instructions this engine can run.
-            println!(
-                "{}",
-                Response::Instructions {
-                    friendly_name: "Arithmetic".to_owned(),
-                    instructions: vec![
-                        INSTRUCTION_ADD.clone(),
-                        INSTRUCTION_SUB.clone(),
-                        INSTRUCTION_MUL.clone(),
-                        INSTRUCTION_DIV.clone(),
-                        INSTRUCTION_COUNTER_INC.clone(),
-                        INSTRUCTION_COUNTER_DEC.clone(),
-                    ],
-                }
-                .to_json()
-            );
+            Response::Instructions {
+                friendly_name: "Arithmetic".to_owned(),
+                instructions: vec![
+                    INSTRUCTION_ADD.clone(),
+                    INSTRUCTION_SUB.clone(),
+                    INSTRUCTION_MUL.clone(),
+                    INSTRUCTION_DIV.clone(),
+                    INSTRUCTION_COUNTER_INC.clone(),
+                    INSTRUCTION_COUNTER_DEC.clone(),
+                ],
+            }
         }
         Request::RunInstructions { instructions } => {
             let mut output = Vec::new();
@@ -156,8 +113,7 @@ fn process_request(state: &mut State, request: Request) {
                 if i.instruction == *INSTRUCTION_ADD.id() {
                     // Validate parameters
                     if let Err((kind, reason)) = INSTRUCTION_ADD.validate(&i) {
-                        println!("{}", Response::Error { kind, reason }.to_json());
-                        return;
+                        return Response::Error { kind, reason };
                     }
 
                     // Get parameters
@@ -176,8 +132,7 @@ fn process_request(state: &mut State, request: Request) {
                 } else if i.instruction == *INSTRUCTION_SUB.id() {
                     // Validate parameters
                     if let Err((kind, reason)) = INSTRUCTION_ADD.validate(&i) {
-                        println!("{}", Response::Error { kind, reason }.to_json());
-                        return;
+                        return Response::Error { kind, reason };
                     }
 
                     // Get parameters
@@ -196,8 +151,7 @@ fn process_request(state: &mut State, request: Request) {
                 } else if i.instruction == *INSTRUCTION_MUL.id() {
                     // Validate parameters
                     if let Err((kind, reason)) = INSTRUCTION_ADD.validate(&i) {
-                        println!("{}", Response::Error { kind, reason }.to_json());
-                        return;
+                        return Response::Error { kind, reason };
                     }
 
                     // Get parameters
@@ -216,8 +170,7 @@ fn process_request(state: &mut State, request: Request) {
                 } else if i.instruction == *INSTRUCTION_DIV.id() {
                     // Validate parameters
                     if let Err((kind, reason)) = INSTRUCTION_ADD.validate(&i) {
-                        println!("{}", Response::Error { kind, reason }.to_json());
-                        return;
+                        return Response::Error { kind, reason };
                     }
 
                     // Get parameters
@@ -236,8 +189,7 @@ fn process_request(state: &mut State, request: Request) {
                 } else if i.instruction == *INSTRUCTION_COUNTER_INC.id() {
                     // Validate parameters
                     if let Err((kind, reason)) = INSTRUCTION_COUNTER_INC.validate(&i) {
-                        println!("{}", Response::Error { kind, reason }.to_json());
-                        return;
+                        return Response::Error { kind, reason };
                     }
 
                     // Produce output and evidence
@@ -253,8 +205,7 @@ fn process_request(state: &mut State, request: Request) {
                 } else if i.instruction == *INSTRUCTION_COUNTER_DEC.id() {
                     // Validate parameters
                     if let Err((kind, reason)) = INSTRUCTION_COUNTER_DEC.validate(&i) {
-                        println!("{}", Response::Error { kind, reason }.to_json());
-                        return;
+                        return Response::Error { kind, reason };
                     }
 
                     // Produce output and evidence
@@ -268,25 +219,17 @@ fn process_request(state: &mut State, request: Request) {
                     map.insert("value".to_owned(), ParameterValue::Integer(state.counter));
                     output.push(map);
                 } else {
-                    println!(
-                        "{}",
-                        Response::Error {
-                            kind: ErrorKind::InvalidInstruction,
-                            reason: format!(
-                                "The requested instruction {} could not be handled by this engine.",
-                                i.instruction
-                            ),
-                        }
-                        .to_json()
-                    );
-                    return;
+                    return Response::Error {
+                        kind: ErrorKind::InvalidInstruction,
+                        reason: format!(
+                            "The requested instruction {} could not be handled by this engine.",
+                            i.instruction
+                        ),
+                    };
                 }
             }
-            // Print output
-            println!(
-                "{}",
-                Response::ExecutionOutput { output, evidence }.to_json()
-            );
+
+            Response::ExecutionOutput { output, evidence }
         }
     }
 }
