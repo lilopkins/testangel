@@ -1,45 +1,58 @@
-use std::{collections::HashMap, sync::Arc, thread};
+use std::{
+    collections::HashMap,
+    env,
+    sync::Arc,
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
-use egui_file::FileDialog;
-use testangel::{types::{AutomationFlow, FlowError}, report_generation};
-use testangel_ipc::prelude::*;
+use iced::widget::{Container, Text};
+use testangel::{
+    action_loader::ActionMap, ipc::EngineList, report_generation, types::AutomationFlow,
+};
+use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterValue};
 
-use super::{action_loader::ActionMap, ipc::EngineList, UiComponent};
+use super::UiComponent;
 
-#[derive(Default)]
-pub struct FlowRunningState {
-    action_map: Arc<ActionMap>,
-    engine_map: Arc<EngineList>,
-    pub flow: Option<AutomationFlow>,
-    running: bool,
-    num_dots_ellipsis: f32,
-    save_dialog: Option<FileDialog>,
-    worker_thread: Option<thread::JoinHandle<Result<FlowExecutionResult, FlowError>>>,
+#[derive(Clone, Debug)]
+pub enum FlowRunningMessage {
+    Tick,
 }
 
-impl FlowRunningState {
-    pub fn new(action_map: Arc<ActionMap>, engine_map: Arc<EngineList>) -> Self {
+#[derive(Clone, Debug)]
+pub enum FlowRunningMessageOut {
+    BackToEditor,
+}
+
+#[derive(Default)]
+pub struct FlowRunning {
+    actions_list: Arc<ActionMap>,
+    engines_list: Arc<EngineList>,
+
+    thread: Option<JoinHandle<Option<Vec<Evidence>>>>,
+    is_saving: bool,
+}
+
+impl FlowRunning {
+    pub fn new(actions_list: Arc<ActionMap>, engines_list: Arc<EngineList>) -> Self {
         Self {
-            action_map,
-            engine_map,
-            ..Default::default()
+            actions_list,
+            engines_list,
+            thread: None,
+            is_saving: false,
         }
     }
 
-    /// Start execution of this automation flow.
-    pub fn start_flow(&mut self) {
-        self.running = true;
-        let flow = self.flow.as_ref().unwrap().clone();
-        let action_map = self.action_map.clone();
-        let engine_map = self.engine_map.clone();
-
-        self.worker_thread = Some(thread::spawn(move || {
-            let flow = flow;
+    pub(crate) fn start_flow(&mut self, flow: AutomationFlow) {
+        self.is_saving = false;
+        let actions_list = self.actions_list.clone();
+        let engines_list = self.engines_list.clone();
+        self.thread = Some(thread::spawn(move || {
             let mut outputs: Vec<HashMap<usize, ParameterValue>> = Vec::new();
             let mut evidence = Vec::new();
 
-            for engine in engine_map.inner() {
-                if let Err(_) = engine.reset_state() {
+            for engine in engines_list.inner() {
+                if engine.reset_state().is_err() {
                     evidence.push(Evidence {
                         label: String::from("WARNING: State Warning"),
                         content: EvidenceContent::Textual(String::from("For this test execution, the state couldn't be correctly reset. Some results may not be accurate."))
@@ -47,86 +60,90 @@ impl FlowRunningState {
                 }
             }
 
-            for action_config in flow.actions {
-                let (output, ev) = action_config.execute(
-                    action_map.clone(),
-                    engine_map.clone(),
+            for (step, action_config) in flow.actions.iter().enumerate() {
+                let mut proceed = true;
+                match action_config.execute(
+                    actions_list.clone(),
+                    engines_list.clone(),
                     outputs.clone(),
-                )?;
-                outputs.push(output);
-                evidence = vec![evidence, ev].concat();
+                ) {
+                    Ok((output, ev)) => {
+                        outputs.push(output);
+                        evidence = vec![evidence, ev].concat();
+                    }
+                    Err(e) => {
+                        rfd::MessageDialog::new()
+                            .set_level(rfd::MessageLevel::Error)
+                            .set_title("Failed to execute")
+                            .set_description(&format!(
+                                "Failed to execute flow at step {}: {e}",
+                                step + 1
+                            ))
+                            .show();
+                        proceed = false;
+                    }
+                }
+                if !proceed {
+                    return None;
+                }
             }
-            Ok(FlowExecutionResult { evidence })
+
+            Some(evidence)
         }));
     }
 
-    /// Update the action map in this state.
-    pub(crate) fn update_actions(&mut self, new_action_map: Arc<ActionMap>) {
-        self.action_map = new_action_map;
+    pub(crate) fn update_action_map(&mut self, actions_list: Arc<ActionMap>) {
+        self.actions_list = actions_list;
     }
 }
 
-impl UiComponent for FlowRunningState {
-    fn menu_bar(&mut self, _ui: &mut egui::Ui) -> Option<super::State> {
-        None
+impl UiComponent for FlowRunning {
+    type Message = FlowRunningMessage;
+    type MessageOut = FlowRunningMessageOut;
+
+    fn title(&self) -> Option<&str> {
+        Some("Flow Running")
     }
 
-    fn always_ui(&mut self, ctx: &egui::Context) -> Option<super::State> {
-        if let Some(dialog) = &mut self.save_dialog {
-            if dialog.show(ctx).selected() {
-                if let Some(path) = dialog.path() {
-                    // generate pdf and save
-                    let res = self.worker_thread.take().unwrap().join().unwrap();
-                    if let Ok(fer) = res {
-                        report_generation::save_report(path, fer.evidence);
+    fn subscription(&self) -> iced::Subscription<Self::Message> {
+        iced::time::every(Duration::from_millis(500)).map(|_| FlowRunningMessage::Tick)
+    }
+
+    fn update(&mut self, message: Self::Message) -> Option<Self::MessageOut> {
+        match message {
+            FlowRunningMessage::Tick => {
+                if let Some(thread) = &self.thread {
+                    if thread.is_finished() {
+                        self.is_saving = true;
+                        if let Some(evidence) = self.thread.take().unwrap().join().unwrap() {
+                            if let Some(path) = rfd::FileDialog::new()
+                                .add_filter("Portable Document Format", &["pdf"])
+                                .set_file_name("report.pdf")
+                                .set_title("Save Report")
+                                .set_directory(env::current_dir().expect("Failed to get cwd"))
+                                .save_file()
+                            {
+                                report_generation::save_report(
+                                    path.with_extension("pdf"),
+                                    evidence,
+                                );
+                            }
+                        }
+                        return Some(FlowRunningMessageOut::BackToEditor);
                     }
-
-                    // Set the worker thread to None, the flow to None, and return a new state of the editor.
-                    self.worker_thread = None;
-                    self.flow = None;
-                    self.save_dialog = None;
-                    return Some(super::State::AutomationFlowEditor);
                 }
             }
         }
-
         None
     }
 
-    fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) -> Option<super::State> {
-        if self.running {
-            self.num_dots_ellipsis =
-                ctx.animate_value_with_time(egui::Id::new("flowrunning-ellipses"), 3.99, 3.0);
-            if self.num_dots_ellipsis == 3.99 {
-                self.num_dots_ellipsis =
-                    ctx.animate_value_with_time(egui::Id::new("flowrunning-ellipses"), 0.0, 0.0);
-            }
-
-            let mut ellipses = String::new();
-            let num_dots = self.num_dots_ellipsis.floor() as i32;
-            for _ in 0..num_dots {
-                ellipses.push('.');
-            }
-            ui.heading(format!("Automation flow running{ellipses}"));
-
-            if let Some(handle) = &self.worker_thread {
-                if handle.is_finished() {
-                    self.running = false;
-                }
-            }
+    fn view(&self) -> iced::Element<'_, Self::Message> {
+        Container::new(Text::new(if self.is_saving {
+            "Saving report..."
         } else {
-            ui.heading("Saving Automation Flow execution report.");
-            if let None = self.save_dialog {
-                let mut dialog = FileDialog::save_file(None);
-                dialog.open();
-                self.save_dialog = Some(dialog);
-            }
-        }
-
-        None
+            "Flow running..."
+        }))
+        .padding(32)
+        .into()
     }
-}
-
-struct FlowExecutionResult {
-    evidence: Vec<Evidence>,
 }

@@ -8,8 +8,10 @@ use crate::{
     ipc::{self, EngineList, IpcError},
 };
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
+    /// The data version of this action.
+    version: usize,
     /// The internal ID of this action. Must be unique.
     pub id: String,
     /// The friendly name of this action.
@@ -24,6 +26,28 @@ pub struct Action {
     pub outputs: Vec<(String, ParameterKind, InstructionParameterSource)>,
     /// The instructions called by this action
     pub instructions: Vec<InstructionConfiguration>,
+}
+
+impl Default for Action {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            id: uuid::Uuid::new_v4().to_string(),
+            friendly_name: String::new(),
+            description: String::new(),
+            group: String::new(),
+            parameters: Vec::new(),
+            outputs: Vec::new(),
+            instructions: Vec::new(),
+        }
+    }
+}
+
+impl Action {
+    /// Get the version of this action.
+    pub fn version(&self) -> usize {
+        self.version
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -51,15 +75,13 @@ impl InstructionConfiguration {
                 InstructionParameterSource::Literal => {
                     self.parameter_values.get(id).unwrap().clone()
                 }
-                InstructionParameterSource::FromOutput(step, id, _friendly_name) => {
-                    previous_outputs
-                        .get(*step)
-                        .unwrap()
-                        .get(id)
-                        .unwrap()
-                        .clone()
-                }
-                InstructionParameterSource::FromParameter(id, _friendly_name) => {
+                InstructionParameterSource::FromOutput(step, id) => previous_outputs
+                    .get(*step)
+                    .unwrap()
+                    .get(id)
+                    .unwrap()
+                    .clone(),
+                InstructionParameterSource::FromParameter(id) => {
                     action_parameters.get(id).unwrap().clone()
                 }
             };
@@ -76,19 +98,17 @@ impl InstructionConfiguration {
                 }],
             },
         )
-        .map_err(|e| FlowError::IPCFailure(e))?;
+        .map_err(FlowError::IPCFailure)?;
 
         // Generate output table and return
         match response {
             Response::ExecutionOutput { output, evidence } => {
-                return Ok((output[0].clone(), evidence[0].clone()));
+                Ok((output[0].clone(), evidence[0].clone()))
             }
-            Response::Error { kind, reason } => {
-                return Err(FlowError::FromInstruction {
-                    error_kind: kind,
-                    reason,
-                })
-            }
+            Response::Error { kind, reason } => Err(FlowError::FromInstruction {
+                error_kind: kind,
+                reason,
+            }),
             _ => unreachable!(),
         }
     }
@@ -114,21 +134,20 @@ impl From<Instruction> for InstructionConfiguration {
 pub enum InstructionParameterSource {
     #[default]
     Literal,
-    FromParameter(usize, String),
-    FromOutput(usize, String, String),
+    FromParameter(usize),
+    FromOutput(usize, String),
 }
 
-impl InstructionParameterSource {
-    /// Get a text representation of this [`ParameterSource`]
-    pub fn text_repr(&self) -> String {
+impl fmt::Display for InstructionParameterSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::FromOutput(step, _id, friendly_name) => {
-                format!("From Step {}: {}", step + 1, friendly_name)
+            Self::FromOutput(step, id) => {
+                write!(f, "From Step {}: {}", step + 1, id)
             }
-            Self::FromParameter(_id, friendly_name) => {
-                format!("Parameter: {friendly_name}")
+            Self::FromParameter(id) => {
+                write!(f, "Parameter {id}")
             }
-            Self::Literal => "Literal".to_owned(),
+            Self::Literal => write!(f, "Literal"),
         }
     }
 }
@@ -154,10 +173,28 @@ impl fmt::Display for FlowError {
     }
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AutomationFlow {
+    /// The version of this automation flow file
+    version: usize,
     /// The actions called by this flow
     pub actions: Vec<ActionConfiguration>,
+}
+
+impl Default for AutomationFlow {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            actions: vec![],
+        }
+    }
+}
+
+impl AutomationFlow {
+    /// Get the version of this flow.
+    pub fn version(&self) -> usize {
+        self.version
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -182,16 +219,14 @@ impl ActionConfiguration {
         for (id, src) in &self.parameter_sources {
             let value = match src {
                 ActionParameterSource::Literal => self.parameter_values.get(id).unwrap().clone(),
-                ActionParameterSource::FromOutput(step, id, _friendly_name) => {
-                    previous_action_outputs
-                        .get(*step)
-                        .unwrap()
-                        .get(id)
-                        .unwrap()
-                        .clone()
-                }
+                ActionParameterSource::FromOutput(step, id) => previous_action_outputs
+                    .get(*step)
+                    .unwrap()
+                    .get(id)
+                    .unwrap()
+                    .clone(),
             };
-            action_parameters.insert(id.clone(), value);
+            action_parameters.insert(*id, value);
         }
 
         // Iterate through instructions
@@ -210,24 +245,20 @@ impl ActionConfiguration {
 
         // Generate output map
         let mut output = HashMap::new();
-        let mut index = 0;
-        for (_friendly_name, _kind, src) in &action.outputs {
+        for (index, (_friendly_name, _kind, src)) in action.outputs.iter().enumerate() {
             let value = match src {
                 InstructionParameterSource::Literal => panic!("Output set to literal."),
-                InstructionParameterSource::FromOutput(step, id, _friendly_name) => {
-                    instruction_outputs
-                        .get(*step)
-                        .unwrap()
-                        .get(id)
-                        .unwrap()
-                        .clone()
-                }
-                InstructionParameterSource::FromParameter(id, _friendly_name) => {
+                InstructionParameterSource::FromOutput(step, id) => instruction_outputs
+                    .get(*step)
+                    .unwrap()
+                    .get(id)
+                    .unwrap()
+                    .clone(),
+                InstructionParameterSource::FromParameter(id) => {
                     action_parameters.get(id).unwrap().clone()
                 }
             };
             output.insert(index, value);
-            index += 1;
         }
 
         Ok((output, evidence))
@@ -238,11 +269,9 @@ impl From<Action> for ActionConfiguration {
     fn from(value: Action) -> Self {
         let mut parameter_sources = HashMap::new();
         let mut parameter_values = HashMap::new();
-        let mut id = 0;
-        for (_friendly_name, kind) in value.parameters {
+        for (id, (_friendly_name, kind)) in value.parameters.iter().enumerate() {
             parameter_sources.insert(id, ActionParameterSource::Literal);
             parameter_values.insert(id, kind.default_value());
-            id += 1;
         }
         Self {
             action_id: value.id.clone(),
@@ -256,17 +285,16 @@ impl From<Action> for ActionConfiguration {
 pub enum ActionParameterSource {
     #[default]
     Literal,
-    FromOutput(usize, usize, String),
+    FromOutput(usize, usize),
 }
 
-impl ActionParameterSource {
-    /// Get a text representation of this [`ActionParameterSource`].
-    pub fn text_repr(&self) -> String {
+impl fmt::Display for ActionParameterSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::FromOutput(step, _id, friendly_name) => {
-                format!("From Step {}: {}", step + 1, friendly_name)
+            Self::FromOutput(step, id) => {
+                write!(f, "From Step {}: Output {}", step + 1, id + 1)
             }
-            Self::Literal => "Literal".to_owned(),
+            Self::Literal => write!(f, "Literal"),
         }
     }
 }

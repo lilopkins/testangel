@@ -32,11 +32,11 @@ pub fn ipc_call(engine: &Engine, request: Request) -> Result<Response, IpcError>
             e,
             engine,
         );
-        return IpcError::InvalidResponseFromEngine;
+        IpcError::InvalidResponseFromEngine
     })?;
 
     log::debug!("Got response {res:?}");
-    return Ok(res);
+    Ok(res)
 }
 
 #[derive(Clone, Debug, Default)]
@@ -55,7 +55,7 @@ impl Engine {
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
-            .map_err(|e| IpcError::IoError(e))?;
+            .map_err(IpcError::IoError)?;
         self.stdin = proc.stdin.map(|v| Arc::new(Mutex::new(v)));
         self.stdout = proc.stdout.map(|v| Arc::new(Mutex::new(v)));
         Ok(())
@@ -66,7 +66,7 @@ impl Engine {
         let mut stdin = stdin.lock().map_err(|_| IpcError::CantLockEngineIo)?;
         stdin
             .write_fmt(format_args!("{}\n", message.as_ref()))
-            .map_err(|e| IpcError::IoError(e))
+            .map_err(IpcError::IoError)
     }
 
     fn read_until_eol(&self) -> Result<String, IpcError> {
@@ -77,11 +77,11 @@ impl Engine {
             let mut one_byte = [0u8];
             stdout
                 .read_exact(&mut one_byte)
-                .map_err(|e| IpcError::IoError(e))?;
-            if one_byte[0] != ('\n' as u8) {
+                .map_err(IpcError::IoError)?;
+            if one_byte[0] != b'\n' {
                 buf.push(one_byte[0]);
             } else {
-                return Ok(String::from_utf8(buf).map_err(|_| IpcError::InvalidResponseFromEngine)?);
+                return String::from_utf8(buf).map_err(|_| IpcError::InvalidResponseFromEngine);
             }
         }
     }
@@ -89,6 +89,12 @@ impl Engine {
     /// Ask the engine to reset it's state for test repeatability.
     pub fn reset_state(&self) -> Result<(), IpcError> {
         ipc_call(self, Request::ResetState).map(|_| ())
+    }
+
+    /// Ask the engine to shut down.
+    pub fn shut_down(&self) {
+        // We don't expect any response from the engine so we can't determine if it worked or not.
+        let _ = ipc_call(self, Request::ShutDown);
     }
 }
 
@@ -111,7 +117,7 @@ impl EngineList {
                 }
             }
         }
-        return None;
+        None
     }
 
     /// Get an instruction and engine from an instruction ID by iterating through available engines.
@@ -123,7 +129,7 @@ impl EngineList {
                 }
             }
         }
-        return None;
+        None
     }
 
     /// Return the inner list of engines
@@ -154,11 +160,11 @@ pub fn get_engines() -> EngineList {
                     path: path.path(),
                     ..Default::default()
                 };
-                if let Err(_) = engine.start() {
+                if engine.start().is_err() {
                     log::error!("Failed to start engine.");
                     continue;
                 }
-                if let Ok(res) = ipc_call(&mut engine, Request::Instructions) {
+                if let Ok(res) = ipc_call(&engine, Request::Instructions) {
                     match res {
                         Response::Instructions {
                             friendly_name,
