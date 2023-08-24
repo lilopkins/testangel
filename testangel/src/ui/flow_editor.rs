@@ -317,10 +317,7 @@ impl FlowEditor {
                 for (name, kind, _) in &action.outputs {
                     outputs_text.push_str(&format!("{name}: {kind}\n"));
                 }
-                if !outputs_text.is_empty() {
-                    // remove last newline
-                    outputs_text.remove(outputs_text.len() - 1);
-                }
+                outputs_text = outputs_text.trim_end().to_string();
                 col.push(Card::new(
                     Text::new(format!("Step {}: {}", idx + 1, action.friendly_name)),
                     column![
