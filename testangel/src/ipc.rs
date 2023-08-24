@@ -1,9 +1,9 @@
 use std::{
-    env, fmt, fs,
-    io::{self, Read, Write},
+    env,
+    ffi::{c_char, CStr, CString},
+    fmt, fs, io,
     path::PathBuf,
-    process::{ChildStdin, ChildStdout, Command, Stdio},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use testangel_ipc::prelude::*;
@@ -12,6 +12,7 @@ use testangel_ipc::prelude::*;
 pub enum IpcError {
     IoError(io::Error),
     EngineNotStarted,
+    EngineNotCompliant,
     CantLockEngineIo,
     InvalidResponseFromEngine,
 }
@@ -23,15 +24,32 @@ pub fn ipc_call(engine: &Engine, request: Request) -> Result<Response, IpcError>
         engine,
         engine.path
     );
-    engine.write(request.to_json())?;
 
-    let buf = engine.read_until_eol()?;
-    let res = Response::try_from(buf).map_err(|e| {
-        log::error!(
-            "Failed to parse subprocess response ({}) from engine {}.",
-            e,
-            engine,
-        );
+    let request = request.to_json();
+    let c_request = CString::new(request).unwrap();
+    let response = unsafe {
+        let lib = engine.lib.clone().ok_or(IpcError::EngineNotStarted)?;
+
+        let ta_call: libloading::Symbol<
+            unsafe extern "C" fn(input: *const c_char) -> *const c_char,
+        > = lib
+            .get(b"ta_call")
+            .map_err(|_| IpcError::EngineNotCompliant)?;
+        let res = ta_call(c_request.as_ptr());
+        let res = CStr::from_ptr(res);
+        let string = String::from_utf8_lossy(res.to_bytes()).to_string();
+
+        // release string
+        let ta_release: libloading::Symbol<unsafe extern "C" fn(target: *const c_char)> = lib
+            .get(b"ta_release")
+            .map_err(|_| IpcError::EngineNotCompliant)?;
+        ta_release(res.as_ptr());
+
+        string
+    };
+
+    let res = Response::try_from(response).map_err(|e| {
+        log::error!("Failed to parse response ({}) from engine {}.", e, engine,);
         IpcError::InvalidResponseFromEngine
     })?;
 
@@ -44,57 +62,13 @@ pub struct Engine {
     path: PathBuf,
     pub name: String,
     pub instructions: Vec<Instruction>,
-    stdin: Option<Arc<Mutex<ChildStdin>>>,
-    stdout: Option<Arc<Mutex<ChildStdout>>>,
+    lib: Option<Arc<libloading::Library>>,
 }
 
 impl Engine {
-    fn start(&mut self) -> Result<(), IpcError> {
-        let proc = Command::new(&self.path)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .map_err(IpcError::IoError)?;
-        self.stdin = proc.stdin.map(|v| Arc::new(Mutex::new(v)));
-        self.stdout = proc.stdout.map(|v| Arc::new(Mutex::new(v)));
-        Ok(())
-    }
-
-    fn write<S: AsRef<str>>(&self, message: S) -> Result<(), IpcError> {
-        let stdin = self.stdin.as_ref().ok_or(IpcError::EngineNotStarted)?;
-        let mut stdin = stdin.lock().map_err(|_| IpcError::CantLockEngineIo)?;
-        stdin
-            .write_fmt(format_args!("{}\n", message.as_ref()))
-            .map_err(IpcError::IoError)
-    }
-
-    fn read_until_eol(&self) -> Result<String, IpcError> {
-        let stdout = self.stdout.as_ref().ok_or(IpcError::EngineNotStarted)?;
-        let mut stdout = stdout.lock().map_err(|_| IpcError::CantLockEngineIo)?;
-        let mut buf = Vec::new();
-        loop {
-            let mut one_byte = [0u8];
-            stdout
-                .read_exact(&mut one_byte)
-                .map_err(IpcError::IoError)?;
-            if one_byte[0] != b'\n' {
-                buf.push(one_byte[0]);
-            } else {
-                return String::from_utf8(buf).map_err(|_| IpcError::InvalidResponseFromEngine);
-            }
-        }
-    }
-
     /// Ask the engine to reset it's state for test repeatability.
     pub fn reset_state(&self) -> Result<(), IpcError> {
         ipc_call(self, Request::ResetState).map(|_| ())
-    }
-
-    /// Ask the engine to shut down.
-    pub fn shut_down(&self) {
-        // We don't expect any response from the engine so we can't determine if it worked or not.
-        let _ = ipc_call(self, Request::ShutDown);
     }
 }
 
@@ -153,30 +127,35 @@ pub fn get_engines() -> EngineList {
         }
 
         if let Ok(str) = basename.into_string() {
-            if str.starts_with("testangel-") {
+            if str.ends_with(".so") || str.ends_with(".dll") || str.ends_with(".dylib") {
                 log::debug!("Detected possible engine {str}");
-                let mut engine = Engine {
-                    name: String::from("newly discovered engine"),
-                    path: path.path(),
-                    ..Default::default()
-                };
-                if engine.start().is_err() {
-                    log::error!("Failed to start engine.");
-                    continue;
-                }
-                if let Ok(res) = ipc_call(&engine, Request::Instructions) {
-                    match res {
-                        Response::Instructions {
-                            friendly_name,
-                            instructions,
-                        } => {
-                            log::info!("Discovered engine {friendly_name} at {:?}", path.path());
-                            engine.name = friendly_name.clone();
-                            engine.instructions = instructions;
-                            engines.push(engine);
+                match unsafe { libloading::Library::new(&str) } {
+                    Ok(lib) => {
+                        let mut engine = Engine {
+                            name: String::from("newly discovered engine"),
+                            path: path.path(),
+                            lib: Some(Arc::new(lib)),
+                            ..Default::default()
+                        };
+                        if let Ok(res) = ipc_call(&engine, Request::Instructions) {
+                            match res {
+                                Response::Instructions {
+                                    friendly_name,
+                                    instructions,
+                                } => {
+                                    log::info!(
+                                        "Discovered engine {friendly_name} at {:?}",
+                                        path.path()
+                                    );
+                                    engine.name = friendly_name.clone();
+                                    engine.instructions = instructions;
+                                    engines.push(engine);
+                                }
+                                _ => log::error!("Invalid response from engine {str}"),
+                            }
                         }
-                        _ => log::error!("Invalid response from engine {str}"),
                     }
+                    Err(e) => log::warn!("Failed to load engine {str}: {e}"),
                 }
             }
         }

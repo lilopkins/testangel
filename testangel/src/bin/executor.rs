@@ -50,8 +50,4 @@ fn main() {
     }
 
     report_generation::save_report(cli.report, evidence);
-
-    for engine in engine_map.inner() {
-        engine.shut_down();
-    }
 }

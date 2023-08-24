@@ -31,8 +31,6 @@ pub enum Request {
     },
     /// Reset the state of this engine to the default.
     ResetState,
-    /// Shut down this engine.
-    ShutDown,
 }
 
 impl Request {

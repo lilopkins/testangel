@@ -120,9 +120,6 @@ impl Application for App {
         match message {
             AppMessage::Event(event) => {
                 if let Event::Window(window::Event::CloseRequested) = event {
-                    for engine in self.engine_list.inner() {
-                        engine.shut_down();
-                    }
                     std::process::exit(0);
                 }
             }

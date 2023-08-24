@@ -11,11 +11,12 @@ path = "src/bin/executor.rs"
 
 [dependencies]
 testangel-ipc = { path = "../testangel-ipc" }
-clap = "4.3.19"
+clap = { version = "4.3.19", features = [ "derive" ] }
+libloading = "0.8"
 log = "0.4.19"
 pretty_env_logger = "0.5.0"
-serde = { version = "1.0.180", features = ["derive"] }
-uuid = { version = "1.4.1", features = ["v4"] }
+serde = { version = "1.0.180", features = [ "derive" ] }
+uuid = { version = "1.4.1", features = [ "v4" ] }
 ron = "0.8.0"
 genpdf = { version = "0.2.0", features = ["images"] }
 chrono = "0.4.26"

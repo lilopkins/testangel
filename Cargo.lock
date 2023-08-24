@@ -3512,6 +3512,7 @@ dependencies = [
  "iced",
  "iced_aw",
  "itertools",
+ "libloading 0.8.0",
  "log",
  "pretty_env_logger",
  "rfd",
@@ -3525,7 +3526,6 @@ dependencies = [
 name = "testangel-arithmetic"
 version = "0.5.2"
 dependencies = [
- "clap",
  "lazy_static",
  "testangel-ipc",
 ]

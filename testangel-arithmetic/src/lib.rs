@@ -61,17 +61,18 @@ lazy_static! {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ta_call(input: *const c_char, result: *mut *const c_char) -> isize {
-    if result.is_null() || !(*result).is_null() {
-        return 1; // result isn't null
-    }
-
+pub unsafe extern "C" fn ta_call(input: *const c_char) -> *mut c_char {
     let input = CStr::from_ptr(input);
     let response = call_internal(String::from_utf8_lossy(input.to_bytes()).to_string());
     let c_response = CString::new(response).expect("valid response");
-    *result = c_response.as_ptr();
+    c_response.into_raw()
+}
 
-    0
+#[no_mangle]
+pub unsafe extern "C" fn ta_release(input: *mut c_char) {
+    if !input.is_null() {
+        drop(CString::from_raw(input));
+    }
 }
 
 fn call_internal(request: String) -> String {
