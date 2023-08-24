@@ -1,6 +1,6 @@
 [package]
 name = "testangel"
-version = "0.5.2"
+version = "0.6.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,19 +8,26 @@ edition = "2021"
 [[bin]]
 name = "testangel-executor"
 path = "src/bin/executor.rs"
+required-features = [ "cli" ]
+
+[features]
+default = [ "ui" ]
+ui = [ "dep:iced", "dep:iced_aw", "dep:rfd" ]
+cli = [ "dep:clap" ]
 
 [dependencies]
 testangel-ipc = { path = "../testangel-ipc" }
-clap = "4.3.19"
+clap = { version = "4.3.19", features = [ "derive" ], optional = true }
+libloading = "0.8"
 log = "0.4.19"
 pretty_env_logger = "0.5.0"
-serde = { version = "1.0.180", features = ["derive"] }
-uuid = { version = "1.4.1", features = ["v4"] }
+serde = { version = "1.0.180", features = [ "derive" ] }
+uuid = { version = "1.4.1", features = [ "v4" ] }
 ron = "0.8.0"
 genpdf = { version = "0.2.0", features = ["images"] }
 chrono = "0.4.26"
 base64 = "0.21.2"
 itertools = "0.11.0"
-iced = { version = "0.10.0", features = [ "image", "smol" ] }
-iced_aw = { version = "0.6.0", default-features = false, features = [ "card" ] }
-rfd = "0.11.4"
+iced = { version = "0.10.0", features = [ "image", "smol" ], optional = true }
+iced_aw = { version = "0.6.0", default-features = false, features = [ "card" ], optional = true }
+rfd = { version = "0.11.4", optional = true }

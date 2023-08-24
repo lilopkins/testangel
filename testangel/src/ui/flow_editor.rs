@@ -317,10 +317,7 @@ impl FlowEditor {
                 for (name, kind, _) in &action.outputs {
                     outputs_text.push_str(&format!("{name}: {kind}\n"));
                 }
-                if !outputs_text.is_empty() {
-                    // remove last newline
-                    outputs_text.remove(outputs_text.len() - 1);
-                }
+                outputs_text = outputs_text.trim_end().to_string();
                 col.push(Card::new(
                     Text::new(format!("Step {}: {}", idx + 1, action.friendly_name)),
                     column![
@@ -480,9 +477,9 @@ impl UiComponent for FlowEditor {
                     .entry(id)
                     .and_modify(|v| match v {
                         ParameterValue::String(v) => *v = new_value,
-                        ParameterValue::SpecialType { id: _, value } => *value = new_value,
                         ParameterValue::Integer(v) => *v = new_value.parse().unwrap_or(*v),
                         ParameterValue::Decimal(v) => *v = new_value.parse().unwrap_or(*v),
+                        ParameterValue::Boolean(v) => *v = new_value.to_ascii_lowercase() == "yes",
                     });
                 self.modified();
             }

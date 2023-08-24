@@ -3503,7 +3503,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "base64 0.21.2",
  "chrono",
@@ -3512,6 +3512,7 @@ dependencies = [
  "iced",
  "iced_aw",
  "itertools",
+ "libloading 0.8.0",
  "log",
  "pretty_env_logger",
  "rfd",
@@ -3523,16 +3524,15 @@ dependencies = [
 
 [[package]]
 name = "testangel-arithmetic"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
- "clap",
  "lazy_static",
  "testangel-ipc",
 ]
 
 [[package]]
 name = "testangel-ipc"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "schemars",
  "serde",
