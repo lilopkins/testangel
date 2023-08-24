@@ -17,6 +17,8 @@ struct Cli {
 }
 
 fn main() {
+    pretty_env_logger::init();
+
     let cli = Cli::parse();
 
     let flow: AutomationFlow =
@@ -24,6 +26,14 @@ fn main() {
             .expect("Failed to parse flow.");
     let engine_map = Arc::new(ipc::get_engines());
     let action_map = Arc::new(action_loader::get_actions(engine_map.clone()));
+
+    // Check flow for actions that aren't available.
+    for action_config in &flow.actions {
+        if action_map.get_action_by_id(&action_config.action_id).is_none() {
+            eprintln!("This flow cannot be executed because an action isn't available or wasn't loaded. Maybe an engine is missing?");
+            std::process::exit(1);
+        }
+    }
 
     let mut outputs: Vec<HashMap<usize, ParameterValue>> = Vec::new();
     let mut evidence = Vec::new();
