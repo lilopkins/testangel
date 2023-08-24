@@ -794,9 +794,9 @@ impl UiComponent for ActionEditor {
                     .entry(id)
                     .and_modify(|v| match v {
                         ParameterValue::String(v) => *v = new_value,
-                        ParameterValue::SpecialType { id: _, value } => *value = new_value,
                         ParameterValue::Integer(v) => *v = new_value.parse().unwrap_or(*v),
                         ParameterValue::Decimal(v) => *v = new_value.parse().unwrap_or(*v),
+                        ParameterValue::Boolean(v) => *v = new_value.to_ascii_lowercase() == "yes",
                     });
                 self.modified();
             }
