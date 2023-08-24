@@ -13,3 +13,42 @@ In TestAngel, you start off creating a Test Flow. This will be the instructions 
 |`testangel`|The main executable and UI that controls the platform ("the controller").|
 |`testangel-ipc`|The library that contains the serialisable messages that can be exchanged between the controller and the engine plugins.|
 |`testangel-arithmetic`|An arithmetic engine plugin.|
+
+## Engine Communication
+
+Engines are dynamically linked libraries (`.dll`s on Windows, `.dylib`s on Mac, `.so`s on Linux systems) which have two functions, `ta_call` and `ta_release`.
+The call function has the signature:
+```c
+char* ta_call(char* input);
+void ta_release(char* target);
+```
+These strings are JSON formatted and comply with the schema defined in `testangel-ipc`. `ta_release` is called with the string to release the memory.
+
+In Rust, you can implement this communication like this:
+
+```rust
+#[no_mangle]
+pub unsafe extern "C" fn ta_call(input: *const c_char) -> *mut c_char {
+    let input = CStr::from_ptr(input);
+    let response = call_internal(String::from_utf8_lossy(input.to_bytes()).to_string());
+    let c_response = CString::new(response).expect("valid response");
+    c_response.into_raw()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ta_release(input: *mut c_char) {
+    if !input.is_null() {
+        drop(CString::from_raw(input));
+    }
+}
+
+fn call_internal(request: String) -> String {
+    // Handle parsing request, processing and building a response.
+    todo!()
+}
+```
+
+You can generate up-to-date JSON schemas by cloning this repository and running:
+```
+cargo run -p testangel-ipc --features schemas
+```

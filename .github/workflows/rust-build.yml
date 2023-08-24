@@ -21,21 +21,25 @@ jobs:
           default: true
           override: true
 
+      - name: Install dependencies
+        run: |
+          sudo apt -y update && sudo apt -y install libatk1.0-dev libgtk-3-dev
+
       - name: Build
         run: |
           # Build
           cargo build --all --release
           # Strip metadata
           strip target/release/testangel
-          strip target/release/testangel-arithmetic
           strip target/release/testangel-executor
+          strip target/release/libtestangel-arithmetic.so
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
           cp target/release/testangel-executor build/
           # Prepare engines
           mkdir -p build/engines || exit 1
-          cp target/release/testangel-arithmetic build/engines
+          cp target/release/libtestangel-arithmetic.so build/engines
 
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
@@ -74,7 +78,7 @@ jobs:
           copy target/release/testangel.exe build/
           copy target/release/testangel-executor.exe build/
           mkdir build/engines
-          copy target/release/testangel-arithmetic.exe build/engines/
+          copy target/release/testangel-arithmetic.dll build/engines/
 
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
@@ -114,14 +118,14 @@ jobs:
           # Strip metadata
           strip target/release/testangel
           strip target/release/testangel-executor
-          strip target/release/testangel-arithmetic
+          strip target/release/testangel-arithmetic.dylib
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
           cp target/release/testangel-executor build/
           # Prepare engines
           mkdir -p build/engines || exit 1
-          cp target/release/testangel-arithmetic build/engines
+          cp target/release/testangel-arithmetic.dylib build/engines
 
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
