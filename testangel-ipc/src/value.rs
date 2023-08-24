@@ -15,6 +15,8 @@ pub enum ParameterKind {
     Integer,
     /// A decimal number, stored as a 32-bit float.
     Decimal,
+    /// A boolean value.
+    Boolean,
 }
 impl ParameterKind {
     pub fn default_value(&self) -> ParameterValue {
@@ -22,6 +24,7 @@ impl ParameterKind {
             Self::String => ParameterValue::String(String::new()),
             Self::Integer => ParameterValue::Integer(0),
             Self::Decimal => ParameterValue::Decimal(0.),
+            Self::Boolean => ParameterValue::Boolean(false),
         }
     }
 }
@@ -32,6 +35,7 @@ impl fmt::Display for ParameterKind {
             Self::String => write!(f, "Text"),
             Self::Integer => write!(f, "Integer"),
             Self::Decimal => write!(f, "Decimal"),
+            Self::Boolean => write!(f, "Boolean"),
         }
     }
 }
@@ -47,6 +51,8 @@ pub enum ParameterValue {
     Integer(i32),
     /// A decimal number, stored as a 32-bit float.
     Decimal(f32),
+    /// A boolean value
+    Boolean(bool),
 }
 
 impl ParameterValue {
@@ -80,6 +86,7 @@ impl ParameterValue {
             Self::Decimal(_) => ParameterKind::Decimal,
             Self::Integer(_) => ParameterKind::Integer,
             Self::String(_) => ParameterKind::String,
+            Self::Boolean(_) => ParameterKind::Boolean,
         }
     }
 
@@ -114,6 +121,7 @@ impl fmt::Display for ParameterValue {
             Self::Integer(a) => write!(f, "{a}"),
             Self::Decimal(a) => write!(f, "{a}"),
             Self::String(a) => write!(f, "{a}"),
+            Self::Boolean(b) => write!(f, "{b}"),
         }
     }
 }
