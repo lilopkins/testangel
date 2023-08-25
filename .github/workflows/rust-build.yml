@@ -34,6 +34,7 @@ jobs:
           cargo build -p testangel-compare --release
           cargo build -p testangel-convert --release
           cargo build -p testangel-evidence --release
+          cargo build -p testangel-regex --release
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
@@ -44,6 +45,7 @@ jobs:
           cp target/release/libtestangel_compare.so build/engines
           cp target/release/libtestangel_convert.so build/engines
           cp target/release/libtestangel_evidence.so build/engines
+          cp target/release/libtestangel_regex.so build/engines
 
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
@@ -83,6 +85,7 @@ jobs:
           cargo build -p testangel-compare --release
           cargo build -p testangel-convert --release
           cargo build -p testangel-evidence --release
+          cargo build -p testangel-regex --release
           mkdir build
           copy target/release/testangel.exe build/
           cargo build -p testangel --bin testangel --release --features windows-keep-console-window
@@ -93,6 +96,7 @@ jobs:
           copy target/release/testangel_compare.dll build/engines/
           copy target/release/testangel_convert.dll build/engines/
           copy target/release/testangel_evidence.dll build/engines/
+          copy target/release/testangel_regex.dll build/engines/
 
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
@@ -134,6 +138,7 @@ jobs:
           cargo build -p testangel-compare --release
           cargo build -p testangel-convert --release
           cargo build -p testangel-evidence --release
+          cargo build -p testangel-regex --release
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
@@ -144,6 +149,7 @@ jobs:
           cp target/release/libtestangel_compare.dylib build/engines
           cp target/release/libtestangel_convert.dylib build/engines
           cp target/release/libtestangel_evidence.dylib build/engines
+          cp target/release/libtestangel_regex.dylib build/engines
 
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
