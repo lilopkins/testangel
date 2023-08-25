@@ -14,6 +14,7 @@ required-features = [ "cli" ]
 default = [ "ui" ]
 ui = [ "dep:iced", "dep:iced_aw", "dep:rfd" ]
 cli = [ "dep:clap" ]
+windows-keep-console-window = []
 
 [dependencies]
 testangel-ipc = { path = "../testangel-ipc" }

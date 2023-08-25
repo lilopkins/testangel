@@ -80,6 +80,8 @@ jobs:
           cargo build -p testangel-arithmetic --release
           mkdir build
           copy target/release/testangel.exe build/
+          cargo build -p testangel --bin testangel --release --features windows-keep-console-window
+          copy target/release/testangel.exe build/testangel-dbg.exe
           copy target/release/testangel-executor.exe build/
           mkdir build/engines
           copy target/release/testangel_arithmetic.dll build/engines/
