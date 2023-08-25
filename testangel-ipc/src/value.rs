@@ -80,6 +80,14 @@ impl ParameterValue {
         }
     }
 
+    /// Returns the value as an bool, or panics if it isn't.
+    pub fn value_bool(&self) -> bool {
+        match self {
+            Self::Boolean(v) => *v,
+            _ => panic!("value isn't a boolean"),
+        }
+    }
+
     /// Get the kind of this parameter
     pub fn kind(&self) -> ParameterKind {
         match self {

@@ -2,5 +2,8 @@
 members = [
     "testangel",
     "testangel-arithmetic",
+    "testangel-compare",
+    "testangel-convert",
+    "testangel-evidence",
     "testangel-ipc",
 ]
