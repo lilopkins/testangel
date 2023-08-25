@@ -1,8 +1,8 @@
 use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
 use iced::widget::{
-    column, combo_box, row, scrollable, Button, Column, Container, Row, Scrollable, Space, Text,
-    TextInput,
+    column, combo_box, row, scrollable, Button, Checkbox, Column, Container, Row, Scrollable,
+    Space, Text, TextInput,
 };
 use iced_aw::Card;
 use testangel::{
@@ -273,14 +273,28 @@ impl FlowEditor {
                     );
 
                 let literal_input: iced::Element<'_, _> = match param_source {
-                    ActionParameterSource::Literal => {
-                        TextInput::new("Literal value", &param_value.to_string())
+                    ActionParameterSource::Literal => match kind {
+                        ParameterKind::Boolean => {
+                            Checkbox::new("Value", param_value.value_bool(), move |new_val| {
+                                FlowEditorMessage::StepParameterValueChange(
+                                    step_idx,
+                                    id,
+                                    if new_val { "yes" } else { "no" }.to_string(),
+                                )
+                            })
+                            .into()
+                        }
+                        _ => TextInput::new("Literal value", &param_value.to_string())
                             .on_input(move |new_val| {
-                                FlowEditorMessage::StepParameterValueChange(step_idx, id, new_val)
+                                FlowEditorMessage::StepParameterValueChange(
+                                    step_idx,
+                                    id,
+                                    new_val,
+                                )
                             })
                             .width(250)
-                            .into()
-                    }
+                            .into(),
+                    },
                     _ => Space::new(0, 0).into(),
                 };
 
