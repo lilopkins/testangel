@@ -1,6 +1,6 @@
 [package]
 name = "testangel"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -14,6 +14,7 @@ required-features = [ "cli" ]
 default = [ "ui" ]
 ui = [ "dep:iced", "dep:iced_aw", "dep:rfd" ]
 cli = [ "dep:clap" ]
+windows-keep-console-window = []
 
 [dependencies]
 testangel-ipc = { path = "../testangel-ipc" }

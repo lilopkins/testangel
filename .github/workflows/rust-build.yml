@@ -80,6 +80,8 @@ jobs:
           cargo build -p testangel-arithmetic --release
           mkdir build
           copy target/release/testangel.exe build/
+          cargo build -p testangel --bin testangel --release --features windows-keep-console-window
+          copy target/release/testangel.exe build/testangel-dbg.exe
           copy target/release/testangel-executor.exe build/
           mkdir build/engines
           copy target/release/testangel_arithmetic.dll build/engines/
@@ -124,14 +126,14 @@ jobs:
           # Strip metadata
           strip target/release/testangel
           strip target/release/testangel-executor
-          strip target/release/testangel_arithmetic.dylib
+          strip target/release/libtestangel_arithmetic.dylib
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
           cp target/release/testangel-executor build/
           # Prepare engines
           mkdir -p build/engines || exit 1
-          cp target/release/testangel_arithmetic.dylib build/engines
+          cp target/release/libtestangel_arithmetic.dylib build/engines
 
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
