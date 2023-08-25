@@ -1,3 +1,5 @@
+use std::env;
+
 use iced::widget::{column, row, Button, Container, Rule, Space, Text};
 
 use super::UiComponent;
@@ -10,8 +12,19 @@ pub enum GetStartedMessage {
     OpenAction,
 }
 
-#[derive(Default)]
-pub struct GetStarted;
+pub struct GetStarted {
+    hide_action_editor: bool,
+}
+
+impl Default for GetStarted {
+    fn default() -> Self {
+        Self {
+            hide_action_editor: !env::var("HIDE_ACTION_EDITOR")
+                .unwrap_or("no".to_string())
+                .eq_ignore_ascii_case("no"),
+        }
+    }
+}
 
 impl UiComponent for GetStarted {
     type Message = GetStartedMessage;
@@ -22,6 +35,21 @@ impl UiComponent for GetStarted {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
+        let ae: iced::Element<'_, Self::Message> = if self.hide_action_editor {
+            Space::new(0, 0).into()
+        } else {
+            column![
+                Text::new("\nDesign Actions").size(24),
+                Text::new("Actions are environment specific, granular but high level pieces of automation. They bring together generic low level instructions."),
+                row![
+                    Button::new("Create new action")
+                        .on_press(GetStartedMessage::NewAction),
+                    Button::new("Open existing action")
+                        .on_press(GetStartedMessage::OpenAction),
+                ].spacing(8),
+            ].spacing(4).into()
+        };
+
         Container::new(
             column![
                 Text::new("Get Started with TestAngel").size(32),
@@ -36,14 +64,7 @@ impl UiComponent for GetStarted {
                         .on_press(GetStartedMessage::OpenFlow),
                 ].spacing(8),
 
-                Text::new("\nDesign Actions").size(24),
-                Text::new("Actions are environment specific, granular but high level pieces of automation. They bring together generic low level instructions."),
-                row![
-                    Button::new("Create new action")
-                        .on_press(GetStartedMessage::NewAction),
-                    Button::new("Open existing action")
-                        .on_press(GetStartedMessage::OpenAction),
-                ].spacing(8),
+                ae,
 
                 Space::with_height(64),
                 Text::new(format!("TestAngel v{}", env!("CARGO_PKG_VERSION"))).size(10),
