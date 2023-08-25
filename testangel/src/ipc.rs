@@ -117,6 +117,7 @@ pub fn get_engines() -> EngineList {
     let mut engines = Vec::new();
     let engine_dir = env::var("ENGINE_DIR").unwrap_or("./engines".to_owned());
     fs::create_dir_all(engine_dir.clone()).unwrap();
+    log::info!("Searching for engines in {engine_dir:?}");
     for path in fs::read_dir(engine_dir).unwrap() {
         let path = path.unwrap();
         let basename = path.file_name();
@@ -127,9 +128,10 @@ pub fn get_engines() -> EngineList {
         }
 
         if let Ok(str) = basename.into_string() {
+            log::debug!("Found {str}");
             if str.ends_with(".so") || str.ends_with(".dll") || str.ends_with(".dylib") {
                 log::debug!("Detected possible engine {str}");
-                match unsafe { libloading::Library::new(&str) } {
+                match unsafe { libloading::Library::new(path.path()) } {
                     Ok(lib) => {
                         let mut engine = Engine {
                             name: String::from("newly discovered engine"),
@@ -137,8 +139,8 @@ pub fn get_engines() -> EngineList {
                             lib: Some(Arc::new(lib)),
                             ..Default::default()
                         };
-                        if let Ok(res) = ipc_call(&engine, Request::Instructions) {
-                            match res {
+                        match ipc_call(&engine, Request::Instructions) {
+                            Ok(res) => match res {
                                 Response::Instructions {
                                     friendly_name,
                                     instructions,
@@ -152,7 +154,8 @@ pub fn get_engines() -> EngineList {
                                     engines.push(engine);
                                 }
                                 _ => log::error!("Invalid response from engine {str}"),
-                            }
+                            },
+                            Err(e) => log::warn!("IPC error: {e:?}"),
                         }
                     }
                     Err(e) => log::warn!("Failed to load engine {str}: {e}"),
