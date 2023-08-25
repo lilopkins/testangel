@@ -1,0 +1,15 @@
+[package]
+name = "testangel-convert"
+authors = ["Lily Hopkins <lily@hpkns.uk>"]
+description = "A data type conversion engine plugin for testangel."
+version = "0.6.1"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lazy_static = "1.4.0"
+testangel-ipc = { path = "../testangel-ipc" }
