@@ -3531,6 +3531,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "testangel-compare"
+version = "0.6.1"
+dependencies = [
+ "lazy_static",
+ "testangel-ipc",
+]
+
+[[package]]
+name = "testangel-convert"
+version = "0.6.1"
+dependencies = [
+ "lazy_static",
+ "testangel-ipc",
+]
+
+[[package]]
+name = "testangel-evidence"
+version = "0.6.1"
+dependencies = [
+ "lazy_static",
+ "testangel-ipc",
+]
+
+[[package]]
 name = "testangel-ipc"
 version = "0.6.1"
 dependencies = [

@@ -29,7 +29,10 @@ fn main() {
 
     // Check flow for actions that aren't available.
     for action_config in &flow.actions {
-        if action_map.get_action_by_id(&action_config.action_id).is_none() {
+        if action_map
+            .get_action_by_id(&action_config.action_id)
+            .is_none()
+        {
             eprintln!("This flow cannot be executed because an action isn't available or wasn't loaded. Maybe an engine is missing?");
             std::process::exit(1);
         }
