@@ -31,10 +31,6 @@ jobs:
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-arithmetic --release
-          # Strip metadata
-          strip target/release/testangel
-          strip target/release/testangel-executor
-          strip target/release/libtestangel_arithmetic.so
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
@@ -123,10 +119,6 @@ jobs:
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-arithmetic --release
-          # Strip metadata
-          strip target/release/testangel
-          strip target/release/testangel-executor
-          strip target/release/libtestangel_arithmetic.dylib
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
