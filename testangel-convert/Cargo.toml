@@ -2,7 +2,7 @@
 name = "testangel-convert"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "A data type conversion engine plugin for testangel."
-version = "0.6.1"
+version = "0.7.0"
 edition = "2021"
 
 [lib]
