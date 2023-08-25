@@ -206,11 +206,7 @@ impl ActionEditor {
             if let Some(file) = rfd::FileDialog::new()
                 .add_filter("TestAngel Actions", &["taaction"])
                 .set_title("Save Action")
-                .set_directory(
-                    env::current_dir()
-                        .expect("Failed to read current directory")
-                        .join("actions"),
-                )
+                .set_directory(env::var("ACTION_DIR").unwrap_or("./actions".to_owned()))
                 .save_file()
             {
                 self.current_path = Some(file.with_extension("taaction"));

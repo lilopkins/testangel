@@ -171,9 +171,7 @@ impl Application for App {
                                 .add_filter("TestAngel Actions", &["taaction"])
                                 .set_title("Open Action")
                                 .set_directory(
-                                    env::current_dir()
-                                        .expect("Failed to read current directory")
-                                        .join("actions"),
+                                    env::var("ACTION_DIR").unwrap_or("./actions".to_owned()),
                                 )
                                 .pick_file()
                             {

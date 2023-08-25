@@ -286,11 +286,7 @@ impl FlowEditor {
                         }
                         _ => TextInput::new("Literal value", &param_value.to_string())
                             .on_input(move |new_val| {
-                                FlowEditorMessage::StepParameterValueChange(
-                                    step_idx,
-                                    id,
-                                    new_val,
-                                )
+                                FlowEditorMessage::StepParameterValueChange(step_idx, id, new_val)
                             })
                             .width(250)
                             .into(),
