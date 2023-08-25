@@ -6,4 +6,5 @@ members = [
     "testangel-convert",
     "testangel-evidence",
     "testangel-ipc",
+    "testangel-regex",
 ]
