@@ -263,6 +263,32 @@ impl ActionConfiguration {
 
         Ok((output, evidence))
     }
+
+    /// Update this action configuration to match the inputs and outputs of the provided action.
+    /// This will panic if the action's ID doesn't match the ID of this configuration already set.
+    /// Return true if this configuration has changed.
+    pub fn update(&mut self, action: Action) -> bool {
+        if self.action_id != action.id {
+            panic!("ActionConfiguration tried to be updated with a different action!");
+        }
+
+        // If number of parameters has changed
+        if self.parameter_sources.len() != action.parameters.len() {
+            *self = Self::from(action);
+            return true;
+        }
+
+        for (n, value) in &self.parameter_values {
+            let (_, action_param_kind) = &action.parameters[*n];
+            if value.kind() != *action_param_kind {
+                // Reset parameters
+                *self = Self::from(action);
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 impl From<Action> for ActionConfiguration {

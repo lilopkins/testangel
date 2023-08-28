@@ -141,15 +141,27 @@ impl FlowEditor {
     /// Open a flow
     pub(crate) fn open_flow(&mut self, file: PathBuf) -> Result<(), SaveOrOpenFlowError> {
         self.offer_to_save_default_error_handling();
-        let flow: AutomationFlow =
+        let mut flow: AutomationFlow =
             ron::from_str(&fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?)
                 .map_err(SaveOrOpenFlowError::ParsingError)?;
         if flow.version() != 1 {
             return Err(SaveOrOpenFlowError::FlowNotVersionCompatible);
         }
-        for ac in &flow.actions {
-            if self.actions_list.get_action_by_id(&ac.action_id).is_none() {
-                return Err(SaveOrOpenFlowError::MissingAction(ac.action_id.clone()));
+        for (step, ac) in flow.actions.iter_mut().enumerate() {
+            // Check for missing action
+            match self.actions_list.get_action_by_id(&ac.action_id) {
+                None => return Err(SaveOrOpenFlowError::MissingAction(ac.action_id.clone())),
+                Some(action) => {
+                    // Check that action parameters haven't changed. If they have, reset values.
+                    if ac.update(action) {
+                        rfd::MessageDialog::new()
+                            .set_level(rfd::MessageLevel::Warning)
+                            .set_title("Action has changed")
+                            .set_buttons(rfd::MessageButtons::Ok)
+                            .set_description(&format!("The parameters in step {} have changed so it has been reset.", step + 1))
+                            .show();
+                    }
+                }
             }
         }
         self.currently_open = Some(flow);
