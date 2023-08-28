@@ -128,6 +128,7 @@ impl FlowEditor {
                 });
             }
         }
+        self.add_action_combo = combo_box::State::new(available_actions);
     }
 
     /// Create a new flow and open it
