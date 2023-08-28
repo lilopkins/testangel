@@ -201,6 +201,12 @@ impl ActionEditor {
     /// Save the currently opened action
     fn save_action(&mut self, always_prompt_where: bool) -> Result<(), SaveOrOpenActionError> {
         self.needs_saving = false;
+
+        if always_prompt_where && self.current_path.is_some() {
+            // If this is a true 'save as' scenario, we need to generate a new UUID
+            self.currently_open.as_mut().unwrap().new_id();
+        }
+
         if always_prompt_where || self.current_path.is_none() {
             // Populate save path
             if let Some(file) = rfd::FileDialog::new()
