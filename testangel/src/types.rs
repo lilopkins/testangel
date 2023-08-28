@@ -48,6 +48,11 @@ impl Action {
     pub fn version(&self) -> usize {
         self.version
     }
+
+    /// Generate a new ID for this action.
+    pub fn new_id(&mut self) {
+        self.id = uuid::Uuid::new_v4().to_string();
+    }
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]

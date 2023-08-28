@@ -158,7 +158,10 @@ impl FlowEditor {
                             .set_level(rfd::MessageLevel::Warning)
                             .set_title("Action has changed")
                             .set_buttons(rfd::MessageButtons::Ok)
-                            .set_description(&format!("The parameters in step {} have changed so it has been reset.", step + 1))
+                            .set_description(&format!(
+                                "The parameters in step {} have changed so it has been reset.",
+                                step + 1
+                            ))
                             .show();
                     }
                 }
