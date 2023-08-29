@@ -257,6 +257,7 @@ impl ActionConfiguration {
                     .value_bool(),
             } {
                 log::debug!("Instruction skipped");
+                instruction_outputs.push(HashMap::new());
                 continue;
             }
 
