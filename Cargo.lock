@@ -3501,7 +3501,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "base64",
  "chrono",
@@ -3522,7 +3522,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-arithmetic"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3530,7 +3530,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-compare"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3538,7 +3538,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-convert"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3546,7 +3546,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-evidence"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3554,7 +3554,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "schemars",
  "serde",
@@ -3563,7 +3563,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-regex"
-version = "0.8.1"
+version = "0.9.1"
 dependencies = [
  "lazy_static",
  "regex",
