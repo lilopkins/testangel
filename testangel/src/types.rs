@@ -240,9 +240,26 @@ impl ActionConfiguration {
         }
 
         // Iterate through instructions
-        let mut instruction_outputs = Vec::new();
+        let mut instruction_outputs: Vec<HashMap<String, ParameterValue>> = Vec::new();
         let mut evidence = Vec::new();
         for instruction_config in &action.instructions {
+            // Check if we execute instruction
+            if !match &instruction_config.run_if {
+                InstructionParameterSource::Literal => true,
+                InstructionParameterSource::FromParameter(p_idx) => {
+                    action_parameters.get(&p_idx).unwrap().value_bool()
+                }
+                InstructionParameterSource::FromOutput(step, output_name) => instruction_outputs
+                    .get(*step)
+                    .unwrap()
+                    .get(output_name)
+                    .unwrap()
+                    .value_bool(),
+            } {
+                log::debug!("Instruction skipped");
+                continue;
+            }
+
             // Execute instruction
             let (outputs, ev) = instruction_config.execute(
                 engine_map.clone(),
