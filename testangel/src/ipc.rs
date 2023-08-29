@@ -115,7 +115,7 @@ impl EngineList {
 /// Get the list of available engines.
 pub fn get_engines() -> EngineList {
     let mut engines = Vec::new();
-    let engine_dir = env::var("ENGINE_DIR").unwrap_or("./engines".to_owned());
+    let engine_dir = env::var("TA_ENGINE_DIR").unwrap_or("./engines".to_owned());
     fs::create_dir_all(engine_dir.clone()).unwrap();
     log::info!("Searching for engines in {engine_dir:?}");
     for path in fs::read_dir(engine_dir).unwrap() {

@@ -14,6 +14,16 @@ In TestAngel, you start off creating a Test Flow. This will be the instructions 
 |`testangel-ipc`|The library that contains the serialisable messages that can be exchanged between the controller and the engine plugins.|
 |`testangel-arithmetic`|An arithmetic engine plugin.|
 
+## Environment Variables
+
+The tool can be configured through a number of environment variables:
+
+| Environment Variable | Description |
+|:---------------------|:------------|
+| `TA_ENGINE_DIR`      | The directory that should be searched through to locate TestAngel engines. By default, `./engines` is used. |
+| `TA_ACTION_DIR`      | The directory that should be searched through to locate TestAngel actions. By default, `./actions` is used. |
+| `TA_HIDE_ACTION_EDITOR` | If set to anything other than `no`, the action editor items on the Getting Started screen will be hidden. This can be useful in commercial settings as the action editor is more complex to learn and master. |
+
 ## Engine Communication
 
 Engines are dynamically linked libraries (`.dll`s on Windows, `.dylib`s on Mac, `.so`s on Linux systems) which have two functions, `ta_call` and `ta_release`.

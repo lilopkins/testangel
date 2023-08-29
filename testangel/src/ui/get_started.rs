@@ -19,7 +19,7 @@ pub struct GetStarted {
 impl Default for GetStarted {
     fn default() -> Self {
         Self {
-            hide_action_editor: !env::var("HIDE_ACTION_EDITOR")
+            hide_action_editor: !env::var("TA_HIDE_ACTION_EDITOR")
                 .unwrap_or("no".to_string())
                 .eq_ignore_ascii_case("no"),
         }
