@@ -1082,6 +1082,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fern"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9f0c14694cbd524c8720dd69b0e3179344f04ebb5f90f2e4a440c6ea3b2f1ee"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3501,11 +3510,12 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "base64",
  "chrono",
  "clap",
+ "fern",
  "genpdf",
  "iced",
  "iced_aw",
@@ -3522,7 +3532,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-arithmetic"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3530,7 +3540,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-compare"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3538,7 +3548,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-convert"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3546,7 +3556,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-evidence"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3554,7 +3564,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "schemars",
  "serde",
@@ -3563,7 +3573,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-regex"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "lazy_static",
  "regex",

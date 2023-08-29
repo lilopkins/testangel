@@ -32,7 +32,7 @@ impl ActionMap {
 /// Get the list of available engines.
 pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
     let mut actions = HashMap::new();
-    let action_dir = env::var("ACTION_DIR").unwrap_or("./actions".to_owned());
+    let action_dir = env::var("TA_ACTION_DIR").unwrap_or("./actions".to_owned());
     fs::create_dir_all(action_dir.clone()).unwrap();
     'action_loop: for path in fs::read_dir(action_dir).unwrap() {
         let path = path.unwrap();

@@ -14,14 +14,18 @@ pub enum GetStartedMessage {
 
 pub struct GetStarted {
     hide_action_editor: bool,
+    local_help_contact: Option<String>,
 }
 
 impl Default for GetStarted {
     fn default() -> Self {
         Self {
-            hide_action_editor: !env::var("HIDE_ACTION_EDITOR")
+            hide_action_editor: !env::var("TA_HIDE_ACTION_EDITOR")
                 .unwrap_or("no".to_string())
                 .eq_ignore_ascii_case("no"),
+            local_help_contact: env::var("TA_LOCAL_SUPPORT_CONTACT")
+                .map(Some)
+                .unwrap_or(None),
         }
     }
 }
@@ -50,6 +54,14 @@ impl UiComponent for GetStarted {
             ].spacing(4).into()
         };
 
+        let help: iced::Element<'_, Self::Message> =
+            Text::new(if let Some(contact) = &self.local_help_contact {
+                format!("For help, please contact: {contact}")
+            } else {
+                String::from("Repository: https://github.com/lilopkins/testangel")
+            })
+            .into();
+
         Container::new(
             column![
                 Text::new("Get Started with TestAngel").size(32),
@@ -67,6 +79,8 @@ impl UiComponent for GetStarted {
                 ae,
 
                 Space::with_height(64),
+
+                help,
                 Text::new(format!("TestAngel v{}", env!("CARGO_PKG_VERSION"))).size(10),
             ].spacing(4)
         )
