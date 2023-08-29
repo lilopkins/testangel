@@ -58,6 +58,7 @@ impl Action {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct InstructionConfiguration {
     pub instruction_id: String,
+    pub comment: String,
     pub parameter_sources: HashMap<String, InstructionParameterSource>,
     pub parameter_values: HashMap<String, ParameterValue>,
 }
@@ -129,6 +130,7 @@ impl From<Instruction> for InstructionConfiguration {
         }
         Self {
             instruction_id: value.id().clone(),
+            comment: String::new(),
             parameter_sources,
             parameter_values,
         }

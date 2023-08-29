@@ -31,6 +31,7 @@ pub enum ActionEditorMessage {
     ParameterDelete(usize),
 
     StepCreate(AvailableInstruction),
+    StepChangeComment(usize, String),
     StepParameterSourceChange(usize, String, InstructionParameterSource),
     StepParameterValueChange(usize, String, String),
     StepMoveUp(usize),
@@ -418,6 +419,12 @@ impl ActionEditor {
                                 Text::new(instruction.description().clone()),
                             ]
                             .spacing(4),
+                            TextInput::new("Comment", &instruction_config.comment).on_input(
+                                move |new_comment| ActionEditorMessage::StepChangeComment(
+                                    idx,
+                                    new_comment
+                                )
+                            ),
                             Text::new("Inputs"),
                             self.ui_instruction_inputs(
                                 idx,
@@ -788,6 +795,10 @@ impl UiComponent for ActionEditor {
                     .push(InstructionConfiguration::from(instruction.base_instruction));
                 self.modified();
                 self.add_instruction_combo.unfocus();
+            }
+            ActionEditorMessage::StepChangeComment(step, new_comment) => {
+                self.currently_open.as_mut().unwrap().instructions[step].comment = new_comment;
+                self.modified();
             }
             ActionEditorMessage::StepParameterSourceChange(idx, id, new_source) => {
                 self.currently_open.as_mut().unwrap().instructions[idx]
