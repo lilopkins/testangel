@@ -32,6 +32,7 @@ pub enum ActionEditorMessage {
 
     StepCreate(AvailableInstruction),
     StepChangeComment(usize, String),
+    StepChangeRunIf(usize, InstructionParameterSource),
     StepParameterSourceChange(usize, String, InstructionParameterSource),
     StepParameterValueChange(usize, String, String),
     StepMoveUp(usize),
@@ -394,6 +395,47 @@ impl ActionEditor {
                         .engines_list
                         .get_instruction_by_id(&instruction_config.instruction_id)
                         .unwrap();
+
+                    let run_if_set = instruction_config.run_if.clone();
+                    let run_if_opts = self
+                        .output_list
+                        .iter()
+                        .filter(|(from_step, param_kind, _)| {
+                            *from_step < (idx as isize) && *param_kind == ParameterKind::Boolean
+                        })
+                        .fold(
+                            Row::new().spacing(2).push(
+                                Button::new(Text::new("Always Run")).on_press_maybe(
+                                    if let InstructionParameterSource::Literal = run_if_set {
+                                        None
+                                    } else {
+                                        Some(ActionEditorMessage::StepChangeRunIf(
+                                            idx,
+                                            InstructionParameterSource::Literal,
+                                        ))
+                                    },
+                                ),
+                            ),
+                            |row, (_, _, src)| {
+                                row.push(
+                                    Button::new(Text::new(format!(
+                                        "Run if {}",
+                                        self.friendly_source_string(src)
+                                    )))
+                                    .on_press_maybe(
+                                        if run_if_set != *src {
+                                            Some(ActionEditorMessage::StepChangeRunIf(
+                                                idx,
+                                                src.clone(),
+                                            ))
+                                        } else {
+                                            None
+                                        },
+                                    ),
+                                )
+                            },
+                        );
+
                     let mut outputs_text = String::new();
                     for (name, kind) in instruction.outputs().values() {
                         outputs_text.push_str(&format!("{name}: {kind}"));
@@ -425,6 +467,13 @@ impl ActionEditor {
                                     new_comment
                                 )
                             ),
+                            row![
+                                Text::new("Run if:"),
+                                Scrollable::new(run_if_opts).direction(
+                                    scrollable::Direction::Horizontal(scrollable::Properties::new())
+                                )
+                            ]
+                            .spacing(4),
                             Text::new("Inputs"),
                             self.ui_instruction_inputs(
                                 idx,
@@ -534,7 +583,7 @@ impl ActionEditor {
             return match source {
                 InstructionParameterSource::Literal => "Literal value".to_owned(),
                 InstructionParameterSource::FromParameter(idx) => {
-                    format!("From Parameter {}", action.parameters[*idx].0)
+                    format!("Parameter {}", action.parameters[*idx].0)
                 }
                 InstructionParameterSource::FromOutput(step, id) => {
                     let ic = &action.instructions[*step];
@@ -542,7 +591,7 @@ impl ActionEditor {
                         .engines_list
                         .get_instruction_by_id(&ic.instruction_id)
                         .unwrap();
-                    format!("From Step {}: {}", step + 1, instruction.outputs()[id].0)
+                    format!("Step {}: {}", step + 1, instruction.outputs()[id].0)
                 }
             };
         }
@@ -657,8 +706,18 @@ impl UiComponent for ActionEditor {
                 let (name, _) = &action.parameters[idx];
                 action.parameters[idx] = (name.clone(), new_type.clone());
 
-                // Updated any instruction parameters to literals
                 for instruction_config in action.instructions.iter_mut() {
+                    // Update any run ifs to literals
+                    if let InstructionParameterSource::FromParameter(p_idx) =
+                        instruction_config.run_if
+                    {
+                        if idx == p_idx {
+                            // Change to literal
+                            instruction_config.run_if = InstructionParameterSource::Literal;
+                        }
+                    }
+
+                    // Updated any instruction parameters to literals
                     for (_, parameter_source) in instruction_config.parameter_sources.iter_mut() {
                         if let InstructionParameterSource::FromParameter(p_idx) = parameter_source {
                             if idx == *p_idx {
@@ -697,6 +756,16 @@ impl UiComponent for ActionEditor {
 
                 // Swap idx and (idx - 1)
                 for instruction_config in action.instructions.iter_mut() {
+                    if let InstructionParameterSource::FromParameter(p_idx) =
+                        &mut instruction_config.run_if
+                    {
+                        if *p_idx == idx {
+                            *p_idx = idx - 1;
+                        } else if *p_idx == (idx - 1) {
+                            *p_idx = idx;
+                        }
+                    }
+
                     for (_, src) in instruction_config.parameter_sources.iter_mut() {
                         if let InstructionParameterSource::FromParameter(p_idx) = src {
                             if *p_idx == idx {
@@ -727,6 +796,16 @@ impl UiComponent for ActionEditor {
 
                 // Swap idx and (idx + 1)
                 for instruction_config in action.instructions.iter_mut() {
+                    if let InstructionParameterSource::FromParameter(p_idx) =
+                        &mut instruction_config.run_if
+                    {
+                        if *p_idx == idx {
+                            *p_idx = idx + 1;
+                        } else if *p_idx == (idx + 1) {
+                            *p_idx = idx;
+                        }
+                    }
+
                     for (_, src) in instruction_config.parameter_sources.iter_mut() {
                         if let InstructionParameterSource::FromParameter(p_idx) = src {
                             if *p_idx == idx {
@@ -771,6 +850,18 @@ impl UiComponent for ActionEditor {
                 // Reset instruction parameters that referred to idx to Literal
                 // Renumber all items after idx to (idx - 1).
                 for instruction_config in action.instructions.iter_mut() {
+                    if let InstructionParameterSource::FromParameter(p_idx) =
+                        &mut instruction_config.run_if
+                    {
+                        match (*p_idx).cmp(&idx) {
+                            std::cmp::Ordering::Equal => {
+                                instruction_config.run_if = InstructionParameterSource::Literal
+                            }
+                            std::cmp::Ordering::Greater => *p_idx -= 1,
+                            _ => (),
+                        }
+                    }
+
                     for src in instruction_config.parameter_sources.values_mut() {
                         if let InstructionParameterSource::FromParameter(p_idx) = src {
                             match (*p_idx).cmp(&idx) {
@@ -798,6 +889,10 @@ impl UiComponent for ActionEditor {
             }
             ActionEditorMessage::StepChangeComment(step, new_comment) => {
                 self.currently_open.as_mut().unwrap().instructions[step].comment = new_comment;
+                self.modified();
+            }
+            ActionEditorMessage::StepChangeRunIf(step, new_run_if) => {
+                self.currently_open.as_mut().unwrap().instructions[step].run_if = new_run_if;
                 self.modified();
             }
             ActionEditorMessage::StepParameterSourceChange(idx, id, new_source) => {
@@ -829,6 +924,16 @@ impl UiComponent for ActionEditor {
 
                 // Swap idx and (idx - 1)
                 for instruction_config in action.instructions.iter_mut() {
+                    if let InstructionParameterSource::FromParameter(p_idx) =
+                        &mut instruction_config.run_if
+                    {
+                        if *p_idx == idx {
+                            *p_idx = idx - 1;
+                        } else if *p_idx == (idx - 1) {
+                            *p_idx = idx;
+                        }
+                    }
+
                     for (_, src) in instruction_config.parameter_sources.iter_mut() {
                         if let InstructionParameterSource::FromOutput(p_idx, _) = src {
                             if *p_idx == idx {
@@ -859,6 +964,16 @@ impl UiComponent for ActionEditor {
 
                 // Swap idx and (idx + 1)
                 for instruction_config in action.instructions.iter_mut() {
+                    if let InstructionParameterSource::FromParameter(p_idx) =
+                        &mut instruction_config.run_if
+                    {
+                        if *p_idx == idx {
+                            *p_idx = idx + 1;
+                        } else if *p_idx == (idx + 1) {
+                            *p_idx = idx;
+                        }
+                    }
+
                     for (_, src) in instruction_config.parameter_sources.iter_mut() {
                         if let InstructionParameterSource::FromOutput(p_idx, _) = src {
                             if *p_idx == idx {
@@ -903,6 +1018,18 @@ impl UiComponent for ActionEditor {
                 // Reset instruction parameters that referred to idx to Literal
                 // Renumber all items after idx to (idx - 1).
                 for instruction_config in action.instructions.iter_mut() {
+                    if let InstructionParameterSource::FromParameter(p_idx) =
+                        &mut instruction_config.run_if
+                    {
+                        match (*p_idx).cmp(&idx) {
+                            std::cmp::Ordering::Equal => {
+                                instruction_config.run_if = InstructionParameterSource::Literal
+                            }
+                            std::cmp::Ordering::Greater => *p_idx -= 1,
+                            _ => (),
+                        }
+                    }
+
                     for src in instruction_config.parameter_sources.values_mut() {
                         if let InstructionParameterSource::FromOutput(p_idx, _) = src {
                             match (*p_idx).cmp(&idx) {

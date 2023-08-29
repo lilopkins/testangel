@@ -59,6 +59,8 @@ impl Action {
 pub struct InstructionConfiguration {
     pub instruction_id: String,
     pub comment: String,
+    /// Run If can depend on any boolean parameter, or if set to 'Literal' will always run.
+    pub run_if: InstructionParameterSource,
     pub parameter_sources: HashMap<String, InstructionParameterSource>,
     pub parameter_values: HashMap<String, ParameterValue>,
 }
@@ -130,6 +132,7 @@ impl From<Instruction> for InstructionConfiguration {
         }
         Self {
             instruction_id: value.id().clone(),
+            run_if: InstructionParameterSource::Literal, // run always
             comment: String::new(),
             parameter_sources,
             parameter_values,
