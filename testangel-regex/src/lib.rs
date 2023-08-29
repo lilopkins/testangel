@@ -113,7 +113,10 @@ fn process_request(request: Request) -> Response {
 
                     match Regex::new(&regex.value_string()) {
                         Ok(regex) => {
-                            o.insert("match".to_string(), ParameterValue::Boolean(regex.is_match(&input.value_string())));
+                            o.insert(
+                                "match".to_string(),
+                                ParameterValue::Boolean(regex.is_match(&input.value_string())),
+                            );
                         }
                         Err(e) => {
                             return Response::Error {
