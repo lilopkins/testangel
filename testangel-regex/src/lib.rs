@@ -16,6 +16,14 @@ lazy_static! {
     .with_parameter("regex", "Regular Expression", ParameterKind::String)
     .with_parameter("input", "Input", ParameterKind::String)
     .with_parameter("error", "Error Message", ParameterKind::String);
+    static ref INSTRUCTION_MATCH: Instruction = Instruction::new(
+        "regex-match",
+        "Match with Regular Expression",
+        "Returns a boolean if the input text matches a regular expression.",
+    )
+    .with_parameter("regex", "Regular Expression", ParameterKind::String)
+    .with_parameter("input", "Input", ParameterKind::String)
+    .with_output("match", "Input matches?", ParameterKind::Boolean);
 }
 
 #[no_mangle]
@@ -54,7 +62,7 @@ fn process_request(request: Request) -> Response {
             // Provide a list of instructions this engine can run.
             Response::Instructions {
                 friendly_name: "Regular Expressions".to_owned(),
-                instructions: vec![INSTRUCTION_VALIDATE.clone()],
+                instructions: vec![INSTRUCTION_VALIDATE.clone(), INSTRUCTION_MATCH.clone()],
             }
         }
         Request::RunInstructions { instructions } => {
@@ -92,6 +100,32 @@ fn process_request(request: Request) -> Response {
                     // Produce output and evidence
                     evidence.push(vec![]);
                     output.push(HashMap::new());
+                } else if i.instruction == *INSTRUCTION_MATCH.id() {
+                    // Validate parameters
+                    if let Err((kind, reason)) = INSTRUCTION_MATCH.validate(&i) {
+                        return Response::Error { kind, reason };
+                    }
+
+                    // Get parameters
+                    let regex = &i.parameters["regex"];
+                    let input = &i.parameters["input"];
+                    let mut o = HashMap::new();
+
+                    match Regex::new(&regex.value_string()) {
+                        Ok(regex) => {
+                            o.insert("match".to_string(), ParameterValue::Boolean(regex.is_match(&input.value_string())));
+                        }
+                        Err(e) => {
+                            return Response::Error {
+                                kind: ErrorKind::EngineProcessingError,
+                                reason: format!("Invalid regex in action: {e}"),
+                            }
+                        }
+                    }
+
+                    // Produce output and evidence
+                    evidence.push(vec![]);
+                    output.push(o);
                 } else {
                     return Response::Error {
                         kind: ErrorKind::InvalidInstruction,

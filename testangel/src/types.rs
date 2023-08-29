@@ -58,6 +58,9 @@ impl Action {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct InstructionConfiguration {
     pub instruction_id: String,
+    pub comment: String,
+    /// Run If can depend on any boolean parameter, or if set to 'Literal' will always run.
+    pub run_if: InstructionParameterSource,
     pub parameter_sources: HashMap<String, InstructionParameterSource>,
     pub parameter_values: HashMap<String, ParameterValue>,
 }
@@ -129,6 +132,8 @@ impl From<Instruction> for InstructionConfiguration {
         }
         Self {
             instruction_id: value.id().clone(),
+            run_if: InstructionParameterSource::Literal, // run always
+            comment: String::new(),
             parameter_sources,
             parameter_values,
         }
@@ -235,9 +240,26 @@ impl ActionConfiguration {
         }
 
         // Iterate through instructions
-        let mut instruction_outputs = Vec::new();
+        let mut instruction_outputs: Vec<HashMap<String, ParameterValue>> = Vec::new();
         let mut evidence = Vec::new();
         for instruction_config in &action.instructions {
+            // Check if we execute instruction
+            if !match &instruction_config.run_if {
+                InstructionParameterSource::Literal => true,
+                InstructionParameterSource::FromParameter(p_idx) => {
+                    action_parameters.get(&p_idx).unwrap().value_bool()
+                }
+                InstructionParameterSource::FromOutput(step, output_name) => instruction_outputs
+                    .get(*step)
+                    .unwrap()
+                    .get(output_name)
+                    .unwrap()
+                    .value_bool(),
+            } {
+                log::debug!("Instruction skipped");
+                continue;
+            }
+
             // Execute instruction
             let (outputs, ev) = instruction_config.execute(
                 engine_map.clone(),
