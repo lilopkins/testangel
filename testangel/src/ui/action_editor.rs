@@ -1015,10 +1015,9 @@ impl UiComponent for ActionEditor {
                     }
                 }
 
-                // Reset instruction parameters that referred to idx to Literal
-                // Renumber all items after idx to (idx - 1).
                 for instruction_config in action.instructions.iter_mut() {
-                    if let InstructionParameterSource::FromParameter(p_idx) =
+                    // Reset instruction parameters that referred to idx to Literal
+                    if let InstructionParameterSource::FromOutput(p_idx, _) =
                         &mut instruction_config.run_if
                     {
                         match (*p_idx).cmp(&idx) {
@@ -1030,10 +1029,12 @@ impl UiComponent for ActionEditor {
                         }
                     }
 
+                    // Renumber all items after idx to (idx - 1).
                     for src in instruction_config.parameter_sources.values_mut() {
                         if let InstructionParameterSource::FromOutput(p_idx, _) = src {
                             match (*p_idx).cmp(&idx) {
                                 std::cmp::Ordering::Equal => {
+                                    log::debug!("Updated runif");
                                     *src = InstructionParameterSource::Literal
                                 }
                                 std::cmp::Ordering::Greater => *p_idx -= 1,
