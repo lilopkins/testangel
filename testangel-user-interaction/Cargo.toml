@@ -2,7 +2,7 @@
 name = "testangel-user-interaction"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "A user interaction engine plugin for testangel."
-version = "0.10.0"
+version = "0.11.0"
 edition = "2021"
 
 [lib]
