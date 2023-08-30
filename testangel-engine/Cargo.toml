@@ -1,15 +1,12 @@
 [package]
-name = "testangel-evidence"
+name = "testangel-engine"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
-description = "An evidence engine plugin for testangel."
+description = "A engine interface for testangel."
 version = "0.13.0"
 edition = "2021"
-
-[lib]
-crate-type = ["cdylib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lazy_static = "1.4.0"
-testangel-engine = { path = "../testangel-engine" }
+testangel-ipc = { path = "../testangel-ipc" }
+testangel-engine-macros = { path = "../testangel-engine-macros" }

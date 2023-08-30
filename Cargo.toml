@@ -6,6 +6,8 @@ members = [
     "testangel-compare",
     "testangel-convert",
     "testangel-date",
+    "testangel-engine",
+    "testangel-engine-macros",
     "testangel-evidence",
     "testangel-ipc",
     "testangel-rand",

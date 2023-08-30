@@ -2,7 +2,7 @@
 name = "testangel-rand"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "A randomisation engine plugin for testangel."
-version = "0.12.0"
+version = "0.13.0"
 edition = "2021"
 
 [lib]
@@ -14,4 +14,4 @@ crate-type = ["cdylib"]
 lazy_static = "1.4.0"
 rand = "0.8.5"
 rand_regex = "0.16.0"
-testangel-ipc = { path = "../testangel-ipc" }
+testangel-engine = { path = "../testangel-engine" }

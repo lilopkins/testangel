@@ -7,7 +7,7 @@ use iced::widget::{
 use iced_aw::Card;
 use testangel::{
     action_loader::ActionMap,
-    types::{Action, ActionConfiguration, ActionParameterSource, AutomationFlow},
+    types::{Action, ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
 };
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
@@ -103,10 +103,12 @@ impl FlowEditor {
         let mut available_actions = vec![];
         for (group_name, actions) in actions_list.get_by_group() {
             for action in actions {
-                available_actions.push(AvailableAction {
-                    friendly_name: format!("{group_name}: {}", action.friendly_name),
-                    base_action: action.clone(),
-                });
+                if action.visible {
+                    available_actions.push(AvailableAction {
+                        friendly_name: format!("{group_name}: {}", action.friendly_name),
+                        base_action: action.clone(),
+                    });
+                }
             }
         }
 
@@ -122,10 +124,12 @@ impl FlowEditor {
         let mut available_actions = vec![];
         for (group_name, actions) in actions_list.get_by_group() {
             for action in actions {
-                available_actions.push(AvailableAction {
-                    friendly_name: format!("{group_name}: {}", action.friendly_name),
-                    base_action: action.clone(),
-                });
+                if action.visible {
+                    available_actions.push(AvailableAction {
+                        friendly_name: format!("{group_name}: {}", action.friendly_name),
+                        base_action: action.clone(),
+                    });
+                }
             }
         }
         self.add_action_combo = combo_box::State::new(available_actions);
@@ -142,9 +146,17 @@ impl FlowEditor {
     /// Open a flow
     pub(crate) fn open_flow(&mut self, file: PathBuf) -> Result<(), SaveOrOpenFlowError> {
         self.offer_to_save_default_error_handling();
+
+        let data = &fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?;
+
+        let versioned_file: VersionedFile =
+            ron::from_str(data).map_err(SaveOrOpenFlowError::ParsingError)?;
+        if versioned_file.version() != 1 {
+            return Err(SaveOrOpenFlowError::FlowNotVersionCompatible);
+        }
+
         let mut flow: AutomationFlow =
-            ron::from_str(&fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?)
-                .map_err(SaveOrOpenFlowError::ParsingError)?;
+            ron::from_str(data).map_err(SaveOrOpenFlowError::ParsingError)?;
         if flow.version() != 1 {
             return Err(SaveOrOpenFlowError::FlowNotVersionCompatible);
         }

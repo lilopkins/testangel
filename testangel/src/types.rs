@@ -8,6 +8,18 @@ use crate::{
     ipc::{self, EngineList, IpcError},
 };
 
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct VersionedFile {
+    version: usize,
+}
+
+impl VersionedFile {
+    /// Get the version of the file
+    pub fn version(&self) -> usize {
+        self.version
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
     /// The data version of this action.
@@ -20,6 +32,10 @@ pub struct Action {
     pub description: String,
     /// A group this action belongs to.
     pub group: String,
+    /// The author of this action.
+    pub author: String,
+    /// Whether this action should be visible in the flow editor.
+    pub visible: bool,
     /// The parameters this action takes, with a friendly name.
     pub parameters: Vec<(String, ParameterKind)>,
     /// The outputs this action produces, with a friendly name
@@ -35,6 +51,8 @@ impl Default for Action {
             id: uuid::Uuid::new_v4().to_string(),
             friendly_name: String::new(),
             description: String::new(),
+            author: String::new(),
+            visible: true,
             group: String::new(),
             parameters: Vec::new(),
             outputs: Vec::new(),

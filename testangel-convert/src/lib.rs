@@ -1,137 +1,61 @@
-use std::{
-    collections::HashMap,
-    ffi::{c_char, CStr, CString},
-};
+use std::sync::Mutex;
 
 use lazy_static::lazy_static;
-use testangel_ipc::prelude::*;
+use testangel_engine::*;
 
 lazy_static! {
-    static ref INSTRUCTION_INT_STR: Instruction = Instruction::new(
-        "convert-int-string",
-        "Integer to String",
-        "Convert an integer into a string.",
-    )
-    .with_parameter("val1", "Integer input", ParameterKind::Integer)
-    .with_output("result", "String output", ParameterKind::String);
-    static ref INSTRUCTION_DEC_STR: Instruction = Instruction::new(
-        "convert-decimal-string",
-        "Decimal to String",
-        "Convert a decimal into a string.",
-    )
-    .with_parameter("val1", "Decimal input", ParameterKind::Decimal)
-    .with_output("result", "String output", ParameterKind::String);
-    static ref INSTRUCTION_CONCAT_STR: Instruction = Instruction::new(
-        "convert-concat-strings",
-        "Concatenate Strings",
-        "Concatenate two strings into one.",
-    )
-    .with_parameter("val1", "StringA", ParameterKind::Decimal)
-    .with_parameter("val2", "StringB", ParameterKind::Decimal)
-    .with_output("result", "StringAStringB", ParameterKind::String);
+    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Convert")
+    .with_instruction(
+        Instruction::new(
+            "convert-int-string",
+            "Integer to String",
+            "Convert an integer into a string.",
+        )
+        .with_parameter("val1", "Integer input", ParameterKind::Integer)
+        .with_output("result", "String output", ParameterKind::String),
+        |_state, params, output, _evidence| {
+            let val1 = params["val1"].value_i32();
+
+            // Produce output and evidence
+            let result = val1.to_string();
+            output.insert("result".to_owned(), ParameterValue::String(result));
+            None
+        })
+    .with_instruction(
+        Instruction::new(
+            "convert-decimal-string",
+            "Decimal to String",
+            "Convert a decimal into a string.",
+        )
+        .with_parameter("val1", "Decimal input", ParameterKind::Decimal)
+        .with_output("result", "String output", ParameterKind::String),
+        |_state, params, output, _evidence| {
+            let val1 = params["val1"].value_f32();
+
+            // Produce output and evidence
+            let result = val1.to_string();
+            output.insert("result".to_owned(), ParameterValue::String(result));
+            None
+        })
+    .with_instruction(
+        Instruction::new(
+            "convert-concat-strings",
+            "Concatenate Strings",
+            "Concatenate two strings into one.",
+        )
+        .with_parameter("val1", "StringA", ParameterKind::Decimal)
+        .with_parameter("val2", "StringB", ParameterKind::Decimal)
+        .with_output("result", "StringAStringB", ParameterKind::String),
+        |_state, params, output, _evidence| {
+            let val1 = params["val1"].value_string();
+            let val2 = params["val2"].value_string();
+
+            // Produce output and evidence
+            let result = format!("{val1}{val2}");
+            output.insert("result".to_owned(), ParameterValue::String(result));
+            None
+        })
+    );
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn ta_call(input: *const c_char) -> *mut c_char {
-    let input = CStr::from_ptr(input);
-    let response = call_internal(String::from_utf8_lossy(input.to_bytes()).to_string());
-    let c_response = CString::new(response).expect("valid response");
-    c_response.into_raw()
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ta_release(input: *mut c_char) {
-    if !input.is_null() {
-        drop(CString::from_raw(input));
-    }
-}
-
-fn call_internal(request: String) -> String {
-    match Request::try_from(request) {
-        Err(e) => Response::Error {
-            kind: ErrorKind::FailedToParseIPCJson,
-            reason: format!("The IPC message was invalid. ({:?})", e),
-        }
-        .to_json(),
-        Ok(request) => process_request(request).to_json(),
-    }
-}
-
-fn process_request(request: Request) -> Response {
-    match request {
-        Request::ResetState => {
-            // nothing to do
-            Response::StateReset
-        }
-        Request::Instructions => {
-            // Provide a list of instructions this engine can run.
-            Response::Instructions {
-                friendly_name: "Convert".to_owned(),
-                instructions: vec![INSTRUCTION_INT_STR.clone(), INSTRUCTION_DEC_STR.clone()],
-            }
-        }
-        Request::RunInstructions { instructions } => {
-            let mut output = Vec::new();
-            let mut evidence = Vec::new();
-            for i in instructions {
-                if i.instruction == *INSTRUCTION_INT_STR.id() {
-                    // Validate parameters
-                    if let Err((kind, reason)) = INSTRUCTION_INT_STR.validate(&i) {
-                        return Response::Error { kind, reason };
-                    }
-
-                    // Get parameters
-                    let val1 = &i.parameters["val1"];
-
-                    // Produce output and evidence
-                    let result = val1.value_i32().to_string();
-                    evidence.push(vec![]);
-                    let mut map = HashMap::new();
-                    map.insert("result".to_owned(), ParameterValue::String(result));
-                    output.push(map);
-                } else if i.instruction == *INSTRUCTION_DEC_STR.id() {
-                    // Validate parameters
-                    if let Err((kind, reason)) = INSTRUCTION_DEC_STR.validate(&i) {
-                        return Response::Error { kind, reason };
-                    }
-
-                    // Get parameters
-                    let val1 = &i.parameters["val1"];
-
-                    // Produce output and evidence
-                    let result = val1.value_f32().to_string();
-                    evidence.push(vec![]);
-                    let mut map = HashMap::new();
-                    map.insert("result".to_owned(), ParameterValue::String(result));
-                    output.push(map);
-                } else if i.instruction == *INSTRUCTION_CONCAT_STR.id() {
-                    // Validate parameters
-                    if let Err((kind, reason)) = INSTRUCTION_CONCAT_STR.validate(&i) {
-                        return Response::Error { kind, reason };
-                    }
-
-                    // Get parameters
-                    let val1 = i.parameters["val1"].value_string();
-                    let val2 = i.parameters["val2"].value_string();
-
-                    // Produce output and evidence
-                    let result = format!("{val1}{val2}");
-                    evidence.push(vec![]);
-                    let mut map = HashMap::new();
-                    map.insert("result".to_owned(), ParameterValue::String(result));
-                    output.push(map);
-                } else {
-                    return Response::Error {
-                        kind: ErrorKind::InvalidInstruction,
-                        reason: format!(
-                            "The requested instruction {} could not be handled by this engine.",
-                            i.instruction
-                        ),
-                    };
-                }
-            }
-
-            Response::ExecutionOutput { output, evidence }
-        }
-    }
-}
+expose_engine!(ENGINE);

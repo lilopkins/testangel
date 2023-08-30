@@ -7,7 +7,7 @@ use iced::widget::{
 use iced_aw::Card;
 use testangel::{
     ipc::EngineList,
-    types::{Action, InstructionConfiguration, InstructionParameterSource},
+    types::{Action, InstructionConfiguration, InstructionParameterSource, VersionedFile},
 };
 use testangel_ipc::prelude::{Instruction, ParameterKind, ParameterValue};
 
@@ -22,6 +22,8 @@ pub enum ActionEditorMessage {
     NameChanged(String),
     GroupChanged(String),
     DescriptionChanged(String),
+    AuthorChanged(String),
+    VisibleChanged(bool),
 
     ParameterCreate,
     ParameterNameChange(usize, String),
@@ -149,12 +151,15 @@ impl ActionEditor {
     /// Open an action
     pub(crate) fn open_action(&mut self, file: PathBuf) -> Result<(), SaveOrOpenActionError> {
         self.offer_to_save_default_error_handling();
-        let action: Action =
-            ron::from_str(&fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?)
-                .map_err(SaveOrOpenActionError::ParsingError)?;
-        if action.version() != 1 {
+        let data = &fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?;
+
+        let versioned_file: VersionedFile =
+            ron::from_str(data).map_err(SaveOrOpenActionError::ParsingError)?;
+        if versioned_file.version() != 1 {
             return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }
+
+        let action: Action = ron::from_str(data).map_err(SaveOrOpenActionError::ParsingError)?;
         for ic in &action.instructions {
             if self
                 .engines_list
@@ -628,8 +633,15 @@ impl UiComponent for ActionEditor {
                         .on_input(ActionEditorMessage::NameChanged),
                     TextInput::new("Action Group", &action.group)
                         .on_input(ActionEditorMessage::GroupChanged),
+                    TextInput::new("Author", &action.author)
+                        .on_input(ActionEditorMessage::AuthorChanged),
                     TextInput::new("Description", &action.description)
                         .on_input(ActionEditorMessage::DescriptionChanged),
+                    Checkbox::new(
+                        "Visible in Flow Editor",
+                        action.visible,
+                        ActionEditorMessage::VisibleChanged
+                    ),
                     Rule::horizontal(2),
                     // Parameters
                     Text::new("Action Parameters"),
@@ -694,6 +706,14 @@ impl UiComponent for ActionEditor {
             }
             ActionEditorMessage::DescriptionChanged(new_description) => {
                 self.currently_open.as_mut().unwrap().description = new_description;
+                self.modified();
+            }
+            ActionEditorMessage::AuthorChanged(new_author) => {
+                self.currently_open.as_mut().unwrap().author = new_author;
+                self.modified();
+            }
+            ActionEditorMessage::VisibleChanged(now_visible) => {
+                self.currently_open.as_mut().unwrap().visible = now_visible;
                 self.modified();
             }
             ActionEditorMessage::ParameterNameChange(idx, new_name) => {
