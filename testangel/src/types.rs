@@ -32,6 +32,10 @@ pub struct Action {
     pub description: String,
     /// A group this action belongs to.
     pub group: String,
+    /// The author of this action.
+    pub author: String,
+    /// Whether this action should be visible in the flow editor.
+    pub visible: bool,
     /// The parameters this action takes, with a friendly name.
     pub parameters: Vec<(String, ParameterKind)>,
     /// The outputs this action produces, with a friendly name
@@ -47,6 +51,8 @@ impl Default for Action {
             id: uuid::Uuid::new_v4().to_string(),
             friendly_name: String::new(),
             description: String::new(),
+            author: String::new(),
+            visible: true,
             group: String::new(),
             parameters: Vec::new(),
             outputs: Vec::new(),

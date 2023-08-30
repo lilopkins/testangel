@@ -103,10 +103,12 @@ impl FlowEditor {
         let mut available_actions = vec![];
         for (group_name, actions) in actions_list.get_by_group() {
             for action in actions {
-                available_actions.push(AvailableAction {
-                    friendly_name: format!("{group_name}: {}", action.friendly_name),
-                    base_action: action.clone(),
-                });
+                if action.visible {
+                    available_actions.push(AvailableAction {
+                        friendly_name: format!("{group_name}: {}", action.friendly_name),
+                        base_action: action.clone(),
+                    });
+                }
             }
         }
 
@@ -122,10 +124,12 @@ impl FlowEditor {
         let mut available_actions = vec![];
         for (group_name, actions) in actions_list.get_by_group() {
             for action in actions {
-                available_actions.push(AvailableAction {
-                    friendly_name: format!("{group_name}: {}", action.friendly_name),
-                    base_action: action.clone(),
-                });
+                if action.visible {
+                    available_actions.push(AvailableAction {
+                        friendly_name: format!("{group_name}: {}", action.friendly_name),
+                        base_action: action.clone(),
+                    });
+                }
             }
         }
         self.add_action_combo = combo_box::State::new(available_actions);

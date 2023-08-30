@@ -22,6 +22,8 @@ pub enum ActionEditorMessage {
     NameChanged(String),
     GroupChanged(String),
     DescriptionChanged(String),
+    AuthorChanged(String),
+    VisibleChanged(bool),
 
     ParameterCreate,
     ParameterNameChange(usize, String),
@@ -631,8 +633,15 @@ impl UiComponent for ActionEditor {
                         .on_input(ActionEditorMessage::NameChanged),
                     TextInput::new("Action Group", &action.group)
                         .on_input(ActionEditorMessage::GroupChanged),
+                    TextInput::new("Author", &action.author)
+                        .on_input(ActionEditorMessage::AuthorChanged),
                     TextInput::new("Description", &action.description)
                         .on_input(ActionEditorMessage::DescriptionChanged),
+                    Checkbox::new(
+                        "Visible in Flow Editor",
+                        action.visible,
+                        ActionEditorMessage::VisibleChanged
+                    ),
                     Rule::horizontal(2),
                     // Parameters
                     Text::new("Action Parameters"),
@@ -697,6 +706,14 @@ impl UiComponent for ActionEditor {
             }
             ActionEditorMessage::DescriptionChanged(new_description) => {
                 self.currently_open.as_mut().unwrap().description = new_description;
+                self.modified();
+            }
+            ActionEditorMessage::AuthorChanged(new_author) => {
+                self.currently_open.as_mut().unwrap().author = new_author;
+                self.modified();
+            }
+            ActionEditorMessage::VisibleChanged(now_visible) => {
+                self.currently_open.as_mut().unwrap().visible = now_visible;
                 self.modified();
             }
             ActionEditorMessage::ParameterNameChange(idx, new_name) => {
