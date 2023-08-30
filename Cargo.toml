@@ -5,6 +5,7 @@ members = [
     "testangel-arithmetic",
     "testangel-compare",
     "testangel-convert",
+    "testangel-date",
     "testangel-evidence",
     "testangel-ipc",
     "testangel-rand",

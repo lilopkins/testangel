@@ -1,0 +1,16 @@
+[package]
+name = "testangel-date"
+authors = ["Lily Hopkins <lily@hpkns.uk>"]
+description = "A date and time engine plugin for testangel."
+version = "0.11.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lazy_static = "1.4.0"
+chrono = { version = "0.4.27", features = [ "std" ] }
+testangel-ipc = { path = "../testangel-ipc" }
