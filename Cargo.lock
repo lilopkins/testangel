@@ -3581,6 +3581,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "testangel-user-interaction"
+version = "0.10.0"
+dependencies = [
+ "lazy_static",
+ "rfd",
+ "testangel-ipc",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -7,4 +7,5 @@ members = [
     "testangel-evidence",
     "testangel-ipc",
     "testangel-regex",
+    "testangel-user-interaction",
 ]
