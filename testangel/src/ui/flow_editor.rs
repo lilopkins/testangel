@@ -7,7 +7,7 @@ use iced::widget::{
 use iced_aw::Card;
 use testangel::{
     action_loader::ActionMap,
-    types::{Action, ActionConfiguration, ActionParameterSource, AutomationFlow},
+    types::{Action, ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
 };
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
@@ -142,9 +142,17 @@ impl FlowEditor {
     /// Open a flow
     pub(crate) fn open_flow(&mut self, file: PathBuf) -> Result<(), SaveOrOpenFlowError> {
         self.offer_to_save_default_error_handling();
+
+        let data = &fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?;
+
+        let versioned_file: VersionedFile =
+            ron::from_str(data).map_err(SaveOrOpenFlowError::ParsingError)?;
+        if versioned_file.version() != 1 {
+            return Err(SaveOrOpenFlowError::FlowNotVersionCompatible);
+        }
+
         let mut flow: AutomationFlow =
-            ron::from_str(&fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?)
-                .map_err(SaveOrOpenFlowError::ParsingError)?;
+            ron::from_str(data).map_err(SaveOrOpenFlowError::ParsingError)?;
         if flow.version() != 1 {
             return Err(SaveOrOpenFlowError::FlowNotVersionCompatible);
         }

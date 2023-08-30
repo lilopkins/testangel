@@ -8,6 +8,18 @@ use crate::{
     ipc::{self, EngineList, IpcError},
 };
 
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct VersionedFile {
+    version: usize,
+}
+
+impl VersionedFile {
+    /// Get the version of the file
+    pub fn version(&self) -> usize {
+        self.version
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
     /// The data version of this action.

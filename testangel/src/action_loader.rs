@@ -1,7 +1,7 @@
 use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc};
 
 use crate::ipc::EngineList;
-use crate::types::Action;
+use crate::types::{Action, VersionedFile};
 
 #[derive(Default)]
 pub struct ActionMap(HashMap<PathBuf, Action>);
@@ -47,6 +47,13 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
             if str.ends_with(".taaction") {
                 log::debug!("Detected possible action {str}");
                 if let Ok(res) = fs::read_to_string(path.path()) {
+                    if let Ok(versioned_file) = ron::from_str::<VersionedFile>(&res) {
+                        if versioned_file.version() != 1 {
+                            log::warn!("Action {str} uses an incompatible file version.");
+                            continue 'action_loop;
+                        }
+                    }
+
                     if let Ok(action) = ron::from_str::<Action>(&res) {
                         for instruction_config in &action.instructions {
                             if engine_list

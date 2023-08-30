@@ -7,7 +7,7 @@ use iced::widget::{
 use iced_aw::Card;
 use testangel::{
     ipc::EngineList,
-    types::{Action, InstructionConfiguration, InstructionParameterSource},
+    types::{Action, InstructionConfiguration, InstructionParameterSource, VersionedFile},
 };
 use testangel_ipc::prelude::{Instruction, ParameterKind, ParameterValue};
 
@@ -149,12 +149,15 @@ impl ActionEditor {
     /// Open an action
     pub(crate) fn open_action(&mut self, file: PathBuf) -> Result<(), SaveOrOpenActionError> {
         self.offer_to_save_default_error_handling();
-        let action: Action =
-            ron::from_str(&fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?)
-                .map_err(SaveOrOpenActionError::ParsingError)?;
-        if action.version() != 1 {
+        let data = &fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?;
+
+        let versioned_file: VersionedFile =
+            ron::from_str(data).map_err(SaveOrOpenActionError::ParsingError)?;
+        if versioned_file.version() != 1 {
             return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }
+
+        let action: Action = ron::from_str(data).map_err(SaveOrOpenActionError::ParsingError)?;
         for ic in &action.instructions {
             if self
                 .engines_list
