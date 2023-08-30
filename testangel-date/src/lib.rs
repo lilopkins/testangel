@@ -51,7 +51,7 @@ fn process_request(request: Request) -> Response {
         Request::Instructions => {
             // Provide a list of instructions this engine can run.
             Response::Instructions {
-                friendly_name: "Random".to_owned(),
+                friendly_name: "Date and Time".to_owned(),
                 instructions: vec![
                     INSTRUCTION_NOW_FORMATTED.clone(),
                 ],
