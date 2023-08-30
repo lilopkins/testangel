@@ -21,6 +21,14 @@ lazy_static! {
     )
     .with_parameter("val1", "Decimal input", ParameterKind::Decimal)
     .with_output("result", "String output", ParameterKind::String);
+    static ref INSTRUCTION_CONCAT_STR: Instruction = Instruction::new(
+        "convert-concat-strings",
+        "Concatenate Strings",
+        "Concatenate two strings into one.",
+    )
+    .with_parameter("val1", "StringA", ParameterKind::Decimal)
+    .with_parameter("val2", "StringB", ParameterKind::Decimal)
+    .with_output("result", "StringAStringB", ParameterKind::String);
 }
 
 #[no_mangle]
@@ -92,6 +100,22 @@ fn process_request(request: Request) -> Response {
 
                     // Produce output and evidence
                     let result = val1.value_f32().to_string();
+                    evidence.push(vec![]);
+                    let mut map = HashMap::new();
+                    map.insert("result".to_owned(), ParameterValue::String(result));
+                    output.push(map);
+                } else if i.instruction == *INSTRUCTION_CONCAT_STR.id() {
+                    // Validate parameters
+                    if let Err((kind, reason)) = INSTRUCTION_CONCAT_STR.validate(&i) {
+                        return Response::Error { kind, reason };
+                    }
+
+                    // Get parameters
+                    let val1 = i.parameters["val1"].value_string();
+                    let val2 = i.parameters["val2"].value_string();
+
+                    // Produce output and evidence
+                    let result = format!("{val1}{val2}");
                     evidence.push(vec![]);
                     let mut map = HashMap::new();
                     map.insert("result".to_owned(), ParameterValue::String(result));

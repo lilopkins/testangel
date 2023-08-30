@@ -2842,6 +2842,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_regex"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8276e2c4e37f1907c587794d9b8b3334e1d44f36e05f8c13d61c50c19c264ae2"
+dependencies = [
+ "rand",
+ "regex-syntax",
+]
+
+[[package]]
 name = "range-alloc"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3510,7 +3520,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "base64",
  "chrono",
@@ -3532,7 +3542,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-arithmetic"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3540,7 +3550,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-compare"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3548,7 +3558,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-convert"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3556,7 +3566,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-evidence"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "lazy_static",
  "testangel-ipc",
@@ -3564,7 +3574,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "schemars",
  "serde",
@@ -3572,11 +3582,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "testangel-rand"
+version = "0.11.0"
+dependencies = [
+ "lazy_static",
+ "rand",
+ "rand_regex",
+ "testangel-ipc",
+]
+
+[[package]]
 name = "testangel-regex"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "lazy_static",
  "regex",
+ "testangel-ipc",
+]
+
+[[package]]
+name = "testangel-user-interaction"
+version = "0.11.0"
+dependencies = [
+ "lazy_static",
+ "rfd",
  "testangel-ipc",
 ]
 
