@@ -67,7 +67,11 @@ fn process_request(request: Request) -> Response {
             // Provide a list of instructions this engine can run.
             Response::Instructions {
                 friendly_name: "Convert".to_owned(),
-                instructions: vec![INSTRUCTION_INT_STR.clone(), INSTRUCTION_DEC_STR.clone()],
+                instructions: vec![
+                    INSTRUCTION_INT_STR.clone(),
+                    INSTRUCTION_DEC_STR.clone(),
+                    INSTRUCTION_CONCAT_STR.clone(),
+                ],
             }
         }
         Request::RunInstructions { instructions } => {

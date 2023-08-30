@@ -52,9 +52,7 @@ fn process_request(request: Request) -> Response {
             // Provide a list of instructions this engine can run.
             Response::Instructions {
                 friendly_name: "Date and Time".to_owned(),
-                instructions: vec![
-                    INSTRUCTION_NOW_FORMATTED.clone(),
-                ],
+                instructions: vec![INSTRUCTION_NOW_FORMATTED.clone()],
             }
         }
         Request::RunInstructions { instructions } => {
@@ -73,7 +71,9 @@ fn process_request(request: Request) -> Response {
 
                     o.insert(
                         "result".to_string(),
-                        ParameterValue::String(chrono::Local::now().format(&format_string).to_string()),
+                        ParameterValue::String(
+                            chrono::Local::now().format(&format_string).to_string(),
+                        ),
                     );
 
                     // Produce output and evidence
