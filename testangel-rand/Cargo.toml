@@ -14,4 +14,4 @@ crate-type = ["cdylib"]
 lazy_static = "1.4.0"
 rand = "0.8.5"
 rand_regex = "0.16.0"
-testangel-ipc = { path = "../testangel-ipc" }
+testangel-engine = { path = "../testangel-engine" }

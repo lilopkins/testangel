@@ -1,0 +1,9 @@
+[package]
+name = "testangel-engine-macros"
+authors = ["Lily Hopkins <lily@hpkns.uk>"]
+description = "Macros for testangel-engine."
+version = "0.12.0"
+edition = "2021"
+
+[lib]
+proc-macro = true

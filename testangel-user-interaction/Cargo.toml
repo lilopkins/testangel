@@ -13,4 +13,4 @@ crate-type = ["cdylib"]
 [dependencies]
 lazy_static = "1.4.0"
 rfd = "0.11.4"
-testangel-ipc = { path = "../testangel-ipc" }
+testangel-engine = { path = "../testangel-engine" }
