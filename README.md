@@ -13,6 +13,19 @@ In TestAngel, you start off creating a Test Flow. This will be the instructions 
 |`testangel`|The main executable and UI that controls the platform ("the controller").|
 |`testangel-ipc`|The library that contains the serialisable messages that can be exchanged between the controller and the engine plugins.|
 |`testangel-arithmetic`|An arithmetic engine plugin.|
+|`testangel-compare`|A comparison engine plugin.|
+|`testangel-convert`|A conversion engine plugin.|
+|`testangel-evidence`|An evidence-producing engine plugin.|
+|`testangel-regex`|A regular expression processing engine plugin.|
+|`testangel-user-interaction`|A user interaction engine plugin.|
+
+## Other Engines
+
+You can install new engines simply by downloading them and dropping them in the `engines` folder.
+
+| Other engine | Description |
+|:-----|:------------|
+|[`testangel-sap`](https://github.com/lilopkins/testangel-sap)|An engine that interfaces with SAP GUI for Windows.|
 
 ## Environment Variables
 
@@ -25,7 +38,11 @@ The tool can be configured through a number of environment variables:
 | `TA_HIDE_ACTION_EDITOR` | If set to anything other than `no`, the action editor items on the Getting Started screen will be hidden. This can be useful in commercial settings as the action editor is more complex to learn and master. |
 | `TA_LOCAL_SUPPORT_CONTACT` | If set, the Getting Started screen will show the value as a contact for obtaining help. Useful for commercial settings. |
 
-## Engine Communication
+## Developers: Writing an Engine
+
+If you are a developer in a language with C compatible FFI, you can write an engine. The following provides some details about how it can be achieved.
+
+### Engine Communication
 
 Engines are dynamically linked libraries (`.dll`s on Windows, `.dylib`s on Mac, `.so`s on Linux systems) which have two functions, `ta_call` and `ta_release`.
 The call function has the signature:
