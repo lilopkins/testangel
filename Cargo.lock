@@ -2842,6 +2842,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_regex"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8276e2c4e37f1907c587794d9b8b3334e1d44f36e05f8c13d61c50c19c264ae2"
+dependencies = [
+ "rand",
+ "regex-syntax",
+]
+
+[[package]]
 name = "range-alloc"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3569,6 +3579,16 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "testangel-rand"
+version = "0.10.0"
+dependencies = [
+ "lazy_static",
+ "rand",
+ "rand_regex",
+ "testangel-ipc",
 ]
 
 [[package]]
