@@ -138,7 +138,7 @@ fn process_request(request: Request) -> Response {
                     if !rfd::MessageDialog::new()
                         .set_level(rfd::MessageLevel::Info)
                         .set_buttons(rfd::MessageButtons::YesNo)
-                        .set_title("Terminate flow?")
+                        .set_title("Continue flow?")
                         .set_description(&message)
                         .show()
                     {

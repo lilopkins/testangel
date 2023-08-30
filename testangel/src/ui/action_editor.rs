@@ -924,7 +924,7 @@ impl UiComponent for ActionEditor {
 
                 // Swap idx and (idx - 1)
                 for instruction_config in action.instructions.iter_mut() {
-                    if let InstructionParameterSource::FromOutput(p_idx) =
+                    if let InstructionParameterSource::FromOutput(p_idx, _) =
                         &mut instruction_config.run_if
                     {
                         if *p_idx == idx {
@@ -964,7 +964,7 @@ impl UiComponent for ActionEditor {
 
                 // Swap idx and (idx + 1)
                 for instruction_config in action.instructions.iter_mut() {
-                    if let InstructionParameterSource::FromOutput(p_idx) =
+                    if let InstructionParameterSource::FromOutput(p_idx, _) =
                         &mut instruction_config.run_if
                     {
                         if *p_idx == idx {
