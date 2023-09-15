@@ -1,10 +1,13 @@
-use std::{env, fmt, fs, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, env, fmt, fs, path::PathBuf, sync::Arc};
 
-use iced::widget::{
-    column, combo_box, row, scrollable, Button, Checkbox, Column, Container, PickList, Row, Rule,
-    Scrollable, Space, Text, TextInput,
+use iced::{
+    theme,
+    widget::{
+        column, combo_box, row, Button, Checkbox, Column, ComboBox, Container, PickList, Rule,
+        Scrollable, Space, Text, TextInput,
+    },
+    Length,
 };
-use iced_aw::Card;
 use testangel::{
     ipc::EngineList,
     types::{Action, InstructionConfiguration, InstructionParameterSource, VersionedFile},
@@ -96,11 +99,37 @@ impl fmt::Display for AvailableInstruction {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct ComboInstructionParameterSource {
+    /// The friendly label of this source
+    friendly_label: String,
+    /// The actual source held by this entry
+    source: InstructionParameterSource,
+    /// The kind of parameters
+    kind: ParameterKind,
+}
+
+impl fmt::Display for ComboInstructionParameterSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.friendly_label)
+    }
+}
+
+#[allow(clippy::from_over_into)]
+impl Into<InstructionParameterSource> for ComboInstructionParameterSource {
+    fn into(self) -> InstructionParameterSource {
+        self.source
+    }
+}
+
 pub struct ActionEditor {
     engines_list: Arc<EngineList>,
     output_list: Vec<(isize, ParameterKind, InstructionParameterSource)>,
     add_instruction_combo: combo_box::State<AvailableInstruction>,
 
+    run_if_combo: Vec<combo_box::State<ComboInstructionParameterSource>>,
+    parameter_source_combo: Vec<HashMap<String, combo_box::State<ComboInstructionParameterSource>>>,
+    output_combo: Vec<combo_box::State<ComboInstructionParameterSource>>,
     currently_open: Option<Action>,
     current_path: Option<PathBuf>,
     needs_saving: bool,
@@ -112,6 +141,9 @@ impl Default for ActionEditor {
             engines_list: Arc::new(EngineList::default()),
             output_list: vec![],
             add_instruction_combo: combo_box::State::new(Vec::new()),
+            run_if_combo: vec![],
+            parameter_source_combo: vec![],
+            output_combo: vec![],
             currently_open: None,
             current_path: None,
             needs_saving: false,
@@ -281,7 +313,7 @@ impl ActionEditor {
                                 ParameterKind::Decimal,
                                 ParameterKind::Boolean,
                             ][..],
-                            Some(kind.clone()),
+                            Some(*kind),
                             move |k| ActionEditorMessage::ParameterTypeChange(idx, k)
                         )
                         .placeholder("Parameter Kind"),
@@ -307,48 +339,15 @@ impl ActionEditor {
                 let (name, kind) = &instruction.parameters()[id];
                 let param_source = &instruction_config.parameter_sources[id];
                 let param_value = &instruction_config.parameter_values[id];
-                let id = id.clone();
 
-                let source_opts = self
-                    .output_list
-                    .iter()
-                    .filter(|(from_step, param_kind, _)| {
-                        *from_step < (step_idx as isize) && param_kind == kind
-                    })
-                    .fold(
-                        Row::new()
-                            .spacing(2)
-                            .push(Button::new(Text::new("Use Literal")).on_press(
-                                ActionEditorMessage::StepParameterSourceChange(
-                                    step_idx,
-                                    id.clone(),
-                                    InstructionParameterSource::Literal,
-                                ),
-                            )),
-                        |row, (_, _, src)| {
-                            row.push(
-                                Button::new(Text::new(format!(
-                                    "Set {}",
-                                    self.friendly_source_string(src)
-                                )))
-                                .on_press(
-                                    ActionEditorMessage::StepParameterSourceChange(
-                                        step_idx,
-                                        id.clone(),
-                                        src.clone(),
-                                    ),
-                                ),
-                            )
-                        },
-                    );
-
+                let literal_input_id = id.clone();
                 let literal_input: iced::Element<'_, _> = match param_source {
                     InstructionParameterSource::Literal => match kind {
                         ParameterKind::Boolean => {
                             Checkbox::new("Value", param_value.value_bool(), move |new_val| {
                                 ActionEditorMessage::StepParameterValueChange(
                                     step_idx,
-                                    id.clone(),
+                                    literal_input_id.clone(),
                                     if new_val { "yes" } else { "no" }.to_string(),
                                 )
                             })
@@ -358,7 +357,7 @@ impl ActionEditor {
                             .on_input(move |new_val| {
                                 ActionEditorMessage::StepParameterValueChange(
                                     step_idx,
-                                    id.clone(),
+                                    literal_input_id.clone(),
                                     new_val,
                                 )
                             })
@@ -368,16 +367,27 @@ impl ActionEditor {
                     _ => Space::new(0, 0).into(),
                 };
 
+                let id = id.clone();
                 col.push(
                     row![
-                        Text::new(format!(
-                            "{name} ({kind}) from {}",
-                            self.friendly_source_string(param_source)
-                        )),
+                        Text::new(format!("{name} ({kind}) use")),
+                        ComboBox::new(
+                            &self.parameter_source_combo[step_idx][&id.clone()],
+                            "Source",
+                            Some(&ComboInstructionParameterSource {
+                                friendly_label: self.friendly_source_string(param_source),
+                                kind: *kind,
+                                source: param_source.clone(),
+                            }),
+                            move |src: ComboInstructionParameterSource| {
+                                ActionEditorMessage::StepParameterSourceChange(
+                                    step_idx,
+                                    id.clone(),
+                                    src.into(),
+                                )
+                            }
+                        ),
                         literal_input,
-                        Scrollable::new(source_opts).direction(scrollable::Direction::Horizontal(
-                            scrollable::Properties::new()
-                        )),
                     ]
                     .spacing(4)
                     .align_items(iced::Alignment::Center),
@@ -401,95 +411,78 @@ impl ActionEditor {
                         .get_instruction_by_id(&instruction_config.instruction_id)
                         .unwrap();
 
-                    let run_if_set = instruction_config.run_if.clone();
-                    let run_if_opts = self
-                        .output_list
-                        .iter()
-                        .filter(|(from_step, param_kind, _)| {
-                            *from_step < (idx as isize) && *param_kind == ParameterKind::Boolean
-                        })
-                        .fold(
-                            Row::new().spacing(2).push(
-                                Button::new(Text::new("Always Run")).on_press_maybe(
-                                    if let InstructionParameterSource::Literal = run_if_set {
-                                        None
-                                    } else {
-                                        Some(ActionEditorMessage::StepChangeRunIf(
-                                            idx,
-                                            InstructionParameterSource::Literal,
-                                        ))
-                                    },
-                                ),
-                            ),
-                            |row, (_, _, src)| {
-                                row.push(
-                                    Button::new(Text::new(format!(
-                                        "Run if {}",
-                                        self.friendly_source_string(src)
-                                    )))
-                                    .on_press_maybe(
-                                        if run_if_set != *src {
-                                            Some(ActionEditorMessage::StepChangeRunIf(
-                                                idx,
-                                                src.clone(),
-                                            ))
-                                        } else {
-                                            None
-                                        },
-                                    ),
-                                )
-                            },
-                        );
-
                     let mut outputs_text = String::new();
                     for (name, kind) in instruction.outputs().values() {
                         outputs_text.push_str(&format!("{name}: {kind}"));
                     }
                     outputs_text = outputs_text.trim_end().to_string();
-                    col.push(Card::new(
-                        Text::new(format!("Step {}: {}", idx + 1, instruction.friendly_name())),
-                        column![
-                            row![
-                                Button::new("×").on_press(ActionEditorMessage::StepDelete(idx)),
-                                Button::new("ʌ").on_press_maybe(if idx == 0 {
-                                    None
-                                } else {
-                                    Some(ActionEditorMessage::StepMoveUp(idx))
-                                }),
-                                Button::new("v").on_press_maybe(
-                                    if (idx + 1) == action.instructions.len() {
+                    col.push(
+                        Container::new(
+                            column![
+                                Text::new(format!(
+                                    "Step {}: {}",
+                                    idx + 1,
+                                    instruction.friendly_name()
+                                ))
+                                .size(20),
+                                row![
+                                    Button::new("×").on_press(ActionEditorMessage::StepDelete(idx)),
+                                    Button::new("ʌ").on_press_maybe(if idx == 0 {
                                         None
                                     } else {
-                                        Some(ActionEditorMessage::StepMoveDown(idx))
+                                        Some(ActionEditorMessage::StepMoveUp(idx))
+                                    }),
+                                    Button::new("v").on_press_maybe(
+                                        if (idx + 1) == action.instructions.len() {
+                                            None
+                                        } else {
+                                            Some(ActionEditorMessage::StepMoveDown(idx))
+                                        }
+                                    ),
+                                    Text::new(instruction.description().clone()),
+                                ]
+                                .spacing(4),
+                                TextInput::new("Comment", &instruction_config.comment).on_input(
+                                    move |new_comment| ActionEditorMessage::StepChangeComment(
+                                        idx,
+                                        new_comment
+                                    )
+                                ),
+                                ComboBox::new(
+                                    &self.run_if_combo[idx],
+                                    "Run if...",
+                                    Some(&ComboInstructionParameterSource {
+                                        friendly_label: if instruction_config.run_if
+                                            == InstructionParameterSource::Literal
+                                        {
+                                            "Always run".to_string()
+                                        } else {
+                                            self.friendly_source_string(&instruction_config.run_if)
+                                        },
+                                        kind: ParameterKind::Boolean,
+                                        source: instruction_config.run_if.clone(),
+                                    }),
+                                    move |src: ComboInstructionParameterSource| {
+                                        ActionEditorMessage::StepChangeRunIf(idx, src.into())
                                     }
                                 ),
-                                Text::new(instruction.description().clone()),
-                            ]
-                            .spacing(4),
-                            TextInput::new("Comment", &instruction_config.comment).on_input(
-                                move |new_comment| ActionEditorMessage::StepChangeComment(
+                                Space::with_height(4),
+                                Text::new("Inputs").size(18),
+                                self.ui_instruction_inputs(
                                     idx,
-                                    new_comment
-                                )
-                            ),
-                            row![
-                                Text::new("Run if:"),
-                                Scrollable::new(run_if_opts).direction(
-                                    scrollable::Direction::Horizontal(scrollable::Properties::new())
-                                )
+                                    instruction_config.clone(),
+                                    instruction.clone()
+                                ),
+                                Space::with_height(4),
+                                Text::new("Outputs").size(18),
+                                Text::new(outputs_text),
                             ]
                             .spacing(4),
-                            Text::new("Inputs"),
-                            self.ui_instruction_inputs(
-                                idx,
-                                instruction_config.clone(),
-                                instruction.clone()
-                            ),
-                            Text::new("Outputs"),
-                            Text::new(outputs_text),
-                        ]
-                        .spacing(4),
-                    ))
+                        )
+                        .padding(8)
+                        .width(Length::Fill)
+                        .style(theme::Container::Box),
+                    )
                 },
             )
             .into()
@@ -505,25 +498,6 @@ impl ActionEditor {
             .fold(
                 Column::new().spacing(4),
                 |col, (idx, (name, kind, source))| {
-                    let source_opts = self.output_list.iter().fold(
-                        Row::new().spacing(2),
-                        |row, (_, kind, src)| {
-                            row.push(
-                                Button::new(Text::new(format!(
-                                    "Set {}",
-                                    self.friendly_source_string(src)
-                                )))
-                                .on_press(
-                                    ActionEditorMessage::OutputSourceChange(
-                                        idx,
-                                        kind.clone(),
-                                        src.clone(),
-                                    ),
-                                ),
-                            )
-                        },
-                    );
-
                     col.push(
                         row![
                             Button::new("×").on_press(ActionEditorMessage::OutputDelete(idx)),
@@ -539,10 +513,23 @@ impl ActionEditor {
                             }),
                             TextInput::new("Output Name", name)
                                 .on_input(move |s| ActionEditorMessage::OutputNameChange(idx, s)),
-                            Text::new(format!("({kind}) {}", self.friendly_source_string(source))),
-                            Scrollable::new(source_opts).direction(
-                                scrollable::Direction::Horizontal(scrollable::Properties::new())
-                            ),
+                            Text::new(format!("({kind}) from")),
+                            ComboBox::new(
+                                &self.output_combo[idx],
+                                "Output Source",
+                                Some(&ComboInstructionParameterSource {
+                                    friendly_label: self.friendly_source_string(source),
+                                    kind: ParameterKind::String, // ! This doesn't matter as it isn't used for matching.
+                                    source: source.clone(),
+                                }),
+                                move |src: ComboInstructionParameterSource| {
+                                    ActionEditorMessage::OutputSourceChange(
+                                        idx,
+                                        src.kind,
+                                        src.into(),
+                                    )
+                                }
+                            )
                         ]
                         .spacing(4)
                         .align_items(iced::Alignment::Center),
@@ -555,12 +542,15 @@ impl ActionEditor {
     /// Update the possible outputs
     fn update_outputs(&mut self) {
         self.output_list.clear();
+        self.parameter_source_combo.clear();
+        self.run_if_combo.clear();
+        self.output_combo.clear();
 
         if let Some(action) = &self.currently_open {
             for (index, (_name, kind)) in action.parameters.iter().enumerate() {
                 self.output_list.push((
                     -1,
-                    kind.clone(),
+                    *kind,
                     InstructionParameterSource::FromParameter(index),
                 ));
             }
@@ -570,13 +560,75 @@ impl ActionEditor {
                     .engines_list
                     .get_instruction_by_id(&instruction_config.instruction_id)
                     .unwrap();
+
+                // Build Run If source list
+                let run_if_options = self.output_list.iter().fold(
+                    vec![ComboInstructionParameterSource {
+                        friendly_label: "Always run".to_string(),
+                        kind: ParameterKind::Boolean,
+                        source: InstructionParameterSource::Literal,
+                    }],
+                    |mut list, (_step, kind, source)| {
+                        if *kind == ParameterKind::Boolean {
+                            list.push(ComboInstructionParameterSource {
+                                friendly_label: self.friendly_source_string(source),
+                                kind: *kind,
+                                source: source.clone(),
+                            });
+                        }
+                        list
+                    },
+                );
+                self.run_if_combo
+                    .push(combo_box::State::new(run_if_options));
+
+                // Build parameter source list
+                let mut source_opts = HashMap::new();
+                for (param_idx, (_, param_kind)) in instruction.parameters() {
+                    let mut sources = vec![ComboInstructionParameterSource {
+                        friendly_label: self
+                            .friendly_source_string(&InstructionParameterSource::Literal),
+                        kind: *param_kind,
+                        source: InstructionParameterSource::Literal,
+                    }];
+
+                    for (_step, kind, source) in &self.output_list {
+                        if kind == param_kind {
+                            sources.push(ComboInstructionParameterSource {
+                                friendly_label: self.friendly_source_string(source),
+                                kind: *kind,
+                                source: source.clone(),
+                            });
+                        }
+                    }
+
+                    source_opts.insert(param_idx.clone(), combo_box::State::new(sources));
+                }
+                self.parameter_source_combo.push(source_opts);
+
+                // Determine possible outputs from this step
                 for (id, (_name, kind)) in instruction.outputs() {
                     self.output_list.push((
                         step as isize,
-                        kind.clone(),
+                        *kind,
                         InstructionParameterSource::FromOutput(step, id.clone()),
                     ));
                 }
+            }
+
+            // Build output source list
+            let output_options: Vec<_> = self
+                .output_list
+                .iter()
+                .map(|(_step, kind, source)| ComboInstructionParameterSource {
+                    friendly_label: self.friendly_source_string(source),
+                    kind: *kind,
+                    source: source.clone(),
+                })
+                .collect();
+            for _ in 0..action.outputs.len() {
+                self.output_combo
+                    .push(combo_box::State::new(output_options.clone()));
             }
         }
     }
@@ -596,7 +648,7 @@ impl ActionEditor {
                         .engines_list
                         .get_instruction_by_id(&ic.instruction_id)
                         .unwrap();
-                    format!("Step {}: {}", step + 1, instruction.outputs()[id].0)
+                    format!("Step {} Output: {}", step + 1, instruction.outputs()[id].0)
                 }
             };
         }
@@ -718,13 +770,13 @@ impl UiComponent for ActionEditor {
             }
             ActionEditorMessage::ParameterNameChange(idx, new_name) => {
                 let (_, kind) = &self.currently_open.as_mut().unwrap().parameters[idx];
-                self.currently_open.as_mut().unwrap().parameters[idx] = (new_name, kind.clone());
+                self.currently_open.as_mut().unwrap().parameters[idx] = (new_name, *kind);
                 self.modified();
             }
             ActionEditorMessage::ParameterTypeChange(idx, new_type) => {
                 let action = self.currently_open.as_mut().unwrap();
                 let (name, _) = &action.parameters[idx];
-                action.parameters[idx] = (name.clone(), new_type.clone());
+                action.parameters[idx] = (name.clone(), new_type);
 
                 for instruction_config in action.instructions.iter_mut() {
                     // Update any run ifs to literals
@@ -753,7 +805,7 @@ impl UiComponent for ActionEditor {
                     if let InstructionParameterSource::FromParameter(p_idx) = src {
                         if idx == *p_idx {
                             // Change output type.
-                            *kind = new_type.clone();
+                            *kind = new_type;
                         }
                     }
                 }
@@ -1069,8 +1121,7 @@ impl UiComponent for ActionEditor {
 
             ActionEditorMessage::OutputNameChange(idx, new_name) => {
                 let (_, kind, src) = &self.currently_open.as_mut().unwrap().outputs[idx];
-                self.currently_open.as_mut().unwrap().outputs[idx] =
-                    (new_name, kind.clone(), src.clone());
+                self.currently_open.as_mut().unwrap().outputs[idx] = (new_name, *kind, src.clone());
                 self.modified();
             }
             ActionEditorMessage::OutputSourceChange(idx, new_type, new_source) => {
@@ -1083,7 +1134,7 @@ impl UiComponent for ActionEditor {
                 if let Some((_, kind, default_output)) = self.output_list.get(0) {
                     self.currently_open.as_mut().unwrap().outputs.push((
                         String::new(),
-                        kind.clone(),
+                        *kind,
                         default_output.clone(),
                     ));
                     self.modified();

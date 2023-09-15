@@ -265,7 +265,7 @@ impl ActionConfiguration {
             if !match &instruction_config.run_if {
                 InstructionParameterSource::Literal => true,
                 InstructionParameterSource::FromParameter(p_idx) => {
-                    action_parameters.get(&p_idx).unwrap().value_bool()
+                    action_parameters.get(p_idx).unwrap().value_bool()
                 }
                 InstructionParameterSource::FromOutput(step, output_name) => instruction_outputs
                     .get(*step)
@@ -286,7 +286,7 @@ impl ActionConfiguration {
                 instruction_outputs.clone(),
             )?;
             instruction_outputs.push(outputs);
-            evidence = vec![evidence, ev].concat();
+            evidence = [evidence, ev].concat();
         }
 
         // Generate output map
