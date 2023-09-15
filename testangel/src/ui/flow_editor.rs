@@ -451,11 +451,7 @@ impl FlowEditor {
                 ActionParameterSource::FromOutput(step, id) => {
                     let ac = &flow.actions[*step];
                     let instruction = self.actions_list.get_action_by_id(&ac.action_id).unwrap();
-                    format!(
-                        "Step {} Output: {}",
-                        step + 1,
-                        instruction.outputs[*id].0
-                    )
+                    format!("Step {} Output: {}", step + 1, instruction.outputs[*id].0)
                 }
             };
         }
