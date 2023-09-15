@@ -127,6 +127,9 @@ impl UiComponent for FlowRunning {
                                     path.with_extension("pdf"),
                                     evidence,
                                 );
+                                if let Err(e) = opener::open(path.with_extension("pdf")) {
+                                    log::warn!("Failed to open evidence: {e}");
+                                }
                             }
                         }
                         return Some(FlowRunningMessageOut::BackToEditor);

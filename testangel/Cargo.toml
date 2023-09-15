@@ -12,7 +12,7 @@ required-features = [ "cli" ]
 
 [features]
 default = [ "ui" ]
-ui = [ "dep:iced", "dep:rfd", "dep:fern" ]
+ui = [ "dep:iced", "dep:opener", "dep:rfd", "dep:fern" ]
 cli = [ "dep:clap", "dep:pretty_env_logger" ]
 windows-keep-console-window = []
 
@@ -31,4 +31,5 @@ chrono = "0.4.26"
 base64 = "0.21.2"
 itertools = "0.11.0"
 iced = { version = "0.10.0", features = [ "image", "smol" ], optional = true }
+opener = { version = "0.6.1", optional = true }
 rfd = { version = "0.11.4", optional = true }
