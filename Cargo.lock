@@ -1589,15 +1589,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "iced_aw"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "842ee223a09cf7f874b9e2d6f5a1aa54f3642c31f7ff5e26c43f1546232b127b"
-dependencies = [
- "iced_widget",
-]
-
-[[package]]
 name = "iced_core"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2289,6 +2280,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "normpath"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec60c60a693226186f5d6edf073232bfb6464ed97eb22cf3b01c1e8198fd97f5"
+dependencies = [
+ "windows-sys 0.48.0",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2471,6 +2471,17 @@ name = "once_cell"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
+
+[[package]]
+name = "opener"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c62dcb6174f9cb326eac248f07e955d5d559c272730b6c03e396b443b562788"
+dependencies = [
+ "bstr",
+ "normpath",
+ "winapi",
+]
 
 [[package]]
 name = "orbclient"
@@ -3520,7 +3531,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "base64",
  "chrono",
@@ -3528,10 +3539,10 @@ dependencies = [
  "fern",
  "genpdf",
  "iced",
- "iced_aw",
  "itertools",
  "libloading 0.8.0",
  "log",
+ "opener",
  "pretty_env_logger",
  "rfd",
  "ron",
@@ -3542,7 +3553,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-arithmetic"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3550,7 +3561,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-compare"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3558,7 +3569,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-convert"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3566,7 +3577,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-date"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "chrono",
  "lazy_static",
@@ -3575,7 +3586,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "testangel-engine-macros",
  "testangel-ipc",
@@ -3583,11 +3594,11 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine-macros"
-version = "0.13.0"
+version = "0.14.0"
 
 [[package]]
 name = "testangel-evidence"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3595,7 +3606,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "schemars",
  "serde",
@@ -3604,7 +3615,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-rand"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "lazy_static",
  "rand",
@@ -3614,7 +3625,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-regex"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "lazy_static",
  "regex",
@@ -3623,7 +3634,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-user-interaction"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "lazy_static",
  "rfd",

@@ -69,7 +69,7 @@ impl FlowRunning {
                 ) {
                     Ok((output, ev)) => {
                         outputs.push(output);
-                        evidence = vec![evidence, ev].concat();
+                        evidence = [evidence, ev].concat();
                     }
                     Err(e) => {
                         rfd::MessageDialog::new()
@@ -127,6 +127,9 @@ impl UiComponent for FlowRunning {
                                     path.with_extension("pdf"),
                                     evidence,
                                 );
+                                if let Err(e) = opener::open(path.with_extension("pdf")) {
+                                    log::warn!("Failed to open evidence: {e}");
+                                }
                             }
                         }
                         return Some(FlowRunningMessageOut::BackToEditor);
