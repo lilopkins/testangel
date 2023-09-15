@@ -1,10 +1,9 @@
 use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
-use iced::widget::{
+use iced::{widget::{
     column, combo_box, row, Button, Checkbox, Column, Container, Scrollable,
     Space, Text, TextInput, ComboBox,
-};
-use iced_aw::Card;
+}, theme, Length};
 use testangel::{
     action_loader::ActionMap,
     types::{Action, ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
@@ -344,9 +343,9 @@ impl FlowEditor {
                     outputs_text.push_str(&format!("{name}: {kind}\n"));
                 }
                 outputs_text = outputs_text.trim_end().to_string();
-                col.push(Card::new(
-                    Text::new(format!("Step {}: {}", idx + 1, action.friendly_name)),
+                col.push(Container::new(
                     column![
+                        Text::new(format!("Step {}: {}", idx + 1, action.friendly_name)),
                         row![
                             Button::new("×").on_press(FlowEditorMessage::StepDelete(idx)),
                             Button::new("ʌ").on_press_maybe(if idx == 0 {
@@ -372,7 +371,10 @@ impl FlowEditor {
                         Text::new(outputs_text),
                     ]
                     .spacing(4),
-                ))
+                )
+                .padding(8)
+                .width(Length::Fill)
+                .style(theme::Container::Box))
             })
             .into()
     }
