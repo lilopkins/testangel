@@ -249,7 +249,7 @@ impl FlowEditor {
             if let Some(file) = rfd::FileDialog::new()
                 .add_filter("TestAngel Flows", &["taflow"])
                 .set_title("Save Flow")
-                .set_directory(env::current_dir().expect("Failed to read current directory"))
+                .set_directory(env::var("TA_FLOW_DIR").unwrap_or(".".to_owned()))
                 .save_file()
             {
                 self.current_path = Some(file.with_extension("taflow"));

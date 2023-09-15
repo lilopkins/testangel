@@ -192,7 +192,7 @@ impl Application for App {
                                 .add_filter("TestAngel Flows", &["taflow"])
                                 .set_title("Open Flow")
                                 .set_directory(
-                                    env::current_dir().expect("Failed to read current directory"),
+                                    env::var("TA_FLOW_DIR").unwrap_or(".".to_owned()),
                                 )
                                 .pick_file()
                             {
