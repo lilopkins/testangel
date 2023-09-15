@@ -1,8 +1,8 @@
 use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
 use iced::widget::{
-    column, combo_box, row, scrollable, Button, Checkbox, Column, Container, Row, Scrollable,
-    Space, Text, TextInput,
+    column, combo_box, row, Button, Checkbox, Column, Container, Scrollable,
+    Space, Text, TextInput, ComboBox,
 };
 use iced_aw::Card;
 use testangel::{
@@ -74,11 +74,33 @@ impl fmt::Display for AvailableAction {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct ComboActionParameterSource {
+    /// The friendly label of this source
+    friendly_label: String,
+    /// The actual source held by this entry
+    source: ActionParameterSource,
+}
+
+impl fmt::Display for ComboActionParameterSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.friendly_label)
+    }
+}
+
+impl Into<ActionParameterSource> for ComboActionParameterSource {
+    fn into(self) -> ActionParameterSource {
+        self.source
+    }
+}
+
 pub struct FlowEditor {
     actions_list: Arc<ActionMap>,
     output_list: Vec<(isize, ParameterKind, ActionParameterSource)>,
     add_action_combo: combo_box::State<AvailableAction>,
 
+    // a vector of steps<parameters<sources>>>
+    parameter_source_combo: Vec<Vec<combo_box::State<ComboActionParameterSource>>>,
     currently_open: Option<AutomationFlow>,
     current_path: Option<PathBuf>,
     needs_saving: bool,
@@ -90,6 +112,7 @@ impl Default for FlowEditor {
             actions_list: Arc::new(ActionMap::default()),
             output_list: vec![],
             add_action_combo: combo_box::State::new(Vec::new()),
+            parameter_source_combo: vec![],
             currently_open: None,
             current_path: None,
             needs_saving: false,
@@ -267,39 +290,6 @@ impl FlowEditor {
                 let param_source = &action_config.parameter_sources[&id];
                 let param_value = &action_config.parameter_values[&id];
 
-                let source_opts = self
-                    .output_list
-                    .iter()
-                    .filter(|(from_step, param_kind, _)| {
-                        *from_step < (step_idx as isize) && param_kind == kind
-                    })
-                    .fold(
-                        Row::new()
-                            .spacing(2)
-                            .push(Button::new(Text::new("Use Literal")).on_press(
-                                FlowEditorMessage::StepParameterSourceChange(
-                                    step_idx,
-                                    id,
-                                    ActionParameterSource::Literal,
-                                ),
-                            )),
-                        |row, (_, _, src)| {
-                            row.push(
-                                Button::new(Text::new(format!(
-                                    "Set {}",
-                                    self.friendly_source_string(src)
-                                )))
-                                .on_press(
-                                    FlowEditorMessage::StepParameterSourceChange(
-                                        step_idx,
-                                        id,
-                                        src.clone(),
-                                    ),
-                                ),
-                            )
-                        },
-                    );
-
                 let literal_input: iced::Element<'_, _> = match param_source {
                     ActionParameterSource::Literal => match kind {
                         ParameterKind::Boolean => {
@@ -324,14 +314,12 @@ impl FlowEditor {
 
                 col.push(
                     row![
-                        Text::new(format!(
-                            "{name} ({kind}) from {}",
-                            self.friendly_source_string(param_source)
-                        )),
+                        Text::new(format!("{name} ({kind})")),
+                        ComboBox::new(&self.parameter_source_combo[step_idx][id], "Source", Some(&ComboActionParameterSource {
+                            friendly_label: self.friendly_source_string(param_source),
+                            source: param_source.clone(),
+                        }), move |src: ComboActionParameterSource| FlowEditorMessage::StepParameterSourceChange(step_idx, id, src.into())),
                         literal_input,
-                        Scrollable::new(source_opts).direction(scrollable::Direction::Horizontal(
-                            scrollable::Properties::new()
-                        )),
                     ]
                     .spacing(4)
                     .align_items(iced::Alignment::Center),
@@ -388,14 +376,40 @@ impl FlowEditor {
     /// Update the possible outputs
     fn update_outputs(&mut self) {
         self.output_list.clear();
+        self.parameter_source_combo.clear();
 
         if let Some(flow) = &self.currently_open {
             for (step, action_config) in flow.actions.iter().enumerate() {
-                let instruction = self
+                let action = self
                     .actions_list
                     .get_action_by_id(&action_config.action_id)
                     .unwrap();
-                for (id, (_name, kind, _src)) in instruction.outputs.iter().enumerate() {
+
+                // Build parameter source list
+                let mut source_opts = vec![];
+                for (_, param_kind) in &action.parameters {
+                    let mut sources = vec![
+                        ComboActionParameterSource {
+                            friendly_label: self.friendly_source_string(&ActionParameterSource::Literal),
+                            source: ActionParameterSource::Literal,
+                        }
+                    ];
+
+                    for (_step, kind, source) in &self.output_list {
+                        if kind == param_kind {
+                            sources.push(ComboActionParameterSource {
+                                friendly_label: self.friendly_source_string(&source),
+                                source: source.clone(),
+                            });
+                        }
+                    }
+
+                    source_opts.push(combo_box::State::new(sources));
+                }
+                self.parameter_source_combo.push(source_opts);
+
+                // Determine possible outputs from this step
+                for (id, (_name, kind, _src)) in action.outputs.iter().enumerate() {
                     self.output_list.push((
                         step as isize,
                         kind.clone(),
@@ -411,11 +425,11 @@ impl FlowEditor {
     fn friendly_source_string(&self, source: &ActionParameterSource) -> String {
         if let Some(flow) = &self.currently_open {
             return match source {
-                ActionParameterSource::Literal => "Literal value".to_owned(),
+                ActionParameterSource::Literal => "From literal value".to_owned(),
                 ActionParameterSource::FromOutput(step, id) => {
                     let ac = &flow.actions[*step];
                     let instruction = self.actions_list.get_action_by_id(&ac.action_id).unwrap();
-                    format!("From Step {}: {}", step + 1, instruction.outputs[*id].0)
+                    format!("From Step {} Output: {}", step + 1, instruction.outputs[*id].0)
                 }
             };
         }
@@ -445,7 +459,7 @@ impl UiComponent for FlowEditor {
                     .spacing(8),
                     // Actions
                     self.ui_steps(),
-                    combo_box(
+                    ComboBox::new(
                         &self.add_action_combo,
                         "+ Add a step...",
                         None,

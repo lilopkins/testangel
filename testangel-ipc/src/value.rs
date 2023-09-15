@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A type of a parameter
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "schemas", derive(JsonSchema))]
 #[serde(tag = "t", content = "v")]
 pub enum ParameterKind {
