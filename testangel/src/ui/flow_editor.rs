@@ -149,11 +149,18 @@ impl FlowEditor {
     pub(crate) fn update_action_map(&mut self, actions_list: Arc<ActionMap>) {
         self.actions_list = actions_list.clone();
         let mut available_actions = vec![];
+        let show_anyway = env::var("TA_SHOW_HIDDEN_ACTIONS")
+            .unwrap_or("no".to_string())
+            .eq_ignore_ascii_case("yes");
         for (group_name, actions) in actions_list.get_by_group() {
             for action in actions {
-                if action.visible {
+                if action.visible || show_anyway {
                     available_actions.push(AvailableAction {
-                        friendly_name: format!("{group_name}: {}", action.friendly_name),
+                        friendly_name: format!(
+                            "{group_name}: {}{}",
+                            action.friendly_name,
+                            if !action.visible { " (Hidden)" } else { "" }
+                        ),
                         base_action: action.clone(),
                     });
                 }

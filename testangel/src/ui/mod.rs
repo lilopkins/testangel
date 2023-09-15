@@ -191,9 +191,7 @@ impl Application for App {
                             if let Some(file) = rfd::FileDialog::new()
                                 .add_filter("TestAngel Flows", &["taflow"])
                                 .set_title("Open Flow")
-                                .set_directory(
-                                    env::var("TA_FLOW_DIR").unwrap_or(".".to_owned()),
-                                )
+                                .set_directory(env::var("TA_FLOW_DIR").unwrap_or(".".to_owned()))
                                 .pick_file()
                             {
                                 self.update_action_list();

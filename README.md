@@ -36,6 +36,7 @@ The tool can be configured through a number of environment variables:
 | `TA_ENGINE_DIR`      | The directory that should be searched through to locate TestAngel engines. By default, `./engines` is used. |
 | `TA_ACTION_DIR`      | The directory that should be searched through to locate TestAngel actions. By default, `./actions` is used. |
 | `TA_FLOW_DIR`        | The directory that should be suggested to save flows in. |
+| `TA_SHOW_HIDDEN_ACTIONS` | If set to `yes`, actions will be shown in the flow editor even if set to hidden. |
 | `TA_HIDE_ACTION_EDITOR` | If set to anything other than `no`, the action editor items on the Getting Started screen will be hidden. This can be useful in commercial settings as the action editor is more complex to learn and master. |
 | `TA_LOCAL_SUPPORT_CONTACT` | If set, the Getting Started screen will show the value as a contact for obtaining help. Useful for commercial settings. |
 
