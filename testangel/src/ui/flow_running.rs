@@ -69,7 +69,7 @@ impl FlowRunning {
                 ) {
                     Ok((output, ev)) => {
                         outputs.push(output);
-                        evidence = vec![evidence, ev].concat();
+                        evidence = [evidence, ev].concat();
                     }
                     Err(e) => {
                         rfd::MessageDialog::new()

@@ -91,6 +91,7 @@ impl fmt::Display for ComboActionParameterSource {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<ActionParameterSource> for ComboActionParameterSource {
     fn into(self) -> ActionParameterSource {
         self.source
@@ -420,7 +421,7 @@ impl FlowEditor {
                     for (_step, kind, source) in &self.output_list {
                         if kind == param_kind {
                             sources.push(ComboActionParameterSource {
-                                friendly_label: self.friendly_source_string(&source),
+                                friendly_label: self.friendly_source_string(source),
                                 source: source.clone(),
                             });
                         }
@@ -434,7 +435,7 @@ impl FlowEditor {
                 for (id, (_name, kind, _src)) in action.outputs.iter().enumerate() {
                     self.output_list.push((
                         step as isize,
-                        kind.clone(),
+                        *kind,
                         ActionParameterSource::FromOutput(step, id),
                     ));
                 }

@@ -115,6 +115,7 @@ impl fmt::Display for ComboInstructionParameterSource {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<InstructionParameterSource> for ComboInstructionParameterSource {
     fn into(self) -> InstructionParameterSource {
         self.source
@@ -312,7 +313,7 @@ impl ActionEditor {
                                 ParameterKind::Decimal,
                                 ParameterKind::Boolean,
                             ][..],
-                            Some(kind.clone()),
+                            Some(*kind),
                             move |k| ActionEditorMessage::ParameterTypeChange(idx, k)
                         )
                         .placeholder("Parameter Kind"),
@@ -549,7 +550,7 @@ impl ActionEditor {
             for (index, (_name, kind)) in action.parameters.iter().enumerate() {
                 self.output_list.push((
                     -1,
-                    kind.clone(),
+                    *kind,
                     InstructionParameterSource::FromParameter(index),
                 ));
             }
@@ -594,7 +595,7 @@ impl ActionEditor {
                     for (_step, kind, source) in &self.output_list {
                         if kind == param_kind {
                             sources.push(ComboInstructionParameterSource {
-                                friendly_label: self.friendly_source_string(&source),
+                                friendly_label: self.friendly_source_string(source),
                                 kind: *kind,
                                 source: source.clone(),
                             });
@@ -609,7 +610,7 @@ impl ActionEditor {
                 for (id, (_name, kind)) in instruction.outputs() {
                     self.output_list.push((
                         step as isize,
-                        kind.clone(),
+                        *kind,
                         InstructionParameterSource::FromOutput(step, id.clone()),
                     ));
                 }
@@ -769,13 +770,13 @@ impl UiComponent for ActionEditor {
             }
             ActionEditorMessage::ParameterNameChange(idx, new_name) => {
                 let (_, kind) = &self.currently_open.as_mut().unwrap().parameters[idx];
-                self.currently_open.as_mut().unwrap().parameters[idx] = (new_name, kind.clone());
+                self.currently_open.as_mut().unwrap().parameters[idx] = (new_name, *kind);
                 self.modified();
             }
             ActionEditorMessage::ParameterTypeChange(idx, new_type) => {
                 let action = self.currently_open.as_mut().unwrap();
                 let (name, _) = &action.parameters[idx];
-                action.parameters[idx] = (name.clone(), new_type.clone());
+                action.parameters[idx] = (name.clone(), new_type);
 
                 for instruction_config in action.instructions.iter_mut() {
                     // Update any run ifs to literals
@@ -804,7 +805,7 @@ impl UiComponent for ActionEditor {
                     if let InstructionParameterSource::FromParameter(p_idx) = src {
                         if idx == *p_idx {
                             // Change output type.
-                            *kind = new_type.clone();
+                            *kind = new_type;
                         }
                     }
                 }
@@ -1120,8 +1121,7 @@ impl UiComponent for ActionEditor {
 
             ActionEditorMessage::OutputNameChange(idx, new_name) => {
                 let (_, kind, src) = &self.currently_open.as_mut().unwrap().outputs[idx];
-                self.currently_open.as_mut().unwrap().outputs[idx] =
-                    (new_name, kind.clone(), src.clone());
+                self.currently_open.as_mut().unwrap().outputs[idx] = (new_name, *kind, src.clone());
                 self.modified();
             }
             ActionEditorMessage::OutputSourceChange(idx, new_type, new_source) => {
@@ -1134,7 +1134,7 @@ impl UiComponent for ActionEditor {
                 if let Some((_, kind, default_output)) = self.output_list.get(0) {
                     self.currently_open.as_mut().unwrap().outputs.push((
                         String::new(),
-                        kind.clone(),
+                        *kind,
                         default_output.clone(),
                     ));
                     self.modified();

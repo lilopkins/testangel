@@ -7,18 +7,15 @@ pub type ParameterMap = HashMap<String, ParameterValue>;
 pub type OutputMap = HashMap<String, ParameterValue>;
 pub type EvidenceList = Vec<Evidence>;
 
+pub type FnEngineInstruction<'a, T> = dyn 'a
+    + Send
+    + Sync
+    + Fn(&mut T, ParameterMap, &mut OutputMap, &mut EvidenceList) -> Option<Response>;
+
 pub struct Engine<'a, T: Default + Send + Sync> {
     name: String,
     instructions: Vec<Instruction>,
-    functions: HashMap<
-        String,
-        Box<
-            dyn 'a
-                + Send
-                + Sync
-                + Fn(&mut T, ParameterMap, &mut OutputMap, &mut EvidenceList) -> Option<Response>,
-        >,
-    >,
+    functions: HashMap<String, Box<FnEngineInstruction<'a, T>>>,
     state: T,
 }
 
