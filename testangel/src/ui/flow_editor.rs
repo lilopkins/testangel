@@ -362,9 +362,13 @@ impl FlowEditor {
                             Text::new(action.description.clone()),
                         ]
                         .spacing(4),
-                        Text::new("Inputs"),
+
+                        Space::with_height(4),
+                        Text::new("Inputs").size(18),
                         self.ui_action_inputs(idx, action_config.clone(), action.clone()),
-                        Text::new("Outputs"),
+
+                        Space::with_height(4),
+                        Text::new("Outputs").size(18),
                         Text::new(outputs_text),
                     ]
                     .spacing(4),

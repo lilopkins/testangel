@@ -479,13 +479,17 @@ impl ActionEditor {
                                 )
                             ]
                             .spacing(4),
-                            Text::new("Inputs"),
+
+                            Space::with_height(4),
+                            Text::new("Inputs").size(18),
                             self.ui_instruction_inputs(
                                 idx,
                                 instruction_config.clone(),
                                 instruction.clone()
                             ),
-                            Text::new("Outputs"),
+
+                            Space::with_height(4),
+                            Text::new("Outputs").size(18),
                             Text::new(outputs_text),
                         ]
                         .spacing(4),
