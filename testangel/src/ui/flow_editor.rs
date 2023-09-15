@@ -1,9 +1,13 @@
 use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
-use iced::{widget::{
-    column, combo_box, row, Button, Checkbox, Column, Container, Scrollable,
-    Space, Text, TextInput, ComboBox,
-}, theme, Length};
+use iced::{
+    theme,
+    widget::{
+        column, combo_box, row, Button, Checkbox, Column, ComboBox, Container, Scrollable, Space,
+        Text, TextInput,
+    },
+    Length,
+};
 use testangel::{
     action_loader::ActionMap,
     types::{Action, ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
@@ -313,11 +317,22 @@ impl FlowEditor {
 
                 col.push(
                     row![
-                        Text::new(format!("{name} ({kind})")),
-                        ComboBox::new(&self.parameter_source_combo[step_idx][id], "Source", Some(&ComboActionParameterSource {
-                            friendly_label: self.friendly_source_string(param_source),
-                            source: param_source.clone(),
-                        }), move |src: ComboActionParameterSource| FlowEditorMessage::StepParameterSourceChange(step_idx, id, src.into())),
+                        Text::new(format!("{name} ({kind}) use")),
+                        ComboBox::new(
+                            &self.parameter_source_combo[step_idx][id],
+                            "Source",
+                            Some(&ComboActionParameterSource {
+                                friendly_label: self.friendly_source_string(param_source),
+                                source: param_source.clone(),
+                            }),
+                            move |src: ComboActionParameterSource| {
+                                FlowEditorMessage::StepParameterSourceChange(
+                                    step_idx,
+                                    id,
+                                    src.into(),
+                                )
+                            }
+                        ),
                         literal_input,
                     ]
                     .spacing(4)
@@ -343,38 +358,40 @@ impl FlowEditor {
                     outputs_text.push_str(&format!("{name}: {kind}\n"));
                 }
                 outputs_text = outputs_text.trim_end().to_string();
-                col.push(Container::new(
-                    column![
-                        Text::new(format!("Step {}: {}", idx + 1, action.friendly_name)),
-                        row![
-                            Button::new("×").on_press(FlowEditorMessage::StepDelete(idx)),
-                            Button::new("ʌ").on_press_maybe(if idx == 0 {
-                                None
-                            } else {
-                                Some(FlowEditorMessage::StepMoveUp(idx))
-                            }),
-                            Button::new("v").on_press_maybe(if (idx + 1) == flow.actions.len() {
-                                None
-                            } else {
-                                Some(FlowEditorMessage::StepMoveDown(idx))
-                            }),
-                            Text::new(action.description.clone()),
+                col.push(
+                    Container::new(
+                        column![
+                            Text::new(format!("Step {}: {}", idx + 1, action.friendly_name)),
+                            row![
+                                Button::new("×").on_press(FlowEditorMessage::StepDelete(idx)),
+                                Button::new("ʌ").on_press_maybe(if idx == 0 {
+                                    None
+                                } else {
+                                    Some(FlowEditorMessage::StepMoveUp(idx))
+                                }),
+                                Button::new("v").on_press_maybe(
+                                    if (idx + 1) == flow.actions.len() {
+                                        None
+                                    } else {
+                                        Some(FlowEditorMessage::StepMoveDown(idx))
+                                    }
+                                ),
+                                Text::new(action.description.clone()),
+                            ]
+                            .spacing(4),
+                            Space::with_height(4),
+                            Text::new("Inputs").size(18),
+                            self.ui_action_inputs(idx, action_config.clone(), action.clone()),
+                            Space::with_height(4),
+                            Text::new("Outputs").size(18),
+                            Text::new(outputs_text),
                         ]
                         .spacing(4),
-
-                        Space::with_height(4),
-                        Text::new("Inputs").size(18),
-                        self.ui_action_inputs(idx, action_config.clone(), action.clone()),
-
-                        Space::with_height(4),
-                        Text::new("Outputs").size(18),
-                        Text::new(outputs_text),
-                    ]
-                    .spacing(4),
+                    )
+                    .padding(8)
+                    .width(Length::Fill)
+                    .style(theme::Container::Box),
                 )
-                .padding(8)
-                .width(Length::Fill)
-                .style(theme::Container::Box))
             })
             .into()
     }
@@ -394,12 +411,11 @@ impl FlowEditor {
                 // Build parameter source list
                 let mut source_opts = vec![];
                 for (_, param_kind) in &action.parameters {
-                    let mut sources = vec![
-                        ComboActionParameterSource {
-                            friendly_label: self.friendly_source_string(&ActionParameterSource::Literal),
-                            source: ActionParameterSource::Literal,
-                        }
-                    ];
+                    let mut sources = vec![ComboActionParameterSource {
+                        friendly_label: self
+                            .friendly_source_string(&ActionParameterSource::Literal),
+                        source: ActionParameterSource::Literal,
+                    }];
 
                     for (_step, kind, source) in &self.output_list {
                         if kind == param_kind {
@@ -431,11 +447,15 @@ impl FlowEditor {
     fn friendly_source_string(&self, source: &ActionParameterSource) -> String {
         if let Some(flow) = &self.currently_open {
             return match source {
-                ActionParameterSource::Literal => "From literal value".to_owned(),
+                ActionParameterSource::Literal => "Literal value".to_owned(),
                 ActionParameterSource::FromOutput(step, id) => {
                     let ac = &flow.actions[*step];
                     let instruction = self.actions_list.get_action_by_id(&ac.action_id).unwrap();
-                    format!("From Step {} Output: {}", step + 1, instruction.outputs[*id].0)
+                    format!(
+                        "Step {} Output: {}",
+                        step + 1,
+                        instruction.outputs[*id].0
+                    )
                 }
             };
         }

@@ -1589,15 +1589,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "iced_aw"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "842ee223a09cf7f874b9e2d6f5a1aa54f3642c31f7ff5e26c43f1546232b127b"
-dependencies = [
- "iced_widget",
-]
-
-[[package]]
 name = "iced_core"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3528,7 +3519,6 @@ dependencies = [
  "fern",
  "genpdf",
  "iced",
- "iced_aw",
  "itertools",
  "libloading 0.8.0",
  "log",
