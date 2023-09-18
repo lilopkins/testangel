@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    env,
+    path::PathBuf,
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
@@ -17,11 +17,13 @@ use super::UiComponent;
 #[derive(Clone, Debug)]
 pub enum FlowRunningMessage {
     Tick,
+    Save(Option<PathBuf>, Vec<Evidence>),
 }
 
 #[derive(Clone, Debug)]
 pub enum FlowRunningMessageOut {
     BackToEditor,
+    SaveFlowReport(Vec<Evidence>),
 }
 
 #[derive(Default)]
@@ -116,25 +118,21 @@ impl UiComponent for FlowRunning {
                     if thread.is_finished() {
                         self.is_saving = true;
                         if let Some(evidence) = self.thread.take().unwrap().join().unwrap() {
-                            if let Some(path) = rfd::FileDialog::new()
-                                .add_filter("Portable Document Format", &["pdf"])
-                                .set_file_name("report.pdf")
-                                .set_title("Save Report")
-                                .set_directory(env::current_dir().expect("Failed to get cwd"))
-                                .save_file()
-                            {
-                                report_generation::save_report(
-                                    path.with_extension("pdf"),
-                                    evidence,
-                                );
-                                if let Err(e) = opener::open(path.with_extension("pdf")) {
-                                    log::warn!("Failed to open evidence: {e}");
-                                }
-                            }
+                            return Some(FlowRunningMessageOut::SaveFlowReport(evidence));
                         }
                         return Some(FlowRunningMessageOut::BackToEditor);
                     }
                 }
+            }
+
+            FlowRunningMessage::Save(to, evidence) => {
+                if let Some(path) = to {
+                    report_generation::save_report(path.with_extension("pdf"), evidence);
+                    if let Err(e) = opener::open(path.with_extension("pdf")) {
+                        log::warn!("Failed to open evidence: {e}");
+                    }
+                }
+                return Some(FlowRunningMessageOut::BackToEditor);
             }
         }
         None

@@ -1,4 +1,4 @@
-use std::{env, fmt, fs, path::PathBuf, sync::Arc};
+use std::{env, fmt, fs, path::PathBuf, sync::Arc, thread};
 
 use iced::{
     theme,
@@ -239,12 +239,14 @@ impl FlowEditor {
     /// Offer to save if it is needed with default error handling
     fn offer_to_save_default_error_handling(&mut self) {
         if let Err(e) = self.offer_to_save() {
-            rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Error)
-                .set_title("Failed to save flow")
-                .set_description(&format!("{e}"))
-                .set_buttons(rfd::MessageButtons::Ok)
-                .show();
+            thread::spawn(move || {
+                rfd::MessageDialog::new()
+                    .set_level(rfd::MessageLevel::Error)
+                    .set_title("Failed to save flow")
+                    .set_description(&format!("{e}"))
+                    .set_buttons(rfd::MessageButtons::Ok)
+                    .show();
+            });
         }
     }
 
