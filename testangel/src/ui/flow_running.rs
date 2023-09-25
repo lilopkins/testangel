@@ -111,16 +111,22 @@ impl UiComponent for FlowRunning {
         iced::time::every(Duration::from_millis(500)).map(|_| FlowRunningMessage::Tick)
     }
 
-    fn update(&mut self, message: Self::Message) -> Option<Self::MessageOut> {
+    fn update(
+        &mut self,
+        message: Self::Message,
+    ) -> (
+        Option<Self::MessageOut>,
+        Option<iced::Command<super::AppMessage>>,
+    ) {
         match message {
             FlowRunningMessage::Tick => {
                 if let Some(thread) = &self.thread {
                     if thread.is_finished() {
                         self.is_saving = true;
                         if let Some(evidence) = self.thread.take().unwrap().join().unwrap() {
-                            return Some(FlowRunningMessageOut::SaveFlowReport(evidence));
+                            return (Some(FlowRunningMessageOut::SaveFlowReport(evidence)), None);
                         }
-                        return Some(FlowRunningMessageOut::BackToEditor);
+                        return (Some(FlowRunningMessageOut::BackToEditor), None);
                     }
                 }
             }
@@ -132,10 +138,10 @@ impl UiComponent for FlowRunning {
                         log::warn!("Failed to open evidence: {e}");
                     }
                 }
-                return Some(FlowRunningMessageOut::BackToEditor);
+                return (Some(FlowRunningMessageOut::BackToEditor), None);
             }
         }
-        None
+        (None, None)
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {

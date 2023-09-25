@@ -46,6 +46,7 @@ pub enum AppMessage {
     GetStarted(get_started::GetStartedMessage),
     OpenAction(Option<PathBuf>),
     OpenFlow(Option<PathBuf>),
+    CloseFlowEditor,
     NoOp,
 }
 
@@ -128,29 +129,38 @@ impl Application for App {
                 }
             }
             AppMessage::ActionEditor(msg) => {
-                if let Some(msg_out) = self.action_editor.update(msg) {
+                let (msg_out, cmd) = self.action_editor.update(msg);
+                if let Some(msg_out) = msg_out {
                     match msg_out {
                         action_editor::ActionEditorMessageOut::CloseActionEditor => {
                             self.state = State::GetStarted;
                         }
                     }
                 }
+                if let Some(cmd) = cmd {
+                    return cmd;
+                }
             }
             AppMessage::FlowEditor(msg) => {
-                if let Some(msg_out) = self.flow_editor.update(msg) {
+                let (msg_out, cmd) = self.flow_editor.update(msg);
+                if let Some(msg_out) = msg_out {
                     match msg_out {
-                        flow_editor::FlowEditorMessageOut::CloseFlowEditor => {
-                            self.state = State::GetStarted;
-                        }
                         flow_editor::FlowEditorMessageOut::RunFlow(flow) => {
                             self.state = State::AutomationFlowRunning;
                             self.flow_running.start_flow(flow);
                         }
                     }
                 }
+                if let Some(cmd) = cmd {
+                    return cmd;
+                }
+            }
+            AppMessage::CloseFlowEditor => {
+                self.state = State::GetStarted;
             }
             AppMessage::FlowRunning(msg) => {
-                if let Some(msg_out) = self.flow_running.update(msg) {
+                let (msg_out, cmd) = self.flow_running.update(msg);
+                if let Some(msg_out) = msg_out {
                     match msg_out {
                         flow_running::FlowRunningMessageOut::BackToEditor => {
                             self.state = State::AutomationFlowEditor;
@@ -173,9 +183,13 @@ impl Application for App {
                         }
                     }
                 }
+                if let Some(cmd) = cmd {
+                    return cmd;
+                }
             }
             AppMessage::GetStarted(msg) => {
-                if let Some(msg_out) = self.get_started.update(msg) {
+                let (msg_out, cmd) = self.get_started.update(msg);
+                if let Some(msg_out) = msg_out {
                     match msg_out {
                         get_started::GetStartedMessage::NewAction => {
                             self.state = State::ActionEditor;
@@ -212,39 +226,55 @@ impl Application for App {
                         }
                     }
                 }
+                if let Some(cmd) = cmd {
+                    return cmd;
+                }
             }
             AppMessage::OpenAction(maybe_file) => {
                 if let Some(file) = maybe_file {
-                    if let Err(e) = self.action_editor.open_action(file) {
-                        return Command::perform(
-                            rfd::AsyncMessageDialog::new()
-                                .set_level(rfd::MessageLevel::Error)
-                                .set_title("Failed to open action")
-                                .set_description(&format!("{e}"))
-                                .set_buttons(rfd::MessageButtons::Ok)
-                                .show(),
-                            |_| AppMessage::NoOp,
-                        );
-                    } else {
-                        self.state = State::ActionEditor;
+                    match self.action_editor.open_action(file) {
+                        Ok(_) => self.state = State::ActionEditor,
+                        Err(e) => {
+                            return Command::perform(
+                                rfd::AsyncMessageDialog::new()
+                                    .set_level(rfd::MessageLevel::Error)
+                                    .set_title("Failed to open action")
+                                    .set_description(&format!("{e}"))
+                                    .set_buttons(rfd::MessageButtons::Ok)
+                                    .show(),
+                                |_| AppMessage::NoOp,
+                            )
+                        }
                     }
                 }
             }
             AppMessage::OpenFlow(maybe_file) => {
                 if let Some(file) = maybe_file {
                     self.update_action_list();
-                    if let Err(e) = self.flow_editor.open_flow(file) {
-                        return Command::perform(
-                            rfd::AsyncMessageDialog::new()
-                                .set_level(rfd::MessageLevel::Error)
-                                .set_title("Failed to open flow")
-                                .set_description(&format!("{e}"))
+                    match self.flow_editor.open_flow(file) {
+                        Ok(changed) => {
+                            self.state = State::AutomationFlowEditor;
+                            return Command::perform(rfd::AsyncMessageDialog::new()
+                                .set_level(rfd::MessageLevel::Warning)
+                                .set_title("Action has changed")
                                 .set_buttons(rfd::MessageButtons::Ok)
-                                .show(),
-                            |_| AppMessage::NoOp,
-                        );
-                    } else {
-                        self.state = State::AutomationFlowEditor;
+                                .set_description(&format!(
+                                    "The parameters in steps {} have changed so it has been reset.",
+                                    changed.iter().map(|step| step.to_string()).collect::<Vec<_>>().join(",")
+                                ))
+                                .show(), |_| AppMessage::NoOp);
+                        }
+                        Err(e) => {
+                            return Command::perform(
+                                rfd::AsyncMessageDialog::new()
+                                    .set_level(rfd::MessageLevel::Error)
+                                    .set_title("Failed to open flow")
+                                    .set_description(&format!("{e}"))
+                                    .set_buttons(rfd::MessageButtons::Ok)
+                                    .show(),
+                                |_| AppMessage::NoOp,
+                            )
+                        }
                     }
                 }
             }
@@ -272,7 +302,10 @@ trait UiComponent {
     fn title(&self) -> Option<&str>;
 
     /// Handle a message.
-    fn update(&mut self, message: Self::Message) -> Option<Self::MessageOut>;
+    fn update(
+        &mut self,
+        message: Self::Message,
+    ) -> (Option<Self::MessageOut>, Option<Command<AppMessage>>);
 
     fn subscription(&self) -> Subscription<Self::Message> {
         Subscription::none()

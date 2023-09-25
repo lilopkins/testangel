@@ -1,4 +1,4 @@
-use std::{env, fmt, fs, path::PathBuf, sync::Arc, thread};
+use std::{env, fmt, fs, path::PathBuf, sync::Arc};
 
 use iced::{
     theme,
@@ -19,8 +19,10 @@ use super::UiComponent;
 #[derive(Clone, Debug)]
 pub enum FlowEditorMessage {
     RunFlow,
-    SaveFlow,
-    SaveAsFlow,
+    WriteFileToDisk(PathBuf, SaveFlowThen),
+    SaveFlow(SaveFlowThen),
+    SaveAsFlow(SaveFlowThen),
+    DoPostSaveActions(SaveFlowThen),
     CloseFlow,
 
     StepCreate(AvailableAction),
@@ -32,9 +34,14 @@ pub enum FlowEditorMessage {
 }
 
 #[derive(Clone, Debug)]
+pub enum SaveFlowThen {
+    DoNothing,
+    Close,
+}
+
+#[derive(Clone, Debug)]
 pub enum FlowEditorMessageOut {
     RunFlow(AutomationFlow),
-    CloseFlowEditor,
 }
 
 pub enum SaveOrOpenFlowError {
@@ -171,16 +178,13 @@ impl FlowEditor {
 
     /// Create a new flow and open it
     pub(crate) fn new_flow(&mut self) {
-        self.offer_to_save_default_error_handling();
         self.currently_open = Some(AutomationFlow::default());
         self.current_path = None;
         self.needs_saving = true;
     }
 
     /// Open a flow
-    pub(crate) fn open_flow(&mut self, file: PathBuf) -> Result<(), SaveOrOpenFlowError> {
-        self.offer_to_save_default_error_handling();
-
+    pub(crate) fn open_flow(&mut self, file: PathBuf) -> Result<Vec<usize>, SaveOrOpenFlowError> {
         let data = &fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?;
 
         let versioned_file: VersionedFile =
@@ -194,6 +198,7 @@ impl FlowEditor {
         if flow.version() != 1 {
             return Err(SaveOrOpenFlowError::FlowNotVersionCompatible);
         }
+        let mut steps_reset = vec![];
         for (step, ac) in flow.actions.iter_mut().enumerate() {
             // Check for missing action
             match self.actions_list.get_action_by_id(&ac.action_id) {
@@ -201,15 +206,7 @@ impl FlowEditor {
                 Some(action) => {
                     // Check that action parameters haven't changed. If they have, reset values.
                     if ac.update(action) {
-                        rfd::MessageDialog::new()
-                            .set_level(rfd::MessageLevel::Warning)
-                            .set_title("Action has changed")
-                            .set_buttons(rfd::MessageButtons::Ok)
-                            .set_description(&format!(
-                                "The parameters in step {} have changed so it has been reset.",
-                                step + 1
-                            ))
-                            .show();
+                        steps_reset.push(step + 1);
                     }
                 }
             }
@@ -218,55 +215,40 @@ impl FlowEditor {
         self.current_path = Some(file);
         self.needs_saving = false;
         self.update_outputs();
-        Ok(())
-    }
-
-    /// Offer to save if it is needed
-    fn offer_to_save(&mut self) -> Result<(), SaveOrOpenFlowError> {
-        if self.needs_saving
-            && rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Info)
-                .set_title("Do you want to save this flow?")
-                .set_description("This flow has been modified. Do you want to save it?")
-                .set_buttons(rfd::MessageButtons::YesNo)
-                .show()
-        {
-            self.save_flow(false)?;
-        }
-        Ok(())
+        Ok(steps_reset)
     }
 
     /// Offer to save if it is needed with default error handling
-    fn offer_to_save_default_error_handling(&mut self) {
-        if let Err(e) = self.offer_to_save() {
-            thread::spawn(move || {
-                rfd::MessageDialog::new()
-                    .set_level(rfd::MessageLevel::Error)
-                    .set_title("Failed to save flow")
-                    .set_description(&format!("{e}"))
-                    .set_buttons(rfd::MessageButtons::Ok)
-                    .show();
-            });
+    fn offer_to_save_default_error_handling(&mut self, then: SaveFlowThen) -> iced::Command<super::AppMessage> {
+        if self.needs_saving {
+            iced::Command::perform(rfd::AsyncMessageDialog::new()
+            .set_level(rfd::MessageLevel::Info)
+            .set_title("Do you want to save this flow?")
+            .set_description("This flow has been modified. Do you want to save it?")
+            .set_buttons(rfd::MessageButtons::YesNo)
+            .show(), |wants_to_save| {
+                if wants_to_save {
+                    super::AppMessage::FlowEditor(FlowEditorMessage::SaveFlow(then))
+                } else {
+                    super::AppMessage::FlowEditor(FlowEditorMessage::DoPostSaveActions(then))
+                }
+            })
+        } else {
+            self.do_then(then)
         }
     }
 
-    /// Save the currently opened flow
-    fn save_flow(&mut self, always_prompt_where: bool) -> Result<(), SaveOrOpenFlowError> {
-        self.needs_saving = false;
-        if always_prompt_where || self.current_path.is_none() {
-            // Populate save path
-            if let Some(file) = rfd::FileDialog::new()
-                .add_filter("TestAngel Flows", &["taflow"])
-                .set_title("Save Flow")
-                .set_directory(env::var("TA_FLOW_DIR").unwrap_or(".".to_owned()))
-                .save_file()
-            {
-                self.current_path = Some(file.with_extension("taflow"));
-            } else {
-                return Ok(());
-            }
+    fn do_then(&mut self, then: SaveFlowThen) -> iced::Command<super::AppMessage> {
+        match then {
+            SaveFlowThen::DoNothing => iced::Command::none(),
+            SaveFlowThen::Close => {
+                self.close_flow();
+                iced::Command::perform(async {}, |_| super::AppMessage::CloseFlowEditor)
+            },
         }
+    }
 
+    fn write_to_disk(&mut self) -> Result<(), SaveOrOpenFlowError> {
         // Save
         let save_path = self.current_path.as_ref().unwrap();
         let data = ron::to_string(self.currently_open.as_ref().unwrap())
@@ -276,9 +258,35 @@ impl FlowEditor {
         Ok(())
     }
 
+    /// Save the currently opened flow
+    fn save_flow(&mut self, always_prompt_where: bool, then: SaveFlowThen) -> iced::Command<super::AppMessage> {
+        self.needs_saving = false;
+        if always_prompt_where || self.current_path.is_none() {
+            // Populate save path
+            return iced::Command::perform(rfd::AsyncFileDialog::new()
+            .add_filter("TestAngel Flows", &["taflow"])
+            .set_title("Save Flow")
+            .set_directory(env::var("TA_FLOW_DIR").unwrap_or(".".to_owned()))
+            .save_file(), |f| {
+                if let Some(file) = f {
+                    return super::AppMessage::FlowEditor(FlowEditorMessage::WriteFileToDisk(file.path().to_path_buf(), then));
+                }
+                super::AppMessage::NoOp
+            });
+        }
+
+        if let Err(e) = self.write_to_disk() {
+            return iced::Command::perform(rfd::AsyncMessageDialog::new()
+                .set_title("Failed to save")
+                .set_description(&format!("Failed to save file: {e}"))
+                .show(), |_| super::AppMessage::NoOp)
+        }
+
+        self.do_then(then)
+    }
+
     /// Close the currently opened flow
     fn close_flow(&mut self) {
-        self.offer_to_save_default_error_handling();
         self.currently_open = None;
         self.current_path = None;
         self.needs_saving = false;
@@ -353,7 +361,11 @@ impl FlowEditor {
     }
 
     fn ui_steps(&self) -> iced::Element<'_, FlowEditorMessage> {
-        let flow = self.currently_open.as_ref().unwrap();
+        let flow = self.currently_open.as_ref();
+        if flow.is_none() {
+            return Text::new("No flow loaded.").into();
+        }
+        let flow = flow.unwrap();
 
         flow.actions
             .iter()
@@ -484,8 +496,8 @@ impl UiComponent for FlowEditor {
                     // Toolbar
                     row![
                         Button::new("Run Flow").on_press(FlowEditorMessage::RunFlow),
-                        Button::new("Save").on_press(FlowEditorMessage::SaveFlow),
-                        Button::new("Save as").on_press(FlowEditorMessage::SaveAsFlow),
+                        Button::new("Save").on_press(FlowEditorMessage::SaveFlow(SaveFlowThen::DoNothing)),
+                        Button::new("Save as").on_press(FlowEditorMessage::SaveAsFlow(SaveFlowThen::DoNothing)),
                         Button::new("Close Flow").on_press(FlowEditorMessage::CloseFlow),
                     ]
                     .spacing(8),
@@ -505,36 +517,45 @@ impl UiComponent for FlowEditor {
         .into()
     }
 
-    fn update(&mut self, message: Self::Message) -> Option<Self::MessageOut> {
+    fn update(
+        &mut self,
+        message: Self::Message,
+    ) -> (
+        Option<Self::MessageOut>,
+        Option<iced::Command<super::AppMessage>>,
+    ) {
         match message {
             FlowEditorMessage::RunFlow => {
-                return Some(FlowEditorMessageOut::RunFlow(
-                    self.currently_open.as_ref().unwrap().clone(),
-                ));
+                return (
+                    Some(FlowEditorMessageOut::RunFlow(
+                        self.currently_open.as_ref().unwrap().clone(),
+                    )),
+                    None,
+                );
             }
-            FlowEditorMessage::SaveFlow => {
-                if let Err(e) = self.save_flow(false) {
-                    rfd::MessageDialog::new()
-                        .set_level(rfd::MessageLevel::Error)
-                        .set_title("Failed to save action")
-                        .set_description(&format!("{e}"))
-                        .set_buttons(rfd::MessageButtons::Ok)
-                        .show();
+            FlowEditorMessage::WriteFileToDisk(path, then) => {
+                self.current_path = Some(path.with_extension("taflow"));
+
+                if let Err(e) = self.write_to_disk() {
+                    return (None, Some(iced::Command::perform(rfd::AsyncMessageDialog::new()
+                        .set_title("Failed to save")
+                        .set_description(&format!("Failed to save file: {e}"))
+                        .show(), |_| super::AppMessage::NoOp)));
                 }
+
+                return (None, Some(self.do_then(then)));
             }
-            FlowEditorMessage::SaveAsFlow => {
-                if let Err(e) = self.save_flow(true) {
-                    rfd::MessageDialog::new()
-                        .set_level(rfd::MessageLevel::Error)
-                        .set_title("Failed to save action")
-                        .set_description(&format!("{e}"))
-                        .set_buttons(rfd::MessageButtons::Ok)
-                        .show();
-                }
+            FlowEditorMessage::DoPostSaveActions(then) => {
+                return (None, Some(self.do_then(then)));
+            }
+            FlowEditorMessage::SaveFlow(then) => {
+                return (None, Some(self.save_flow(false, then)));
+            }
+            FlowEditorMessage::SaveAsFlow(then) => {
+                return (None, Some(self.save_flow(true, then)));
             }
             FlowEditorMessage::CloseFlow => {
-                self.close_flow();
-                return Some(FlowEditorMessageOut::CloseFlowEditor);
+                return (None, Some(self.offer_to_save_default_error_handling(SaveFlowThen::Close)));
             }
 
             FlowEditorMessage::StepCreate(action) => {
@@ -631,6 +652,6 @@ impl UiComponent for FlowEditor {
             }
         };
         self.update_outputs();
-        None
+        (None, None)
     }
 }

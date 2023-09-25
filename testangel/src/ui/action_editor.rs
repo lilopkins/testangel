@@ -210,8 +210,8 @@ impl ActionEditor {
         Ok(())
     }
 
-    /// Offer to save if it is needed
-    fn offer_to_save(&mut self) -> Result<(), SaveOrOpenActionError> {
+    /// Offer to save if it is needed with default error handling
+    fn offer_to_save_default_error_handling(&mut self) {
         if self.needs_saving
             && rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Info)
@@ -220,20 +220,14 @@ impl ActionEditor {
                 .set_buttons(rfd::MessageButtons::YesNo)
                 .show()
         {
-            self.save_action(false)?;
-        }
-        Ok(())
-    }
-
-    /// Offer to save if it is needed with default error handling
-    fn offer_to_save_default_error_handling(&mut self) {
-        if let Err(e) = self.offer_to_save() {
-            rfd::MessageDialog::new()
-                .set_level(rfd::MessageLevel::Error)
-                .set_title("Failed to save action")
-                .set_description(&format!("{e}"))
-                .set_buttons(rfd::MessageButtons::Ok)
-                .show();
+            if let Err(e) = self.save_action(false) {
+                rfd::MessageDialog::new()
+                    .set_level(rfd::MessageLevel::Error)
+                    .set_title("Failed to save action")
+                    .set_description(&format!("{e}"))
+                    .set_buttons(rfd::MessageButtons::Ok)
+                    .show();
+            }
         }
     }
 
@@ -721,7 +715,13 @@ impl UiComponent for ActionEditor {
         .into()
     }
 
-    fn update(&mut self, message: Self::Message) -> Option<Self::MessageOut> {
+    fn update(
+        &mut self,
+        message: Self::Message,
+    ) -> (
+        Option<Self::MessageOut>,
+        Option<iced::Command<super::AppMessage>>,
+    ) {
         match message {
             ActionEditorMessage::SaveAction => {
                 if let Err(e) = self.save_action(false) {
@@ -745,7 +745,7 @@ impl UiComponent for ActionEditor {
             }
             ActionEditorMessage::CloseAction => {
                 self.close_action();
-                return Some(ActionEditorMessageOut::CloseActionEditor);
+                return (Some(ActionEditorMessageOut::CloseActionEditor), None);
             }
 
             ActionEditorMessage::NameChanged(new_name) => {
@@ -1139,12 +1139,20 @@ impl UiComponent for ActionEditor {
                     ));
                     self.modified();
                 } else {
-                    rfd::MessageDialog::new()
-                        .set_level(rfd::MessageLevel::Warning)
-                        .set_buttons(rfd::MessageButtons::Ok)
-                        .set_title("No source")
-                        .set_description("No source for output data. Add a parameter or a step.")
-                        .show();
+                    return (
+                        None,
+                        Some(iced::Command::perform(
+                            rfd::AsyncMessageDialog::new()
+                                .set_level(rfd::MessageLevel::Warning)
+                                .set_buttons(rfd::MessageButtons::Ok)
+                                .set_title("No source")
+                                .set_description(
+                                    "No source for output data. Add a parameter or a step.",
+                                )
+                                .show(),
+                            |_| super::AppMessage::NoOp,
+                        )),
+                    );
                 }
             }
             ActionEditorMessage::OutputMoveUp(idx) => {
@@ -1165,6 +1173,6 @@ impl UiComponent for ActionEditor {
             }
         };
         self.update_outputs();
-        None
+        (None, None)
     }
 }
