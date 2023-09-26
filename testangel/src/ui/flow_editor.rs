@@ -173,6 +173,7 @@ impl FlowEditor {
                 }
             }
         }
+        available_actions.sort_by(|a, b| a.friendly_name.cmp(&b.friendly_name));
         self.add_action_combo = combo_box::State::new(available_actions);
     }
 
