@@ -61,9 +61,7 @@ pub enum SaveActionThen {
 }
 
 #[derive(Clone, Debug)]
-pub enum ActionEditorMessageOut {
-
-}
+pub enum ActionEditorMessageOut {}
 
 pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
@@ -217,27 +215,39 @@ impl ActionEditor {
     }
 
     /// Offer to save if it is needed with default error handling
-    fn offer_to_save_default_error_handling(&mut self, then: SaveActionThen) -> iced::Command<super::AppMessage> {
+    fn offer_to_save_default_error_handling(
+        &mut self,
+        then: SaveActionThen,
+    ) -> iced::Command<super::AppMessage> {
         if self.needs_saving {
-            iced::Command::perform(rfd::AsyncMessageDialog::new()
-            .set_level(rfd::MessageLevel::Info)
-            .set_title("Do you want to save this action?")
-            .set_description("This action has been modified. Do you want to save it?")
-            .set_buttons(rfd::MessageButtons::YesNo)
-            .show(), |wants_to_save| {
-                if wants_to_save {
-                    super::AppMessage::ActionEditor(ActionEditorMessage::SaveAction(then))
-                } else {
-                    super::AppMessage::ActionEditor(ActionEditorMessage::DoPostSaveActions(then))
-                }
-            })
+            iced::Command::perform(
+                rfd::AsyncMessageDialog::new()
+                    .set_level(rfd::MessageLevel::Info)
+                    .set_title("Do you want to save this action?")
+                    .set_description("This action has been modified. Do you want to save it?")
+                    .set_buttons(rfd::MessageButtons::YesNo)
+                    .show(),
+                |wants_to_save| {
+                    if wants_to_save {
+                        super::AppMessage::ActionEditor(ActionEditorMessage::SaveAction(then))
+                    } else {
+                        super::AppMessage::ActionEditor(ActionEditorMessage::DoPostSaveActions(
+                            then,
+                        ))
+                    }
+                },
+            )
         } else {
             self.do_then(then)
         }
     }
 
     fn write_to_disk(&mut self) -> Result<(), SaveOrOpenActionError> {
-        let save_path = self.current_path.as_ref().unwrap().with_extension("taaction");
+        let save_path = self
+            .current_path
+            .as_ref()
+            .unwrap()
+            .with_extension("taaction");
         let data = ron::to_string(self.currently_open.as_ref().unwrap())
             .map_err(SaveOrOpenActionError::SerializingError)?;
         fs::write(save_path, data).map_err(SaveOrOpenActionError::IoError)?;
@@ -246,7 +256,11 @@ impl ActionEditor {
     }
 
     /// Save the currently opened action
-    fn save_action(&mut self, always_prompt_where: bool, then: SaveActionThen) -> iced::Command<super::AppMessage> {
+    fn save_action(
+        &mut self,
+        always_prompt_where: bool,
+        then: SaveActionThen,
+    ) -> iced::Command<super::AppMessage> {
         self.needs_saving = false;
 
         if always_prompt_where && self.current_path.is_some() {
@@ -256,24 +270,31 @@ impl ActionEditor {
 
         if always_prompt_where || self.current_path.is_none() {
             // Populate save path
-            return iced::Command::perform(rfd::AsyncFileDialog::new()
-            .add_filter("TestAngel Actions", &["taaction"])
-            .set_title("Save Action")
-            .set_directory(env::var("TA_ACTION_DIR").unwrap_or("./actions".to_owned()))
-            .save_file(), |f| {
-                if let Some(file) = f
-                {
-                    return super::AppMessage::ActionEditor(ActionEditorMessage::WriteFileToDisk(file.path().to_path_buf(), then));
-                }
-                super::AppMessage::NoOp
-            })
+            return iced::Command::perform(
+                rfd::AsyncFileDialog::new()
+                    .add_filter("TestAngel Actions", &["taaction"])
+                    .set_title("Save Action")
+                    .set_directory(env::var("TA_ACTION_DIR").unwrap_or("./actions".to_owned()))
+                    .save_file(),
+                |f| {
+                    if let Some(file) = f {
+                        return super::AppMessage::ActionEditor(
+                            ActionEditorMessage::WriteFileToDisk(file.path().to_path_buf(), then),
+                        );
+                    }
+                    super::AppMessage::NoOp
+                },
+            );
         }
 
         if let Err(e) = self.write_to_disk() {
-            return iced::Command::perform(rfd::AsyncMessageDialog::new()
-            .set_title("Failed to save")
-            .set_description(&format!("Failed to save file: {e}"))
-            .show(), |_| super::AppMessage::NoOp)
+            return iced::Command::perform(
+                rfd::AsyncMessageDialog::new()
+                    .set_title("Failed to save")
+                    .set_description(&format!("Failed to save file: {e}"))
+                    .show(),
+                |_| super::AppMessage::NoOp,
+            );
         }
 
         self.do_then(then)
@@ -698,8 +719,10 @@ impl UiComponent for ActionEditor {
                 column![
                     // Toolbar
                     row![
-                        Button::new("Save").on_press(ActionEditorMessage::SaveAction(SaveActionThen::DoNothing)),
-                        Button::new("Save as").on_press(ActionEditorMessage::SaveAsAction(SaveActionThen::DoNothing)),
+                        Button::new("Save")
+                            .on_press(ActionEditorMessage::SaveAction(SaveActionThen::DoNothing)),
+                        Button::new("Save as")
+                            .on_press(ActionEditorMessage::SaveAsAction(SaveActionThen::DoNothing)),
                         Button::new("Close Action").on_press(ActionEditorMessage::CloseAction),
                     ]
                     .spacing(8),
@@ -756,10 +779,16 @@ impl UiComponent for ActionEditor {
                 self.current_path = Some(path.with_extension("taaction"));
 
                 if let Err(e) = self.write_to_disk() {
-                    return (None, Some(iced::Command::perform(rfd::AsyncMessageDialog::new()
-                        .set_title("Failed to save")
-                        .set_description(&format!("Failed to save file: {e}"))
-                        .show(), |_| super::AppMessage::NoOp)));
+                    return (
+                        None,
+                        Some(iced::Command::perform(
+                            rfd::AsyncMessageDialog::new()
+                                .set_title("Failed to save")
+                                .set_description(&format!("Failed to save file: {e}"))
+                                .show(),
+                            |_| super::AppMessage::NoOp,
+                        )),
+                    );
                 }
 
                 return (None, Some(self.do_then(then)));
@@ -775,7 +804,10 @@ impl UiComponent for ActionEditor {
             }
             ActionEditorMessage::CloseAction => {
                 self.close_action();
-                return (None, Some(self.offer_to_save_default_error_handling(SaveActionThen::Close)));
+                return (
+                    None,
+                    Some(self.offer_to_save_default_error_handling(SaveActionThen::Close)),
+                );
             }
 
             ActionEditorMessage::NameChanged(new_name) => {

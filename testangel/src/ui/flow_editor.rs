@@ -219,20 +219,26 @@ impl FlowEditor {
     }
 
     /// Offer to save if it is needed with default error handling
-    fn offer_to_save_default_error_handling(&mut self, then: SaveFlowThen) -> iced::Command<super::AppMessage> {
+    fn offer_to_save_default_error_handling(
+        &mut self,
+        then: SaveFlowThen,
+    ) -> iced::Command<super::AppMessage> {
         if self.needs_saving {
-            iced::Command::perform(rfd::AsyncMessageDialog::new()
-            .set_level(rfd::MessageLevel::Info)
-            .set_title("Do you want to save this flow?")
-            .set_description("This flow has been modified. Do you want to save it?")
-            .set_buttons(rfd::MessageButtons::YesNo)
-            .show(), |wants_to_save| {
-                if wants_to_save {
-                    super::AppMessage::FlowEditor(FlowEditorMessage::SaveFlow(then))
-                } else {
-                    super::AppMessage::FlowEditor(FlowEditorMessage::DoPostSaveActions(then))
-                }
-            })
+            iced::Command::perform(
+                rfd::AsyncMessageDialog::new()
+                    .set_level(rfd::MessageLevel::Info)
+                    .set_title("Do you want to save this flow?")
+                    .set_description("This flow has been modified. Do you want to save it?")
+                    .set_buttons(rfd::MessageButtons::YesNo)
+                    .show(),
+                |wants_to_save| {
+                    if wants_to_save {
+                        super::AppMessage::FlowEditor(FlowEditorMessage::SaveFlow(then))
+                    } else {
+                        super::AppMessage::FlowEditor(FlowEditorMessage::DoPostSaveActions(then))
+                    }
+                },
+            )
         } else {
             self.do_then(then)
         }
@@ -244,7 +250,7 @@ impl FlowEditor {
             SaveFlowThen::Close => {
                 self.close_flow();
                 iced::Command::perform(async {}, |_| super::AppMessage::CloseEditor)
-            },
+            }
         }
     }
 
@@ -259,27 +265,40 @@ impl FlowEditor {
     }
 
     /// Save the currently opened flow
-    fn save_flow(&mut self, always_prompt_where: bool, then: SaveFlowThen) -> iced::Command<super::AppMessage> {
+    fn save_flow(
+        &mut self,
+        always_prompt_where: bool,
+        then: SaveFlowThen,
+    ) -> iced::Command<super::AppMessage> {
         self.needs_saving = false;
         if always_prompt_where || self.current_path.is_none() {
             // Populate save path
-            return iced::Command::perform(rfd::AsyncFileDialog::new()
-            .add_filter("TestAngel Flows", &["taflow"])
-            .set_title("Save Flow")
-            .set_directory(env::var("TA_FLOW_DIR").unwrap_or(".".to_owned()))
-            .save_file(), |f| {
-                if let Some(file) = f {
-                    return super::AppMessage::FlowEditor(FlowEditorMessage::WriteFileToDisk(file.path().to_path_buf(), then));
-                }
-                super::AppMessage::NoOp
-            });
+            return iced::Command::perform(
+                rfd::AsyncFileDialog::new()
+                    .add_filter("TestAngel Flows", &["taflow"])
+                    .set_title("Save Flow")
+                    .set_directory(env::var("TA_FLOW_DIR").unwrap_or(".".to_owned()))
+                    .save_file(),
+                |f| {
+                    if let Some(file) = f {
+                        return super::AppMessage::FlowEditor(FlowEditorMessage::WriteFileToDisk(
+                            file.path().to_path_buf(),
+                            then,
+                        ));
+                    }
+                    super::AppMessage::NoOp
+                },
+            );
         }
 
         if let Err(e) = self.write_to_disk() {
-            return iced::Command::perform(rfd::AsyncMessageDialog::new()
-                .set_title("Failed to save")
-                .set_description(&format!("Failed to save file: {e}"))
-                .show(), |_| super::AppMessage::NoOp)
+            return iced::Command::perform(
+                rfd::AsyncMessageDialog::new()
+                    .set_title("Failed to save")
+                    .set_description(&format!("Failed to save file: {e}"))
+                    .show(),
+                |_| super::AppMessage::NoOp,
+            );
         }
 
         self.do_then(then)
@@ -496,8 +515,10 @@ impl UiComponent for FlowEditor {
                     // Toolbar
                     row![
                         Button::new("Run Flow").on_press(FlowEditorMessage::RunFlow),
-                        Button::new("Save").on_press(FlowEditorMessage::SaveFlow(SaveFlowThen::DoNothing)),
-                        Button::new("Save as").on_press(FlowEditorMessage::SaveAsFlow(SaveFlowThen::DoNothing)),
+                        Button::new("Save")
+                            .on_press(FlowEditorMessage::SaveFlow(SaveFlowThen::DoNothing)),
+                        Button::new("Save as")
+                            .on_press(FlowEditorMessage::SaveAsFlow(SaveFlowThen::DoNothing)),
                         Button::new("Close Flow").on_press(FlowEditorMessage::CloseFlow),
                     ]
                     .spacing(8),
@@ -537,10 +558,16 @@ impl UiComponent for FlowEditor {
                 self.current_path = Some(path.with_extension("taflow"));
 
                 if let Err(e) = self.write_to_disk() {
-                    return (None, Some(iced::Command::perform(rfd::AsyncMessageDialog::new()
-                        .set_title("Failed to save")
-                        .set_description(&format!("Failed to save file: {e}"))
-                        .show(), |_| super::AppMessage::NoOp)));
+                    return (
+                        None,
+                        Some(iced::Command::perform(
+                            rfd::AsyncMessageDialog::new()
+                                .set_title("Failed to save")
+                                .set_description(&format!("Failed to save file: {e}"))
+                                .show(),
+                            |_| super::AppMessage::NoOp,
+                        )),
+                    );
                 }
 
                 return (None, Some(self.do_then(then)));
@@ -555,7 +582,10 @@ impl UiComponent for FlowEditor {
                 return (None, Some(self.save_flow(true, then)));
             }
             FlowEditorMessage::CloseFlow => {
-                return (None, Some(self.offer_to_save_default_error_handling(SaveFlowThen::Close)));
+                return (
+                    None,
+                    Some(self.offer_to_save_default_error_handling(SaveFlowThen::Close)),
+                );
             }
 
             FlowEditorMessage::StepCreate(action) => {

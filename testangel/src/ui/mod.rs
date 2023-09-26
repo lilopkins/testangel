@@ -131,9 +131,7 @@ impl Application for App {
             AppMessage::ActionEditor(msg) => {
                 let (msg_out, cmd) = self.action_editor.update(msg);
                 if let Some(msg_out) = msg_out {
-                    match msg_out {
-
-                    }
+                    match msg_out {}
                 }
                 if let Some(cmd) = cmd {
                     return cmd;
