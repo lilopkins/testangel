@@ -9,6 +9,7 @@ use iced::{
 use testangel::{ipc::EngineList, *};
 
 mod action_editor;
+mod action_running;
 mod flow_editor;
 mod flow_running;
 mod get_started;
@@ -33,6 +34,7 @@ pub struct App {
 
     state: State,
     action_editor: action_editor::ActionEditor,
+    action_running: action_running::ActionRunning,
     flow_editor: flow_editor::FlowEditor,
     flow_running: flow_running::FlowRunning,
     get_started: get_started::GetStarted,
@@ -42,6 +44,7 @@ pub struct App {
 pub enum AppMessage {
     Event(iced::Event),
     ActionEditor(action_editor::ActionEditorMessage),
+    ActionRunning(action_running::ActionRunningMessage),
     FlowEditor(flow_editor::FlowEditorMessage),
     FlowRunning(flow_running::FlowRunningMessage),
     GetStarted(get_started::GetStartedMessage),
@@ -59,6 +62,7 @@ enum State {
     AutomationFlowEditor,
     AutomationFlowRunning,
     ActionEditor,
+    ActionRunning,
 }
 
 impl App {
@@ -82,6 +86,7 @@ impl Application for App {
             Self {
                 engine_list: engines_rc.clone(),
                 action_editor: action_editor::ActionEditor::new(engines_rc.clone()),
+                action_running: action_running::ActionRunning::new(engines_rc.clone()),
                 flow_editor: flow_editor::FlowEditor::new(actions_rc.clone()),
                 flow_running: flow_running::FlowRunning::new(actions_rc, engines_rc),
                 ..Default::default()
@@ -96,6 +101,7 @@ impl Application for App {
             State::ActionEditor => self.action_editor.title(),
             State::AutomationFlowEditor => self.flow_editor.title(),
             State::AutomationFlowRunning => self.flow_running.title(),
+            State::ActionRunning => self.action_editor.title(),
         };
         let separator = if sub_title.is_some() { " :: " } else { "" };
         let sub_title = sub_title.unwrap_or_default();
@@ -110,6 +116,10 @@ impl Application for App {
                     .action_editor
                     .subscription()
                     .map(AppMessage::ActionEditor),
+                State::ActionRunning => self
+                    .action_running
+                    .subscription()
+                    .map(AppMessage::ActionRunning),
                 State::AutomationFlowEditor => {
                     self.flow_editor.subscription().map(AppMessage::FlowEditor)
                 }
@@ -136,7 +146,43 @@ impl Application for App {
             AppMessage::ActionEditor(msg) => {
                 let (msg_out, cmd) = self.action_editor.update(msg);
                 if let Some(msg_out) = msg_out {
-                    match msg_out {}
+                    match msg_out {
+                        action_editor::ActionEditorMessageOut::RunAction(action) => {
+                            self.action_running.set_action(action);
+                            self.state = State::ActionRunning;
+                        }
+                    }
+                }
+                if let Some(cmd) = cmd {
+                    return cmd;
+                }
+            }
+            AppMessage::ActionRunning(msg) => {
+                let (msg_out, cmd) = self.action_running.update(msg);
+                if let Some(msg_out) = msg_out {
+                    match msg_out {
+                        action_running::ActionRunningMessageOut::BackToEditor => {
+                            self.state = State::ActionEditor;
+                        }
+                        action_running::ActionRunningMessageOut::SaveActionReport(evidence) => {
+                            return Command::perform(
+                                rfd::AsyncFileDialog::new()
+                                    .add_filter("Portable Document Format", &["pdf"])
+                                    .set_file_name("report.pdf")
+                                    .set_title("Save Report")
+                                    .set_directory(env::current_dir().expect("Failed to get cwd"))
+                                    .save_file(),
+                                |f| {
+                                    AppMessage::ActionRunning(
+                                        action_running::ActionRunningMessage::Save(
+                                            f.map(|f| f.path().to_path_buf()),
+                                            evidence,
+                                        ),
+                                    )
+                                },
+                            );
+                        }
+                    }
                 }
                 if let Some(cmd) = cmd {
                     return cmd;
@@ -288,6 +334,7 @@ impl Application for App {
         let content: Element<'_, AppMessage> = match self.state {
             State::GetStarted => self.get_started.view().map(AppMessage::GetStarted),
             State::ActionEditor => self.action_editor.view().map(AppMessage::ActionEditor),
+            State::ActionRunning => self.action_running.view().map(AppMessage::ActionRunning),
             State::AutomationFlowEditor => self.flow_editor.view().map(AppMessage::FlowEditor),
             State::AutomationFlowRunning => self.flow_running.view().map(AppMessage::FlowRunning),
         };

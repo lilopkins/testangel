@@ -18,6 +18,7 @@ use super::UiComponent;
 
 #[derive(Clone, Debug)]
 pub enum ActionEditorMessage {
+    RunAction,
     WriteFileToDisk(PathBuf, SaveActionThen),
     SaveAction(SaveActionThen),
     SaveAsAction(SaveActionThen),
@@ -61,7 +62,9 @@ pub enum SaveActionThen {
 }
 
 #[derive(Clone, Debug)]
-pub enum ActionEditorMessageOut {}
+pub enum ActionEditorMessageOut {
+    RunAction(Action),
+}
 
 pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
@@ -766,6 +769,7 @@ impl UiComponent for ActionEditor {
                 column![
                     // Toolbar
                     row![
+                        Button::new("Run Action").on_press(ActionEditorMessage::RunAction),
                         Button::new("Save")
                             .on_press(ActionEditorMessage::SaveAction(SaveActionThen::DoNothing)),
                         Button::new("Save as")
@@ -854,6 +858,15 @@ impl UiComponent for ActionEditor {
                 return (
                     None,
                     Some(self.offer_to_save_default_error_handling(SaveActionThen::Close)),
+                );
+            }
+
+            ActionEditorMessage::RunAction => {
+                return (
+                    Some(ActionEditorMessageOut::RunAction(
+                        self.currently_open.clone().unwrap(),
+                    )),
+                    None,
                 );
             }
 
