@@ -13,13 +13,20 @@ pub enum GetStartedMessage {
 }
 
 pub struct GetStarted {
+    is_latest: bool,
     hide_action_editor: bool,
     local_help_contact: Option<String>,
+}
+impl GetStarted {
+    pub fn set_is_latest(&mut self, is_latest: bool) {
+        self.is_latest = is_latest;
+    }
 }
 
 impl Default for GetStarted {
     fn default() -> Self {
         Self {
+            is_latest: true,
             hide_action_editor: !env::var("TA_HIDE_ACTION_EDITOR")
                 .unwrap_or("no".to_string())
                 .eq_ignore_ascii_case("no"),
@@ -81,14 +88,20 @@ impl UiComponent for GetStarted {
                 Space::with_height(64),
 
                 help,
-                Text::new(format!("TestAngel v{}", env!("CARGO_PKG_VERSION"))).size(10),
+                Text::new(format!("TestAngel v{}{}", env!("CARGO_PKG_VERSION"), if self.is_latest { "" } else { " - New version available!" })).size(10),
             ].spacing(4)
         )
         .padding([32, 32, 32, 32])
         .into()
     }
 
-    fn update(&mut self, message: Self::Message) -> Option<Self::MessageOut> {
-        Some(message)
+    fn update(
+        &mut self,
+        message: Self::Message,
+    ) -> (
+        Option<Self::MessageOut>,
+        Option<iced::Command<super::AppMessage>>,
+    ) {
+        (Some(message), None)
     }
 }

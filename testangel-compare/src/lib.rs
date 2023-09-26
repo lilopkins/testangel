@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use testangel_engine::*;
 
 lazy_static! {
-    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Compare")
+    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Compare", env!("CARGO_PKG_VERSION"))
     .with_instruction(
         Instruction::new(
             "compare-eq-ints",

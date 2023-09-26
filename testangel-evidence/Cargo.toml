@@ -2,7 +2,7 @@
 name = "testangel-evidence"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "An evidence engine plugin for testangel."
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 
 [lib]

@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use testangel_engine::*;
 
 lazy_static! {
-    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Convert")
+    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Convert", env!("CARGO_PKG_VERSION"))
     .with_instruction(
         Instruction::new(
             "convert-int-string",
@@ -43,8 +43,8 @@ lazy_static! {
             "Concatenate Strings",
             "Concatenate two strings into one.",
         )
-        .with_parameter("val1", "StringA", ParameterKind::Decimal)
-        .with_parameter("val2", "StringB", ParameterKind::Decimal)
+        .with_parameter("val1", "StringA", ParameterKind::String)
+        .with_parameter("val2", "StringB", ParameterKind::String)
         .with_output("result", "StringAStringB", ParameterKind::String),
         |_state, params, output, _evidence| {
             let val1 = params["val1"].value_string();

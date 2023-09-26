@@ -1,6 +1,6 @@
 [package]
 name = "testangel"
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -30,6 +30,8 @@ genpdf = { version = "0.2.0", features = ["images"] }
 chrono = "0.4.26"
 base64 = "0.21.2"
 itertools = "0.11.0"
-iced = { version = "0.10.0", features = [ "image", "smol" ], optional = true }
+iced = { version = "0.10.0", features = [ "image", "tokio" ], optional = true }
 opener = { version = "0.6.1", optional = true }
 rfd = { version = "0.11.4", optional = true }
+octocrab = "0.30.1"
+semver = "1.0.19"

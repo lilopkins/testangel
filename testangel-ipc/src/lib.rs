@@ -57,6 +57,10 @@ pub enum Response {
     Instructions {
         /// The friendly name of the engine.
         friendly_name: String,
+        /// The semver version of this engine
+        engine_version: String,
+        /// The version of IPC language that this engine talks, currently must be 1.
+        ipc_version: usize,
         /// The list of instructions this engine is capable of.
         instructions: Vec<Instruction>,
     },
