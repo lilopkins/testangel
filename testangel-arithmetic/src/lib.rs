@@ -9,7 +9,7 @@ struct State {
 }
 
 lazy_static! {
-    static ref ENGINE: Mutex<Engine<'static, State>> = Mutex::new(Engine::new("Arithmetic")
+    static ref ENGINE: Mutex<Engine<'static, State>> = Mutex::new(Engine::new("Arithmetic", env!("CARGO_PKG_VERSION"))
     .with_instruction(
         Instruction::new(
             "arithmetic-int-add",

@@ -143,15 +143,24 @@ pub fn get_engines() -> EngineList {
                             Ok(res) => match res {
                                 Response::Instructions {
                                     friendly_name,
+                                    engine_version,
+                                    ipc_version,
                                     instructions,
                                 } => {
-                                    log::info!(
-                                        "Discovered engine {friendly_name} at {:?}",
-                                        path.path()
-                                    );
-                                    engine.name = friendly_name.clone();
-                                    engine.instructions = instructions;
-                                    engines.push(engine);
+                                    if ipc_version == 1 {
+                                        log::info!(
+                                            "Discovered engine {friendly_name} (v{engine_version}) at {:?}",
+                                            path.path()
+                                        );
+                                        engine.name = friendly_name.clone();
+                                        engine.instructions = instructions;
+                                        engines.push(engine);
+                                    } else {
+                                        log::warn!(
+                                            "Engine {friendly_name} (v{engine_version}) at {:?} doesn't speak the right IPC version!",
+                                            path.path()
+                                        );
+                                    }
                                 }
                                 _ => log::error!("Invalid response from engine {str}"),
                             },

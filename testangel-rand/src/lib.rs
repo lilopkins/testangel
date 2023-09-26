@@ -5,7 +5,7 @@ use rand::Rng;
 use testangel_engine::*;
 
 lazy_static! {
-    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Random")
+    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Random", env!("CARGO_PKG_VERSION"))
     .with_instruction(
         Instruction::new(
             "rand-number",

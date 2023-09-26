@@ -5,7 +5,7 @@ use regex::Regex;
 use testangel_engine::*;
 
 lazy_static! {
-    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Regular Expressions")
+    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Regular Expressions", env!("CARGO_PKG_VERSION"))
     .with_instruction(
         Instruction::new(
             "regex-validate",

@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use testangel_engine::*;
 
 lazy_static! {
-    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Convert")
+    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Convert", env!("CARGO_PKG_VERSION"))
     .with_instruction(
         Instruction::new(
             "convert-int-string",
