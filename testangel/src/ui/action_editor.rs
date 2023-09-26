@@ -393,6 +393,56 @@ impl ActionEditor {
                             })
                             .into()
                         }
+                        ParameterKind::Integer => TextInput::new(
+                            "Literal number",
+                            &if param_value.value_i32() == i32::MIN {
+                                String::new()
+                            } else {
+                                param_value.to_string()
+                            },
+                        )
+                        .on_input(move |new_val| {
+                            if new_val.trim().is_empty() {
+                                ActionEditorMessage::StepParameterValueChange(
+                                    step_idx,
+                                    literal_input_id.clone(),
+                                    i32::MIN.to_string(),
+                                )
+                            } else {
+                                ActionEditorMessage::StepParameterValueChange(
+                                    step_idx,
+                                    literal_input_id.clone(),
+                                    new_val,
+                                )
+                            }
+                        })
+                        .width(250)
+                        .into(),
+                        ParameterKind::Decimal => TextInput::new(
+                            "Literal decimal",
+                            &if param_value.value_f32() == f32::MIN {
+                                String::new()
+                            } else {
+                                param_value.to_string()
+                            },
+                        )
+                        .on_input(move |new_val| {
+                            if new_val.trim().is_empty() {
+                                ActionEditorMessage::StepParameterValueChange(
+                                    step_idx,
+                                    literal_input_id.clone(),
+                                    f32::MIN.to_string(),
+                                )
+                            } else {
+                                ActionEditorMessage::StepParameterValueChange(
+                                    step_idx,
+                                    literal_input_id.clone(),
+                                    new_val,
+                                )
+                            }
+                        })
+                        .width(250)
+                        .into(),
                         _ => TextInput::new("Literal value", &param_value.to_string())
                             .on_input(move |new_val| {
                                 ActionEditorMessage::StepParameterValueChange(

@@ -342,6 +342,48 @@ impl FlowEditor {
                             })
                             .into()
                         }
+                        ParameterKind::Integer => TextInput::new(
+                            "Literal number",
+                            &if param_value.value_i32() == i32::MIN {
+                                String::new()
+                            } else {
+                                param_value.to_string()
+                            },
+                        )
+                        .on_input(move |new_val| {
+                            if new_val.trim().is_empty() {
+                                FlowEditorMessage::StepParameterValueChange(
+                                    step_idx,
+                                    id,
+                                    i32::MIN.to_string(),
+                                )
+                            } else {
+                                FlowEditorMessage::StepParameterValueChange(step_idx, id, new_val)
+                            }
+                        })
+                        .width(250)
+                        .into(),
+                        ParameterKind::Decimal => TextInput::new(
+                            "Literal decimal",
+                            &if param_value.value_f32() == f32::MIN {
+                                String::new()
+                            } else {
+                                param_value.to_string()
+                            },
+                        )
+                        .on_input(move |new_val| {
+                            if new_val.trim().is_empty() {
+                                FlowEditorMessage::StepParameterValueChange(
+                                    step_idx,
+                                    id,
+                                    f32::MIN.to_string(),
+                                )
+                            } else {
+                                FlowEditorMessage::StepParameterValueChange(step_idx, id, new_val)
+                            }
+                        })
+                        .width(250)
+                        .into(),
                         _ => TextInput::new("Literal value", &param_value.to_string())
                             .on_input(move |new_val| {
                                 FlowEditorMessage::StepParameterValueChange(step_idx, id, new_val)
