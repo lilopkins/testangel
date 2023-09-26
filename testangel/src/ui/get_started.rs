@@ -88,7 +88,13 @@ impl UiComponent for GetStarted {
         .into()
     }
 
-    fn update(&mut self, message: Self::Message) -> Option<Self::MessageOut> {
-        Some(message)
+    fn update(
+        &mut self,
+        message: Self::Message,
+    ) -> (
+        Option<Self::MessageOut>,
+        Option<iced::Command<super::AppMessage>>,
+    ) {
+        (Some(message), None)
     }
 }
