@@ -49,6 +49,7 @@ pub enum AppMessage {
     OpenFlow(Option<PathBuf>),
     CloseEditor,
     NoOp,
+    UpdateIsLatest(bool),
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
@@ -85,7 +86,7 @@ impl Application for App {
                 flow_running: flow_running::FlowRunning::new(actions_rc, engines_rc),
                 ..Default::default()
             },
-            Command::none(),
+            Command::perform(version::check_is_latest(), AppMessage::UpdateIsLatest),
         )
     }
 
@@ -124,6 +125,9 @@ impl Application for App {
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             AppMessage::NoOp => (),
+            AppMessage::UpdateIsLatest(is_latest) => {
+                self.get_started.set_is_latest(is_latest);
+            }
             AppMessage::Event(event) => {
                 if let Event::Window(window::Event::CloseRequested) = event {
                     std::process::exit(0);
