@@ -7,7 +7,7 @@ use std::{
 };
 
 use iced::{
-    widget::{column, row, Button, Checkbox, Column, Container, Space, Text, TextInput, Rule},
+    widget::{column, row, Button, Checkbox, Column, Container, Rule, Space, Text, TextInput},
     Length,
 };
 use testangel::{ipc::EngineList, report_generation, types::Action};
