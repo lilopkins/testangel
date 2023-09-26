@@ -854,7 +854,6 @@ impl UiComponent for ActionEditor {
                 return (None, Some(self.save_action(true, then)));
             }
             ActionEditorMessage::CloseAction => {
-                self.close_action();
                 return (
                     None,
                     Some(self.offer_to_save_default_error_handling(SaveActionThen::Close)),
