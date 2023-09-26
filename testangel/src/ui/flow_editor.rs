@@ -243,7 +243,7 @@ impl FlowEditor {
             SaveFlowThen::DoNothing => iced::Command::none(),
             SaveFlowThen::Close => {
                 self.close_flow();
-                iced::Command::perform(async {}, |_| super::AppMessage::CloseFlowEditor)
+                iced::Command::perform(async {}, |_| super::AppMessage::CloseEditor)
             },
         }
     }

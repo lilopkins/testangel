@@ -46,7 +46,7 @@ pub enum AppMessage {
     GetStarted(get_started::GetStartedMessage),
     OpenAction(Option<PathBuf>),
     OpenFlow(Option<PathBuf>),
-    CloseFlowEditor,
+    CloseEditor,
     NoOp,
 }
 
@@ -132,9 +132,7 @@ impl Application for App {
                 let (msg_out, cmd) = self.action_editor.update(msg);
                 if let Some(msg_out) = msg_out {
                     match msg_out {
-                        action_editor::ActionEditorMessageOut::CloseActionEditor => {
-                            self.state = State::GetStarted;
-                        }
+
                     }
                 }
                 if let Some(cmd) = cmd {
@@ -155,7 +153,7 @@ impl Application for App {
                     return cmd;
                 }
             }
-            AppMessage::CloseFlowEditor => {
+            AppMessage::CloseEditor => {
                 self.state = State::GetStarted;
             }
             AppMessage::FlowRunning(msg) => {
