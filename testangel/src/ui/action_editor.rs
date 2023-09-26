@@ -324,11 +324,7 @@ impl ActionEditor {
 
     /// Generate the UI for the action parameters
     fn ui_parameters(&self) -> iced::Element<'_, ActionEditorMessage> {
-        let action = self.currently_open.as_ref();
-        if action.is_none() {
-            return Text::new("No action loaded.").into();
-        }
-        let action = action.unwrap();
+        let action = self.currently_open.as_ref().unwrap();
 
         action
             .parameters
@@ -709,10 +705,11 @@ impl UiComponent for ActionEditor {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        let action = self
-            .currently_open
-            .as_ref()
-            .expect("the action editor can't be open with no open action");
+        let action = self.currently_open.as_ref();
+        if action.is_none() {
+            return Text::new("No action loaded.").into();
+        }
+        let action = action.unwrap();
 
         Scrollable::new(
             Container::new(

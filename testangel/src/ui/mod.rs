@@ -19,6 +19,7 @@ pub(crate) fn initialise_ui() {
         icon::from_file_data(include_bytes!("../../../icon.png"), None).expect("icon was invalid!"),
     );
     settings.exit_on_close_request = false;
+    settings.window.min_size = Some((800, 600));
     #[cfg(target_os = "linux")]
     {
         settings.window.platform_specific.application_id = String::from("TestAngel");
