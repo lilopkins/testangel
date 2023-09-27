@@ -8,7 +8,10 @@ pub async fn check_is_latest() -> bool {
         == "yes"
     {
         // Skip check.
-        log::info!("Version check skipped");
+        log::info!(
+            "Version check skipped. Current version: {}",
+            env!("CARGO_PKG_VERSION")
+        );
         return true;
     }
 
@@ -32,14 +35,18 @@ pub async fn check_is_latest() -> bool {
             }
         } else {
             log::warn!(
-                "Couldn't parse remote version: '{}'",
-                latest_release.tag_name
+                "Couldn't parse remote version: '{}'. Current version: {}",
+                latest_release.tag_name,
+                env!("CARGO_PKG_VERSION")
             );
             false
         }
     } else {
         // Probably offline
-        log::warn!("Couldn't fetch latest release for version check!");
+        log::warn!(
+            "Couldn't fetch latest release for version check! Current version: {}",
+            env!("CARGO_PKG_VERSION")
+        );
         true
     }
 }

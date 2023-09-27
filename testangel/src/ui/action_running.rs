@@ -7,10 +7,10 @@ use std::{
 };
 
 use iced::{
-    widget::{column, row, Button, Checkbox, Column, Container, Space, Text, TextInput, Rule},
+    widget::{column, row, Button, Checkbox, Column, Container, Rule, Space, Text, TextInput},
     Length,
 };
-use testangel::{ipc::EngineList, report_generation, types::Action};
+use testangel::{ipc::EngineList, report_generation, types::{Action, ActionConfiguration}};
 use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterKind, ParameterValue};
 
 use super::UiComponent;
@@ -65,9 +65,7 @@ impl ActionRunning {
         let action = self.action.clone().unwrap();
         let parameters = self.parameters.clone();
         self.thread = Some(thread::spawn(move || {
-            let mut outputs: Vec<HashMap<String, ParameterValue>> = Vec::new();
-            let mut evidence = Vec::new();
-
+            let mut evidence = vec![];
             for engine in engines_list.inner() {
                 if engine.reset_state().is_err() {
                     evidence.push(Evidence {
@@ -77,45 +75,24 @@ impl ActionRunning {
                 }
             }
 
-            for (step, instruction_config) in action.instructions.iter().enumerate() {
-                let mut proceed = true;
-                match instruction_config.execute(
-                    engines_list.clone(),
-                    &parameters.clone(),
-                    outputs.clone(),
-                ) {
-                    Ok((output, ev)) => {
-                        outputs.push(output);
-                        evidence = [evidence, ev].concat();
-                    }
-                    Err(e) => {
-                        rfd::MessageDialog::new()
-                            .set_level(rfd::MessageLevel::Error)
-                            .set_title("Failed to execute")
-                            .set_description(&format!(
-                                "Failed to execute action at step {}: {e}",
-                                step + 1
-                            ))
-                            .show();
-                        proceed = false;
-                    }
-                }
-                if !proceed {
-                    return None;
-                }
+            let exec_result = ActionConfiguration::execute_directly(engines_list.clone(), &action, parameters);
+            if let Err((step, e)) = exec_result {
+                rfd::MessageDialog::new()
+                    .set_level(rfd::MessageLevel::Error)
+                    .set_title("Failed to execute")
+                    .set_description(&format!(
+                        "Failed to execute action at step {}: {e}",
+                        step + 1
+                    ))
+                    .show();
+                return None;
             }
+            let (outputs, ev) = exec_result.unwrap();
+            evidence = [evidence, ev].concat();
 
             // Add outputs as evidence
-            for (name, kind, src) in action.outputs {
-                let value = match src {
-                    testangel::types::InstructionParameterSource::Literal => unimplemented!(),
-                    testangel::types::InstructionParameterSource::FromParameter(param_id) => {
-                        parameters[&param_id].clone()
-                    }
-                    testangel::types::InstructionParameterSource::FromOutput(step, id) => {
-                        outputs[step][&id].clone()
-                    }
-                };
+            for (index, (name, kind, _src)) in action.outputs.iter().enumerate() {
+                let value = outputs[&index].clone();
                 evidence.push(Evidence {
                     label: format!("Output '{name}' of kind '{kind}'"),
                     content: EvidenceContent::Textual(value.to_string()),
