@@ -241,7 +241,6 @@ impl ActionConfiguration {
     ) -> Result<(HashMap<usize, ParameterValue>, Vec<Evidence>), FlowError> {
         // Find action by ID
         let action = action_map.get_action_by_id(&self.action_id).unwrap();
-
         // Build action parameters
         let mut action_parameters = HashMap::new();
         for (id, src) in &self.parameter_sources {
@@ -256,11 +255,19 @@ impl ActionConfiguration {
             };
             action_parameters.insert(*id, value);
         }
+        Self::execute_directly(engine_map, &action, action_parameters).map_err(|(_step, err)| err)
+    }
 
+    /// Directly execute an action with a set of parameters.
+    pub fn execute_directly(
+        engine_map: Arc<EngineList>,
+        action: &Action,
+        action_parameters: HashMap<usize, ParameterValue>,
+    ) -> Result<(HashMap<usize, ParameterValue>, Vec<Evidence>), (usize, FlowError)> {
         // Iterate through instructions
         let mut instruction_outputs: Vec<HashMap<String, ParameterValue>> = Vec::new();
         let mut evidence = Vec::new();
-        for instruction_config in &action.instructions {
+        for (step, instruction_config) in action.instructions.iter().enumerate() {
             // Check if we execute instruction
             if !match &instruction_config.run_if {
                 InstructionParameterSource::Literal => true,
@@ -284,21 +291,21 @@ impl ActionConfiguration {
                 engine_map.clone(),
                 &action_parameters,
                 instruction_outputs.clone(),
-            )?;
+            ).map_err(|err| (step, err))?;
             instruction_outputs.push(outputs);
             evidence = [evidence, ev].concat();
         }
 
         // Generate output map
         let mut output = HashMap::new();
-        for (index, (_friendly_name, _kind, src)) in action.outputs.iter().enumerate() {
+        for (index, (_friendly_name, kind, src)) in action.outputs.iter().enumerate() {
             let value = match src {
                 InstructionParameterSource::Literal => panic!("Output set to literal."),
                 InstructionParameterSource::FromOutput(step, id) => instruction_outputs
                     .get(*step)
                     .unwrap()
                     .get(id)
-                    .unwrap()
+                    .unwrap_or(&kind.default_value())
                     .clone(),
                 InstructionParameterSource::FromParameter(id) => {
                     action_parameters.get(id).unwrap().clone()
