@@ -173,6 +173,7 @@ impl ActionEditor {
                 });
             }
         }
+        available_instructions.sort_by(|a, b| a.friendly_name.cmp(&b.friendly_name));
 
         Self {
             engines_list,
