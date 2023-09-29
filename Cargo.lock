@@ -3828,6 +3828,7 @@ dependencies = [
  "fern",
  "genpdf",
  "iced",
+ "image 0.24.7",
  "itertools",
  "libloading 0.8.0",
  "log",
@@ -3839,6 +3840,7 @@ dependencies = [
  "semver 1.0.19",
  "serde",
  "testangel-ipc",
+ "thiserror",
  "uuid",
 ]
 
