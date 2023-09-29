@@ -25,8 +25,8 @@ You can install new engines simply by downloading them and dropping them in the 
 
 | Other engine | Description |
 |:-----|:------------|
-|[`testangel-sap`](https://github.com/lilopkins/testangel-sap)|An engine that interfaces with SAP GUI for Windows.|
 |[`testangel-browser`](https://github.com/lilopkins/testangel-browser)|An engine that can automate the web.|
+|[`testangel-sap`](https://github.com/lilopkins/testangel-sap)|An engine that interfaces with SAP GUI for Windows.|
 
 ## Environment Variables
 
