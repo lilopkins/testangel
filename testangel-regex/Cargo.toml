@@ -2,7 +2,7 @@
 name = "testangel-regex"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "A regular expression engine plugin for testangel."
-version = "0.15.1"
+version = "0.15.2"
 edition = "2021"
 
 [lib]
@@ -14,3 +14,4 @@ crate-type = ["cdylib"]
 lazy_static = "1.4.0"
 regex = "1.9.3"
 testangel-engine = { path = "../testangel-engine" }
+thiserror = "1.0"

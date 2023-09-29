@@ -21,7 +21,7 @@ lazy_static! {
             // Produce output and evidence
             let result = val1 == val2;
             output.insert("result".to_owned(), ParameterValue::Boolean(result));
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -39,7 +39,7 @@ lazy_static! {
             // Produce output and evidence
             let result = val1 == val2;
             output.insert("result".to_owned(), ParameterValue::Boolean(result));
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -57,7 +57,7 @@ lazy_static! {
             // Produce output and evidence
             let result = val1 == val2;
             output.insert("result".to_owned(), ParameterValue::Boolean(result));
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -73,7 +73,7 @@ lazy_static! {
             // Produce output and evidence
             let result = !val1;
             output.insert("result".to_owned(), ParameterValue::Boolean(result));
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -91,7 +91,7 @@ lazy_static! {
             // Produce output and evidence
             let result = val1 && val2;
             output.insert("result".to_owned(), ParameterValue::Boolean(result));
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -109,7 +109,7 @@ lazy_static! {
             // Produce output and evidence
             let result = val1 || val2;
             output.insert("result".to_owned(), ParameterValue::Boolean(result));
-            None
+            Ok(())
         })
     );
 }

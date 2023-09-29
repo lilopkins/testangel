@@ -2,7 +2,7 @@
 name = "testangel-rand"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "A randomisation engine plugin for testangel."
-version = "0.15.1"
+version = "0.15.2"
 edition = "2021"
 
 [lib]
@@ -15,3 +15,4 @@ lazy_static = "1.4.0"
 rand = "0.8.5"
 rand_regex = "0.16.0"
 testangel-engine = { path = "../testangel-engine" }
+thiserror = "1.0"

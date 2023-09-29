@@ -1,37 +1,53 @@
 use std::fs;
-use std::io::Cursor;
+use std::io::{BufReader, BufWriter, Cursor};
 use std::path::Path;
 
 use base64::Engine;
 use genpdf::style::{Style, StyledString};
 use genpdf::{elements, Element};
 use testangel_ipc::prelude::*;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ReportGenerationError {
+    #[error("Invalid image format: {0}")]
+    InvalidImageFormat(std::io::Error),
+    #[error("Invalid image data: {0}")]
+    InvalidImageData(image::ImageError),
+    #[error("Invalid encoded image data from engine.")]
+    InvalidImageBase64Data,
+    #[error("Failed to generate image data: {0}")]
+    FailedToGenerateImage(image::ImageError),
+    #[error("I/O Error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Failed to generate PDF: {0}")]
+    PdfGeneration(#[from] genpdf::error::Error),
+}
 
 // TODO Remove so many assumptions
-pub fn save_report<P: AsRef<Path>>(to: P, evidence: Vec<Evidence>) {
-    fs::create_dir_all("./.tafonts").unwrap();
+pub fn save_report<P: AsRef<Path>>(
+    to: P,
+    evidence: Vec<Evidence>,
+) -> Result<(), ReportGenerationError> {
+    fs::create_dir_all("./.tafonts")?;
     fs::write(
         "./.tafonts/LiberationSans-Bold.ttf",
         include_bytes!("./fonts/LiberationSans-Bold.ttf"),
-    )
-    .unwrap();
+    )?;
     fs::write(
         "./.tafonts/LiberationSans-BoldItalic.ttf",
         include_bytes!("./fonts/LiberationSans-BoldItalic.ttf"),
-    )
-    .unwrap();
+    )?;
     fs::write(
         "./.tafonts/LiberationSans-Italic.ttf",
         include_bytes!("./fonts/LiberationSans-Italic.ttf"),
-    )
-    .unwrap();
+    )?;
     fs::write(
         "./.tafonts/LiberationSans-Regular.ttf",
         include_bytes!("./fonts/LiberationSans-Regular.ttf"),
-    )
-    .unwrap();
+    )?;
 
-    let font_family = genpdf::fonts::from_files("./.tafonts", "LiberationSans", None).unwrap();
+    let font_family = genpdf::fonts::from_files("./.tafonts", "LiberationSans", None)?;
     let mut doc = genpdf::Document::new(font_family);
     doc.set_title("TestAngel Evidence");
     let mut decorator = genpdf::SimplePageDecorator::new();
@@ -62,13 +78,29 @@ pub fn save_report<P: AsRef<Path>>(to: P, evidence: Vec<Evidence>) {
             EvidenceContent::ImageAsPngBase64(base64) => {
                 let data = base64::engine::general_purpose::STANDARD
                     .decode(base64)
-                    .unwrap();
-                doc.push(elements::Image::from_reader(Cursor::new(data)).unwrap());
+                    .map_err(|_| ReportGenerationError::InvalidImageBase64Data)?;
+
+                // Make sure it's encoded as expected, fixing #107
+                let img = image::io::Reader::new(BufReader::new(Cursor::new(data)))
+                    .with_guessed_format()
+                    .map_err(ReportGenerationError::InvalidImageFormat)?
+                    .decode()
+                    .map_err(ReportGenerationError::InvalidImageData)?
+                    .into_rgb8();
+                let mut data = vec![];
+                img.write_to(
+                    &mut BufWriter::new(Cursor::new(&mut data)),
+                    image::ImageOutputFormat::Png,
+                )
+                .map_err(ReportGenerationError::FailedToGenerateImage)?;
+
+                doc.push(elements::Image::from_reader(Cursor::new(data))?);
             }
         }
     }
 
-    doc.render_to_file(to.as_ref().with_extension("pdf"))
-        .unwrap();
-    fs::remove_dir_all("./.tafonts").unwrap();
+    doc.render_to_file(to.as_ref().with_extension("pdf"))?;
+    fs::remove_dir_all("./.tafonts")?;
+
+    Ok(())
 }

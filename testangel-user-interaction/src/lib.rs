@@ -2,6 +2,15 @@ use std::sync::Mutex;
 
 use lazy_static::lazy_static;
 use testangel_engine::*;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum FlowTermination {
+    #[error("The user terminated the flow.")]
+    UserTerminated,
+    #[error("An automation step terminated the flow.")]
+    StepTerminated,
+}
 
 lazy_static! {
     static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("User Interaction", env!("CARGO_PKG_VERSION"))
@@ -21,7 +30,7 @@ lazy_static! {
                 .set_title("Information")
                 .set_description(&message)
                 .show();
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -45,7 +54,7 @@ lazy_static! {
                         .show(),
                 ),
             );
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -64,12 +73,9 @@ lazy_static! {
                 .set_description(&message)
                 .show()
             {
-                return Some(Response::Error {
-                    kind: ErrorKind::EngineProcessingError,
-                    reason: "The user terminated the flow.".to_string(),
-                })
+                return Err(FlowTermination::UserTerminated.into());
             }
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -88,10 +94,7 @@ lazy_static! {
                 .set_description(&message)
                 .show();
 
-            Some(Response::Error {
-                kind: ErrorKind::EngineProcessingError,
-                reason: "The flow was terminated by a step.".to_string(),
-            })
+            Err(FlowTermination::StepTerminated.into())
         })
     );
 }

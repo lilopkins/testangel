@@ -26,7 +26,7 @@ lazy_static! {
             // Produce output and evidence
             let result = val1 + val2;
             output.insert("result".to_owned(), ParameterValue::Integer(result));
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -44,7 +44,7 @@ lazy_static! {
             // Produce output and evidence
             let result = val1 - val2;
             output.insert("result".to_owned(), ParameterValue::Integer(result));
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -62,7 +62,7 @@ lazy_static! {
             // Produce output and evidence
             let result = val1 * val2;
             output.insert("result".to_owned(), ParameterValue::Integer(result));
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -80,7 +80,7 @@ lazy_static! {
             // Produce output and evidence
             let result = val1 / val2;
             output.insert("result".to_owned(), ParameterValue::Integer(result));
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -94,7 +94,7 @@ lazy_static! {
             state.counter += 1;
 
             output.insert("value".to_owned(), ParameterValue::Integer(state.counter));
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -108,7 +108,7 @@ lazy_static! {
             state.counter -= 1;
 
             output.insert("value".to_owned(), ParameterValue::Integer(state.counter));
-            None
+            Ok(())
         })
     );
 }

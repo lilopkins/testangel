@@ -287,11 +287,13 @@ impl ActionConfiguration {
             }
 
             // Execute instruction
-            let (outputs, ev) = instruction_config.execute(
-                engine_map.clone(),
-                &action_parameters,
-                instruction_outputs.clone(),
-            ).map_err(|err| (step, err))?;
+            let (outputs, ev) = instruction_config
+                .execute(
+                    engine_map.clone(),
+                    &action_parameters,
+                    instruction_outputs.clone(),
+                )
+                .map_err(|err| (step, err))?;
             instruction_outputs.push(outputs);
             evidence = [evidence, ev].concat();
         }

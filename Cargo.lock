@@ -3820,7 +3820,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "base64 0.21.4",
  "chrono",
@@ -3828,6 +3828,7 @@ dependencies = [
  "fern",
  "genpdf",
  "iced",
+ "image 0.24.7",
  "itertools",
  "libloading 0.8.0",
  "log",
@@ -3839,12 +3840,13 @@ dependencies = [
  "semver 1.0.19",
  "serde",
  "testangel-ipc",
+ "thiserror",
  "uuid",
 ]
 
 [[package]]
 name = "testangel-arithmetic"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3852,7 +3854,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-compare"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3860,7 +3862,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-convert"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3868,7 +3870,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-date"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "chrono",
  "lazy_static",
@@ -3877,7 +3879,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "testangel-engine-macros",
  "testangel-ipc",
@@ -3885,11 +3887,11 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine-macros"
-version = "0.15.1"
+version = "0.15.2"
 
 [[package]]
 name = "testangel-evidence"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3897,7 +3899,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "schemars",
  "serde",
@@ -3906,30 +3908,33 @@ dependencies = [
 
 [[package]]
 name = "testangel-rand"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "lazy_static",
  "rand",
  "rand_regex",
  "testangel-engine",
+ "thiserror",
 ]
 
 [[package]]
 name = "testangel-regex"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "lazy_static",
  "regex",
  "testangel-engine",
+ "thiserror",
 ]
 
 [[package]]
 name = "testangel-user-interaction"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "lazy_static",
  "rfd",
  "testangel-engine",
+ "thiserror",
 ]
 
 [[package]]
