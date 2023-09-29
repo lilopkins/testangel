@@ -38,7 +38,12 @@ impl<'a, T: Default + Send + Sync> Engine<'a, T> {
         F: 'a
             + Send
             + Sync
-            + Fn(&mut T, ParameterMap, &mut OutputMap, &mut EvidenceList) -> Result<(), Box<dyn Error>>,
+            + Fn(
+                &mut T,
+                ParameterMap,
+                &mut OutputMap,
+                &mut EvidenceList,
+            ) -> Result<(), Box<dyn Error>>,
     {
         self.functions
             .insert(instruction.id().clone(), Box::new(execute));
@@ -93,7 +98,10 @@ impl<'a, T: Default + Send + Sync> Engine<'a, T> {
                                 &mut this_instruction_evidence,
                             );
                             if let Err(e) = instruction_result {
-                                return Response::Error { kind: ErrorKind::EngineProcessingError, reason: format!("{e}") };
+                                return Response::Error {
+                                    kind: ErrorKind::EngineProcessingError,
+                                    reason: format!("{e}"),
+                                };
                             }
 
                             evidence.push(this_instruction_evidence);

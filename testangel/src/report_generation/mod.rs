@@ -1,5 +1,5 @@
 use std::fs;
-use std::io::{Cursor, BufWriter, BufReader};
+use std::io::{BufReader, BufWriter, Cursor};
 use std::path::Path;
 
 use base64::Engine;
@@ -25,7 +25,10 @@ pub enum ReportGenerationError {
 }
 
 // TODO Remove so many assumptions
-pub fn save_report<P: AsRef<Path>>(to: P, evidence: Vec<Evidence>) -> Result<(), ReportGenerationError> {
+pub fn save_report<P: AsRef<Path>>(
+    to: P,
+    evidence: Vec<Evidence>,
+) -> Result<(), ReportGenerationError> {
     fs::create_dir_all("./.tafonts")?;
     fs::write(
         "./.tafonts/LiberationSans-Bold.ttf",
@@ -79,11 +82,17 @@ pub fn save_report<P: AsRef<Path>>(to: P, evidence: Vec<Evidence>) -> Result<(),
 
                 // Make sure it's encoded as expected, fixing #107
                 let img = image::io::Reader::new(BufReader::new(Cursor::new(data)))
-                    .with_guessed_format().map_err(ReportGenerationError::InvalidImageFormat)?
-                    .decode().map_err(ReportGenerationError::InvalidImageData)?
+                    .with_guessed_format()
+                    .map_err(ReportGenerationError::InvalidImageFormat)?
+                    .decode()
+                    .map_err(ReportGenerationError::InvalidImageData)?
                     .into_rgb8();
                 let mut data = vec![];
-                img.write_to(&mut BufWriter::new(Cursor::new(&mut data)), image::ImageOutputFormat::Png).map_err(ReportGenerationError::FailedToGenerateImage)?;
+                img.write_to(
+                    &mut BufWriter::new(Cursor::new(&mut data)),
+                    image::ImageOutputFormat::Png,
+                )
+                .map_err(ReportGenerationError::FailedToGenerateImage)?;
 
                 doc.push(elements::Image::from_reader(Cursor::new(data))?);
             }

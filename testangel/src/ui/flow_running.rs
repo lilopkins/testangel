@@ -133,8 +133,21 @@ impl UiComponent for FlowRunning {
 
             FlowRunningMessage::Save(to, evidence) => {
                 if let Some(path) = to {
-                    report_generation::save_report(path.with_extension("pdf"), evidence);
-                    if let Err(e) = opener::open(path.with_extension("pdf")) {
+                    if let Err(e) =
+                        report_generation::save_report(path.with_extension("pdf"), evidence)
+                    {
+                        return (
+                            None,
+                            Some(iced::Command::perform(
+                                rfd::AsyncMessageDialog::new()
+                                    .set_title("Failed")
+                                    .set_description(&format!("Failed to generate report: {e}"))
+                                    .set_level(rfd::MessageLevel::Error)
+                                    .show(),
+                                |_| super::AppMessage::NoOp,
+                            )),
+                        );
+                    } else if let Err(e) = opener::open(path.with_extension("pdf")) {
                         log::warn!("Failed to open evidence: {e}");
                     }
                 }

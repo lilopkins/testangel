@@ -10,7 +10,11 @@ use iced::{
     widget::{column, row, Button, Checkbox, Column, Container, Rule, Space, Text, TextInput},
     Length,
 };
-use testangel::{ipc::EngineList, report_generation, types::{Action, ActionConfiguration}};
+use testangel::{
+    ipc::EngineList,
+    report_generation,
+    types::{Action, ActionConfiguration},
+};
 use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterKind, ParameterValue};
 
 use super::UiComponent;
@@ -75,7 +79,8 @@ impl ActionRunning {
                 }
             }
 
-            let exec_result = ActionConfiguration::execute_directly(engines_list.clone(), &action, parameters);
+            let exec_result =
+                ActionConfiguration::execute_directly(engines_list.clone(), &action, parameters);
             if let Err((step, e)) = exec_result {
                 rfd::MessageDialog::new()
                     .set_level(rfd::MessageLevel::Error)
@@ -234,8 +239,21 @@ impl UiComponent for ActionRunning {
 
             ActionRunningMessage::Save(to, evidence) => {
                 if let Some(path) = to {
-                    report_generation::save_report(path.with_extension("pdf"), evidence);
-                    if let Err(e) = opener::open(path.with_extension("pdf")) {
+                    if let Err(e) =
+                        report_generation::save_report(path.with_extension("pdf"), evidence)
+                    {
+                        return (
+                            None,
+                            Some(iced::Command::perform(
+                                rfd::AsyncMessageDialog::new()
+                                    .set_title("Failed")
+                                    .set_description(&format!("Failed to generate report: {e}"))
+                                    .set_level(rfd::MessageLevel::Error)
+                                    .show(),
+                                |_| super::AppMessage::NoOp,
+                            )),
+                        );
+                    } else if let Err(e) = opener::open(path.with_extension("pdf")) {
                         log::warn!("Failed to open evidence: {e}");
                     }
                 }

@@ -62,5 +62,7 @@ fn main() {
         }
     }
 
-    report_generation::save_report(cli.report, evidence);
+    if let Err(e) = report_generation::save_report(cli.report, evidence) {
+        eprintln!("Failed to generate report: {e}");
+    }
 }
