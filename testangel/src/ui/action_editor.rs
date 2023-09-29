@@ -173,7 +173,11 @@ impl ActionEditor {
                 });
             }
         }
-        available_instructions.sort_by(|a, b| a.friendly_name.cmp(&b.friendly_name));
+        // Sort by engine name, then friendly name
+        available_instructions.sort_by(|a, b| match a.engine_name.cmp(&b.engine_name) {
+            std::cmp::Ordering::Equal => a.friendly_name.cmp(&b.friendly_name),
+            ord => ord,
+        });
 
         Self {
             engines_list,
