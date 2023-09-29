@@ -2,7 +2,7 @@
 name = "testangel-date"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "A date and time engine plugin for testangel."
-version = "0.15.1"
+version = "0.15.2"
 edition = "2021"
 
 [lib]
