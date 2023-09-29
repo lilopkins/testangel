@@ -3,6 +3,13 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 use regex::Regex;
 use testangel_engine::*;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum EngineError {
+    #[error("Invalid regular expression.")]
+    InvalidRegex(#[from] regex::Error),
+}
 
 lazy_static! {
     static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Regular Expressions", env!("CARGO_PKG_VERSION"))
@@ -20,23 +27,12 @@ lazy_static! {
             let input = params["input"].value_string();
             let error = params["error"].value_string();
 
-            match Regex::new(&regex) {
-                Ok(regex) => {
-                    if !regex.is_match(&input) {
-                        return Some(Response::Error {
-                            kind: ErrorKind::EngineProcessingError,
-                            reason: error,
-                        })
-                    }
-                }
-                Err(e) => {
-                    return Some(Response::Error {
-                        kind: ErrorKind::EngineProcessingError,
-                        reason: format!("Invalid regex in action: {e}"),
-                    })
-                }
+            let regex = Regex::new(&regex).map_err(EngineError::InvalidRegex)?;
+            if !regex.is_match(&input) {
+                return Err(error.into())
             }
-            None
+
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -51,21 +47,12 @@ lazy_static! {
             let regex = params["regex"].value_string();
             let input = params["input"].value_string();
 
-            match Regex::new(&regex) {
-                Ok(regex) => {
-                    output.insert(
-                        "match".to_string(),
-                        ParameterValue::Boolean(regex.is_match(&input)),
-                    );
-                }
-                Err(e) => {
-                    return Some(Response::Error {
-                        kind: ErrorKind::EngineProcessingError,
-                        reason: format!("Invalid regex in action: {e}"),
-                    })
-                }
-            }
-            None
+            let regex = Regex::new(&regex).map_err(EngineError::InvalidRegex)?;
+            output.insert(
+                "match".to_string(),
+                ParameterValue::Boolean(regex.is_match(&input)),
+            );
+            Ok(())
         })
     );
 }

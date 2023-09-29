@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error};
 
 pub use testangel_engine_macros::expose_engine;
 pub use testangel_ipc::prelude::*;
@@ -10,7 +10,7 @@ pub type EvidenceList = Vec<Evidence>;
 pub type FnEngineInstruction<'a, T> = dyn 'a
     + Send
     + Sync
-    + Fn(&mut T, ParameterMap, &mut OutputMap, &mut EvidenceList) -> Option<Response>;
+    + Fn(&mut T, ParameterMap, &mut OutputMap, &mut EvidenceList) -> Result<(), Box<dyn Error>>;
 
 pub struct Engine<'a, T: Default + Send + Sync> {
     name: String,
@@ -38,7 +38,7 @@ impl<'a, T: Default + Send + Sync> Engine<'a, T> {
         F: 'a
             + Send
             + Sync
-            + Fn(&mut T, ParameterMap, &mut OutputMap, &mut EvidenceList) -> Option<Response>,
+            + Fn(&mut T, ParameterMap, &mut OutputMap, &mut EvidenceList) -> Result<(), Box<dyn Error>>,
     {
         self.functions
             .insert(instruction.id().clone(), Box::new(execute));
@@ -86,13 +86,14 @@ impl<'a, T: Default + Send + Sync> Engine<'a, T> {
                             let f = &self.functions[instruction.id()];
                             let mut this_instruction_output = OutputMap::new();
                             let mut this_instruction_evidence = EvidenceList::new();
-                            if let Some(early_response) = f(
+                            let instruction_result = f(
                                 &mut self.state,
                                 parameters,
                                 &mut this_instruction_output,
                                 &mut this_instruction_evidence,
-                            ) {
-                                return early_response;
+                            );
+                            if let Err(e) = instruction_result {
+                                return Response::Error { kind: ErrorKind::EngineProcessingError, reason: format!("{e}") };
                             }
 
                             evidence.push(this_instruction_evidence);

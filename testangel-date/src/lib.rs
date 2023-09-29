@@ -22,7 +22,7 @@ lazy_static! {
                     chrono::Local::now().format(&format_string).to_string(),
                 ),
             );
-            None
+            Ok(())
         })
     );
 }

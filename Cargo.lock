@@ -3912,6 +3912,7 @@ dependencies = [
  "rand",
  "rand_regex",
  "testangel-engine",
+ "thiserror",
 ]
 
 [[package]]
@@ -3921,6 +3922,7 @@ dependencies = [
  "lazy_static",
  "regex",
  "testangel-engine",
+ "thiserror",
 ]
 
 [[package]]
@@ -3930,6 +3932,7 @@ dependencies = [
  "lazy_static",
  "rfd",
  "testangel-engine",
+ "thiserror",
 ]
 
 [[package]]

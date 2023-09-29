@@ -22,7 +22,7 @@ lazy_static! {
                 label,
                 content: EvidenceContent::Textual(content),
             });
-            None
+            Ok(())
         })
     );
 }

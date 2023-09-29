@@ -3,6 +3,13 @@ use std::sync::Mutex;
 use lazy_static::lazy_static;
 use rand::Rng;
 use testangel_engine::*;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum EngineError {
+    #[error("Couldn't build expression.")]
+    CouldntBuildExpression(#[from] rand_regex::Error),
+}
 
 lazy_static! {
     static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Random", env!("CARGO_PKG_VERSION"))
@@ -21,7 +28,7 @@ lazy_static! {
                 "result".to_string(),
                 ParameterValue::Integer(rand::thread_rng().gen_range(0..max)),
             );
-            None
+            Ok(())
         })
     .with_instruction(
         Instruction::new(
@@ -34,21 +41,13 @@ lazy_static! {
         |_state, params, output, _evidence| {
             let regex = params["regex"].value_string();
 
-            match rand_regex::Regex::compile(&regex, 32) {
-                Err(e) => {
-                    return Some(Response::Error {
-                        kind: ErrorKind::EngineProcessingError,
-                        reason: format!("Couldn't build expression: {e}"),
-                    })
-                }
-                Ok(expr) => {
-                    output.insert(
-                        "result".to_string(),
-                        ParameterValue::String(rand::thread_rng().sample(&expr)),
-                    );
-                }
-            }
-            None
+            let expr = rand_regex::Regex::compile(&regex, 32).map_err(EngineError::CouldntBuildExpression)?;
+            output.insert(
+                "result".to_string(),
+                ParameterValue::String(rand::thread_rng().sample(&expr)),
+            );
+
+            Ok(())
         })
     );
 }
