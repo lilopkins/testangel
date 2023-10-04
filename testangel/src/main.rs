@@ -3,7 +3,9 @@
     windows_subsystem = "windows"
 )]
 
+#[cfg(feature = "next-ui")]
 mod next_ui;
+#[cfg(feature = "ui")]
 mod ui;
 
 fn main() {
@@ -24,13 +26,12 @@ fn main() {
         .apply()
         .expect("Couldn't start logger!");
 
-    use std::env;
-    if env::var("TA_USE_GTK")
-        .unwrap_or("no".to_string())
-        .eq_ignore_ascii_case("yes")
+    #[cfg(feature = "next-ui")]
     {
         next_ui::initialise_ui();
-    } else {
+    }
+    #[cfg(feature = "ui")]
+    {
         ui::initialise_ui();
     }
 }
