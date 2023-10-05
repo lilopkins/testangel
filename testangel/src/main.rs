@@ -8,6 +8,9 @@ mod next_ui;
 #[cfg(feature = "ui")]
 mod ui;
 
+#[cfg(feature = "next-ui")]
+rust_i18n::i18n!("locales", fallback = "en");
+
 fn main() {
     fern::Dispatch::new()
         .format(|out, message, record| {

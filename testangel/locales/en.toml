@@ -1,0 +1,65 @@
+name = "TestAngel"
+
+[header]
+flows = "Flows"
+actions = "Actions"
+help = "Help"
+
+[help]
+contact-local = "For help, please contact: %{contact}"
+repository = "Repository: https://github.com/lilopkins/testangel"
+
+[help.notebook.getting-started]
+header = "Getting Started"
+content = """
+<span size="x-large">Getting Started</span>
+Welcome to TestAngel. TestAngel is a tool that allows you to automate processes with the goal of simplifying repetetive tasks and enhancing testing processes.
+
+<span size="large">Glossary</span>
+• <i>action</i>: a series of instructions which perform business or environment specific behaviour.
+• <i>engine</i>: an interface to your system environment that enables it to be interacted with from inside TestAngel.
+• <i>evidence</i>: the output of running a flow, which can be saved and reviewed.
+• <i>flow</i>: a series of actions which when put together perform a process or a test.
+• <i>instruction</i>: provided by an engine, instructions enable you to interact with your system environment.
+"""
+
+[help.notebook.flows]
+header = "Flows"
+content = """
+<span size="x-large">Working with Flows</span>
+Flows are the core of TestAngel's workflow. Flows allow you to piece together business or environment specific actions into a process.
+"""
+
+[help.notebook.actions]
+header = "Actions"
+content = """
+<span size="x-large">Working with Actions</span>
+Actions are the individual actions that are relevant to your environment. They could be tasks that you often perform in your business, for example updating someones personal details, or they could be checking that an email has arrived and getting some information from the contents.
+
+<span size="large">Best Practices</span>
+Actions should be:
+• Specific: Actions should provide functionality that is specific to your business or environment.
+• Isolated: Actions should be able to be run in any order at any time. They should not assume any particular state and should make appropriate checks first.
+• Repeatable: Actions should be able to be run again and again with predictable outcomes.
+"""
+
+[help.notebook.engines]
+header = "Engines"
+content = """
+<span size="x-large">Developing Engines</span>
+<i>This documentation is intended for developers!</i>
+
+Engines are the core of TestAngel. They are loaded as DLL files on Windows, SO files on Linux and DyLib files on Mac OS.
+
+Engines are made up of instructions, which form the steps of actions. They are C-compatible, dynamically loaded libraries that are expected to have two functions: <tt>ta_call</tt> and <tt>ta_release</tt>. The <tt>ta_call</tt> function should accept a <tt>char *</tt> variable of JSON input, formatted such that it complies with the schema produced by the IPC component of TestAngel. It should return a <tt>char *</tt>, pointer to a JSON response, which again should comply with the response schema produced by the IPC component.
+
+If you develop an engine in Rust, the <tt>testangel-engine</tt> crate in the repository provides all the boilerplate code.
+
+For more information about developing engines, please see the TestAngel GitHub repository.
+
+<span size="large">Best Practices</span>
+Engines should include instructions which are:
+• General: Instructions should avoid any business- or environment-specific behaviour, instead wrapping generic functionality.
+• Reusable: Instructions shouldn't be made for one specific purpose in one specific action. As much as possible, they should be reusable.
+• Robust: Instructions should handle any possible errors by returning safe error responses back to TestAngel to avoid crashing.
+"""

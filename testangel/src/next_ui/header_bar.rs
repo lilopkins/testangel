@@ -1,5 +1,6 @@
 use gtk::prelude::*;
 use relm4::{gtk, ComponentParts, ComponentSender, SimpleComponent};
+use rust_i18n::t;
 
 #[derive(Debug)]
 pub struct HeaderBarModel {
@@ -28,7 +29,7 @@ impl SimpleComponent for HeaderBarModel {
 
                 #[name = "group"]
                 gtk::ToggleButton {
-                    set_label: "Flows",
+                    set_label: &t!("header.flows"),
                     set_active: true,
                     connect_toggled[sender] => move |btn| {
                         if btn.is_active() {
@@ -37,9 +38,8 @@ impl SimpleComponent for HeaderBarModel {
                     },
                 },
                 gtk::ToggleButton {
-                    set_label: "Actions",
+                    set_label: &t!("header.actions"),
                     set_group: Some(&group),
-                    #[watch]
                     set_visible: model.actions_enabled,
                     connect_toggled[sender] => move |btn| {
                         if btn.is_active() {
@@ -48,7 +48,7 @@ impl SimpleComponent for HeaderBarModel {
                     },
                 },
                 gtk::ToggleButton {
-                    set_label: "Help",
+                    set_label: &t!("header.help"),
                     set_group: Some(&group),
                     connect_toggled[sender] => move |btn| {
                         if btn.is_active() {
@@ -61,7 +61,7 @@ impl SimpleComponent for HeaderBarModel {
     }
 
     fn init(
-        init: Self::Init,
+        _init: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
