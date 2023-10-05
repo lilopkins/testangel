@@ -5,6 +5,8 @@ use relm4::{
 };
 use rust_i18n::t;
 
+use self::header_bar::HeaderBarInput;
+
 mod actions;
 mod flows;
 mod header_bar;
@@ -14,11 +16,12 @@ mod help;
 pub fn initialise_ui() {
     log::info!("Starting Next UI...");
     let app = RelmApp::new("lilopkins.testangel");
+    relm4_icons::initialize_icons();
     app.run::<AppModel>(());
 }
 
-#[derive(Debug)]
-enum AppView {
+#[derive(Copy, Clone, Debug)]
+pub enum AppView {
     Flows,
     Actions,
     Help,
@@ -77,15 +80,7 @@ impl SimpleComponent for AppModel {
         root: &Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
-        let header = header_bar::HeaderBarModel::builder().launch(()).forward(
-            sender.input_sender(),
-            |msg| match msg {
-                header_bar::HeaderBarOutput::Flows => AppInput::ChangeView(AppView::Flows),
-                header_bar::HeaderBarOutput::Actions => AppInput::ChangeView(AppView::Actions),
-                header_bar::HeaderBarOutput::Help => AppInput::ChangeView(AppView::Help),
-            },
-        );
-
+        // Initialise the sub-components (pages)
         let flows = flows::FlowsModel::builder()
             .launch(())
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
@@ -96,6 +91,17 @@ impl SimpleComponent for AppModel {
             .launch(())
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
 
+        // Initialise the headerbar
+        let header = header_bar::HeaderBarModel::builder().launch(flows.model().header_controller_rc()).forward(
+            sender.input_sender(),
+            |msg| match msg {
+                header_bar::HeaderBarOutput::Flows => AppInput::ChangeView(AppView::Flows),
+                header_bar::HeaderBarOutput::Actions => AppInput::ChangeView(AppView::Actions),
+                header_bar::HeaderBarOutput::Help => AppInput::ChangeView(AppView::Help),
+            },
+        );
+
+        // Build model
         let mut model = AppModel {
             view: AppView::Flows,
             child_view: gtk::Box::new(gtk::Orientation::Vertical, 0),
@@ -106,9 +112,13 @@ impl SimpleComponent for AppModel {
         };
         model.update_child_view();
 
+        // Render window parts
         let child_view = &model.child_view;
         let widgets = view_output!();
         log::debug!("Initialised model: {model:?}");
+
+        // Last step, initialise by setting view
+        sender.input_sender().emit(AppInput::ChangeView(AppView::Flows));
 
         ComponentParts { model, widgets }
     }
@@ -121,6 +131,8 @@ impl SimpleComponent for AppModel {
                 self.view = view;
                 // Change frame
                 self.update_child_view();
+                // Update header bar
+                self.header.emit(HeaderBarInput::ViewChanged(view));
             }
         }
     }

@@ -5,6 +5,16 @@ flows = "Flows"
 actions = "Actions"
 help = "Help"
 
+[flows.header]
+new = "New flow"
+open = "Open flow"
+save = "Save flow"
+run = "Run flow"
+menu = "More..."
+
+[flows.action-component]
+label = "Step %{step}: %{name}"
+
 [help]
 contact-local = "For help, please contact: %{contact}"
 repository = "Repository: https://github.com/lilopkins/testangel"

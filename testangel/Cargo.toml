@@ -13,7 +13,7 @@ required-features = [ "cli" ]
 [features]
 default = [ "ui" ]
 ui = [ "dep:iced", "dep:opener", "dep:rfd", "dep:fern" ]
-next-ui = [ "dep:relm4", "dep:fern", "dep:rust-i18n" ]
+next-ui = [ "dep:relm4", "dep:relm4-icons", "dep:fern", "dep:rust-i18n" ]
 cli = [ "dep:clap", "dep:pretty_env_logger" ]
 windows-keep-console-window = []
 
@@ -38,5 +38,6 @@ opener = { version = "0.6.1", optional = true }
 rfd = { version = "0.11.4", optional = true }
 octocrab = "0.30.1"
 semver = "1.0.19"
-relm4 = { version = "0.6.2", optional = true }
+relm4 = { version = "0.6", optional = true }
+relm4-icons = { version = "0.6", optional = true, features = [ "paper", "floppy", "loupe", "play", "menu" ] }
 rust-i18n = { version = "2.2.1", optional = true }
