@@ -17,7 +17,7 @@ impl SimpleComponent for ActionsModel {
             set_margin_all: 5,
 
             gtk::Label {
-                set_label: r#"<span size="large">Actions</span>"#,
+                set_markup: r#"<span size="large">Actions</span>"#,
             },
         }
     }

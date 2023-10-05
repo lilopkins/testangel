@@ -17,7 +17,7 @@ impl SimpleComponent for FlowsModel {
             set_margin_all: 5,
 
             gtk::Label {
-                set_label: r#"<span size="large">Flows</span>"#,
+                set_markup: r#"<span size="large">Flows</span>"#,
             },
         }
     }
