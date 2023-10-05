@@ -1,8 +1,5 @@
 use gtk::prelude::*;
-use relm4::{
-    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmApp,
-    RelmWidgetExt, SimpleComponent,
-};
+use relm4::{gtk, ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 #[derive(Debug)]
 pub struct FlowsModel;
@@ -26,9 +23,9 @@ impl SimpleComponent for FlowsModel {
     }
 
     fn init(
-        init: Self::Init,
+        _init: Self::Init,
         root: &Self::Root,
-        sender: ComponentSender<Self>,
+        _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = FlowsModel;
         let widgets = view_output!();
