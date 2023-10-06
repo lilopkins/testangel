@@ -1,5 +1,8 @@
 name = "TestAngel"
 
+[about]
+testing = "Software Testing"
+
 [header]
 flows = "Flows"
 actions = "Actions"
@@ -11,9 +14,11 @@ cancel = "Cancel"
 
 [flows]
 open = "Open a flow..."
-nothing-open = """<span size="large">Nothing is open...</span>"""
+nothing-open = "Nothing is Open"
+nothing-open-description = "Open a flow to get started"
 error-opening = "Error Opening Flow"
 action-changed = "Flow Actions Changed"
+action-changed-message = "The parameters in steps %{steps} have changed so it has been reset."
 
 [flows.save-or-open-flow-error]
 io-error = "I/O error: %{error}"

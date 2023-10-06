@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use gtk::prelude::*;
 use relm4::{
-    gtk, ComponentController, ComponentParts, ComponentSender, Controller, RelmIterChildrenExt,
-    SimpleComponent,
+    adw, gtk, ComponentController, ComponentParts, ComponentSender, Controller,
+    RelmIterChildrenExt, SimpleComponent,
 };
 use rust_i18n::t;
 
@@ -46,7 +46,7 @@ impl SimpleComponent for HeaderBarModel {
 
     view! {
         #[root]
-        gtk::HeaderBar {
+        adw::HeaderBar {
             #[local_ref]
             pack_start = start_box -> gtk::Box,
 
@@ -83,7 +83,11 @@ impl SimpleComponent for HeaderBarModel {
                         }
                     },
                 },
-            }
+            },
+
+            pack_end = &gtk::Box {
+
+            },
         }
     }
 

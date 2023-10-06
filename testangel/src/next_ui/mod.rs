@@ -1,12 +1,13 @@
 use gtk::prelude::*;
 use relm4::{
-    gtk, Component, ComponentController, ComponentParts, Controller, RelmApp, RelmIterChildrenExt,
-    SimpleComponent,
+    adw, gtk, Component, ComponentController, ComponentParts, Controller, RelmApp,
+    RelmIterChildrenExt, SimpleComponent,
 };
 use rust_i18n::t;
 
 use self::header_bar::HeaderBarInput;
 
+mod about;
 mod actions;
 mod flows;
 mod header_bar;
@@ -64,14 +65,20 @@ impl SimpleComponent for AppModel {
     type Init = ();
 
     view! {
-        main_window = gtk::Window {
+        main_window = adw::Window {
             set_title: Some(&t!("name")),
             set_default_width: 800,
             set_default_height: 600,
-            set_titlebar: Some(model.header.widget()),
 
-            #[local_ref]
-            child_view -> gtk::Box { },
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_spacing: 0,
+
+                model.header.widget(),
+
+                #[local_ref]
+                child_view -> gtk::Box { },
+            }
         }
     }
 

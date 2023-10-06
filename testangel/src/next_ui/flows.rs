@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf, rc::Rc};
 
 use gtk::prelude::*;
 use relm4::{
-    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
+    adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
     RelmWidgetExt, SimpleComponent,
 };
 use rust_i18n::t;
@@ -218,6 +218,8 @@ impl FlowsModel {
         self.open_flow = Some(flow);
         self.open_path = Some(file);
         self.needs_saving = false;
+        log::debug!("New flow open.");
+        log::debug!("Flow: {:?}", self.open_flow);
         Ok(steps_reset)
     }
 }
@@ -238,11 +240,12 @@ impl SimpleComponent for FlowsModel {
             set_orientation: gtk::Orientation::Vertical,
             set_margin_all: 5,
 
-            gtk::Label {
-                set_markup: &t!("flows.nothing-open"),
+            adw::StatusPage {
+                set_title: &t!("flows.nothing-open"),
+                set_description: Some(&t!("flows.nothing-open-description")),
+                set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
                 #[watch]
                 set_visible: model.open_flow.is_none(),
-                set_margin_top: 64,
             },
         },
 
@@ -267,7 +270,6 @@ impl SimpleComponent for FlowsModel {
             set_modal: true,
 
             connect_response => move |dialog, response| {
-                log::info!("response type: {response}");
                 match response {
                     gtk::ResponseType::Ok => dialog.close(),
                     _ => (),
@@ -347,7 +349,16 @@ impl SimpleComponent for FlowsModel {
                         match self.open_flow(path) {
                             Ok(changes) => {
                                 if !changes.is_empty() {
-                                    // TODO Show dialog of changes
+                                    let changed_steps = changes
+                                        .iter()
+                                        .map(|step| step.to_string())
+                                        .collect::<Vec<_>>()
+                                        .join(",");
+                                    self.create_message_dialog(
+                                        t!("flows.action-changed"),
+                                        t!("flows.action-changed-message", steps = changed_steps),
+                                    )
+                                    .show();
                                 }
                             }
                             Err(e) => {
