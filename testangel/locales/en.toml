@@ -1,4 +1,10 @@
 name = "TestAngel"
+ok = "Ok"
+cancel = "Cancel"
+yes = "Yes"
+no = "No"
+open = "Open"
+save = "Save"
 
 [about]
 testing = "Software Testing"
@@ -8,17 +14,17 @@ flows = "Flows"
 actions = "Actions"
 help = "Help"
 
-[choosers]
-open = "Open"
-cancel = "Cancel"
-
 [flows]
 open = "Open a flow..."
+save = "Save a flow..."
 nothing-open = "Nothing is Open"
 nothing-open-description = "Open a flow to get started"
 error-opening = "Error Opening Flow"
+error-saving = "Error Saving Flow"
 action-changed = "Flow Actions Changed"
 action-changed-message = "The parameters in steps %{steps} have changed so it has been reset."
+save-before = "Save this Flow?"
+save-before-message = "This flow has been modified since it was last saved. Would you like to save it before continuing?"
 
 [flows.save-or-open-flow-error]
 io-error = "I/O error: %{error}"
@@ -32,7 +38,7 @@ new = "New flow"
 open = "Open flow"
 save = "Save flow"
 run = "Run flow"
-menu = "More..."
+more = "More..."
 
 [flows.action-component]
 label = "Step %{step}: %{name}"

@@ -1,5 +1,6 @@
 use std::{fs, path::PathBuf, rc::Rc};
 
+use adw::prelude::*;
 use gtk::prelude::*;
 use relm4::{
     adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
@@ -139,16 +140,31 @@ impl ToString for SaveOrOpenFlowError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum FlowInputs {
     /// Do nothing
     NoOp,
     /// Create a new flow
     NewFlow,
-    /// Prompt the user to open a flow
+    /// Actually create the new flow
+    _NewFlow,
+    /// Prompt the user to open a flow. This will ask to save first if needed.
     OpenFlow,
-    /// Actually open a flow after the user has finished selecting.
+    /// Actually show the user the open file dialog
     _OpenFlow,
+    /// Actually open a flow after the user has finished selecting
+    __OpenFlow,
+    /// Save the flow, prompting if needed to set file path
+    SaveFlow,
+    /// Save the flow as a new file, always prompting for a file path
+    SaveAsFlow,
+    /// Ask where to save if needed, then save
+    _SaveFlowThen(Box<FlowInputs>),
+    /// Actually write the flow to disk, then emit then input
+    __SaveFlowThen(Box<FlowInputs>),
+    /// Close the flow, prompting if needing to save first
+    CloseFlow,
+    _CloseFlow,
 }
 
 #[derive(Debug)]
@@ -159,8 +175,7 @@ pub struct FlowsModel {
     header: Rc<Controller<FlowsHeader>>,
 
     open_dialog: gtk::FileChooserDialog,
-    flow_loading_error_dialog: gtk::MessageDialog,
-    flow_actions_changed_dialog: gtk::MessageDialog,
+    save_dialog: gtk::FileChooserDialog,
 }
 
 impl FlowsModel {
@@ -169,21 +184,30 @@ impl FlowsModel {
         self.header.clone()
     }
 
-    /// Create a message dialog attached to the toplevel window.
-    fn create_message_dialog<S>(&self, title: S, message: S) -> gtk::MessageDialog
+    /// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
+    fn create_message_dialog_skeleton<S>(&self, title: S, message: S) -> adw::MessageDialog
     where
         S: AsRef<str>,
     {
-        let dialog = gtk::MessageDialog::builder()
+        adw::MessageDialog::builder()
             .transient_for(&self.header.widget().toplevel_window().expect(
                 "FlowsModel::create_message_dialog cannot be called until the header is attached",
             ))
-            .buttons(gtk::ButtonsType::Ok)
             .title(title.as_ref())
-            .text(message.as_ref())
-            .build();
-        dialog.set_modal(true);
-        dialog.connect_response(|d, _| d.close());
+            .body(message.as_ref())
+            .modal(true)
+            .build()
+    }
+
+    /// Create a message dialog attached to the toplevel window. This includes default implementations of an 'OK' button.
+    fn create_message_dialog<S>(&self, title: S, message: S) -> adw::MessageDialog
+    where
+        S: AsRef<str>,
+    {
+        let dialog = self.create_message_dialog_skeleton(title, message);
+        dialog.add_response("ok", &t!("ok"));
+        dialog.set_default_response(Some("ok"));
+        dialog.set_close_response("ok");
         dialog
     }
 
@@ -222,14 +246,62 @@ impl FlowsModel {
         log::debug!("Flow: {:?}", self.open_flow);
         Ok(steps_reset)
     }
+
+    /// Ask the user if they want to save this file. If they response yes, this will also trigger the save function.
+    /// This function will only ask the user if needed, otherwise it will emit immediately.
+    fn prompt_to_save(&self, sender: &relm4::Sender<FlowInputs>, then: FlowInputs) {
+        if self.needs_saving {
+            let question = self.create_message_dialog_skeleton(
+                t!("flows.save-before"),
+                t!("flows.save-before-message"),
+            );
+            question.add_response("save", &t!("yes"));
+            question.add_response("discard", &t!("no"));
+            question.set_response_appearance("discard", adw::ResponseAppearance::Destructive);
+            question.set_default_response(Some("save"));
+            question.set_close_response("discard");
+            let sender = sender.clone();
+            question.connect_response(Some("save"), move |_, _| {
+                sender.emit(FlowInputs::_SaveFlowThen(Box::new(then.clone())));
+            });
+        } else {
+            sender.emit(then);
+        }
+    }
+
+    /// Ask the user where to save the flow, or just save if that's good enough
+    fn ask_where_to_save(&mut self, sender: &relm4::Sender<FlowInputs>, always_ask_where: bool, then: FlowInputs) {
+        if always_ask_where || self.open_path.is_none() {
+            // Ask where
+            self.save_dialog.show();
+        } else {
+            sender.emit(FlowInputs::_SaveFlowThen(Box::new(then)));
+        }
+    }
+
+    /// Just save the flow to disk with the current `open_path` as the destination
+    fn save_flow(&mut self) -> Result<(), SaveOrOpenFlowError> {
+        let save_path = self.open_path.as_ref().unwrap();
+        let data = ron::to_string(self.open_flow.as_ref().unwrap())
+            .map_err(SaveOrOpenFlowError::SerializingError)?;
+        fs::write(save_path, data).map_err(SaveOrOpenFlowError::IoError)?;
+        self.needs_saving = false;
+        Ok(())
+    }
+
+    /// Close this flow without checking first
+    fn close_flow(&mut self) {
+        self.open_flow = None;
+        self.open_path = None;
+        self.needs_saving = false;
+    }
 }
 
 #[relm4::component(pub)]
 impl SimpleComponent for FlowsModel {
     type Init = (
         gtk::FileChooserDialog, // A file chooser transient for the parent window
-        gtk::MessageDialog, // A message dialog transient for the parent window with an Ok button
-        gtk::MessageDialog, // A message dialog transient for the parent window with an Ok button
+        gtk::FileChooserDialog, // A file chooser transient for the parent window
     );
     type Input = FlowInputs;
     type Output = ();
@@ -246,6 +318,7 @@ impl SimpleComponent for FlowsModel {
                 set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
                 #[watch]
                 set_visible: model.open_flow.is_none(),
+                set_vexpand: true,
             },
         },
 
@@ -254,37 +327,26 @@ impl SimpleComponent for FlowsModel {
             set_title: Some(&t!("flows.open")),
             set_action: gtk::FileChooserAction::Open,
             set_modal: true,
-            add_button[gtk::ResponseType::Ok]: "Open",
+            add_button[gtk::ResponseType::Ok]: &t!("open"),
 
             connect_response[sender] => move |_, response| {
                 match response {
-                    gtk::ResponseType::Ok => sender.input(FlowInputs::_OpenFlow),
+                    gtk::ResponseType::Ok => sender.input(FlowInputs::__OpenFlow),
                     _ => (),
                 }
             },
         },
 
         #[local_ref]
-        flow_loading_error_dialog -> gtk::MessageDialog {
-            set_title: Some(&t!("flows.error-opening")),
+        save_dialog -> gtk::FileChooserDialog {
+            set_title: Some(&t!("flows.save")),
+            set_action: gtk::FileChooserAction::Save,
             set_modal: true,
+            add_button[gtk::ResponseType::Ok]: &t!("save"),
 
-            connect_response => move |dialog, response| {
+            connect_response[sender] => move |_, response| {
                 match response {
-                    gtk::ResponseType::Ok => dialog.close(),
-                    _ => (),
-                }
-            },
-        },
-
-        #[local_ref]
-        flow_actions_changed_dialog -> gtk::MessageDialog {
-            set_title: Some(&t!("flows.action-changed")),
-            set_modal: true,
-
-            connect_response => move |dialog, response| {
-                match response {
-                    gtk::ResponseType::Ok => dialog.close(),
+                    gtk::ResponseType::Ok => sender.input(FlowInputs::_SaveFlowThen(Box::new(FlowInputs::NoOp))),
                     _ => (),
                 }
             },
@@ -301,9 +363,9 @@ impl SimpleComponent for FlowsModel {
             |msg| match msg {
                 FlowsHeaderOutput::NewFlow => FlowInputs::NewFlow,
                 FlowsHeaderOutput::OpenFlow => FlowInputs::OpenFlow,
-                FlowsHeaderOutput::SaveFlow => FlowInputs::NoOp,
-                FlowsHeaderOutput::SaveAsFlow => FlowInputs::NoOp,
-                FlowsHeaderOutput::CloseFlow => FlowInputs::NoOp,
+                FlowsHeaderOutput::SaveFlow => FlowInputs::SaveFlow,
+                FlowsHeaderOutput::SaveAsFlow => FlowInputs::SaveAsFlow,
+                FlowsHeaderOutput::CloseFlow => FlowInputs::CloseFlow,
                 FlowsHeaderOutput::RunFlow => FlowInputs::NoOp,
             },
         ));
@@ -313,35 +375,35 @@ impl SimpleComponent for FlowsModel {
             open_path: None,
             needs_saving: false,
             open_dialog: init.0,
-            flow_loading_error_dialog: init.1,
-            flow_actions_changed_dialog: init.2,
+            save_dialog: init.1,
             header,
         };
 
         let open_dialog = &model.open_dialog;
-        let flow_loading_error_dialog = &model.flow_loading_error_dialog;
-        let flow_actions_changed_dialog = &model.flow_actions_changed_dialog;
+        let save_dialog = &model.save_dialog;
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             FlowInputs::NoOp => (),
             FlowInputs::NewFlow => {
-                if self.needs_saving {
-                    // TODO Prompt to save before close
-                }
-
+                self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
+            }
+            FlowInputs::_NewFlow => {
                 self.open_path = None;
                 self.needs_saving = false;
                 self.open_flow = Some(AutomationFlow::default());
             }
             FlowInputs::OpenFlow => {
-                self.open_dialog.show();
+                self.prompt_to_save(sender.input_sender(), FlowInputs::_OpenFlow);
             }
             FlowInputs::_OpenFlow => {
+                self.open_dialog.show();
+            }
+            FlowInputs::__OpenFlow => {
                 self.open_dialog.hide();
 
                 if let Some(file) = self.open_dialog.file() {
@@ -372,6 +434,30 @@ impl SimpleComponent for FlowsModel {
                         }
                     }
                 }
+            }
+            FlowInputs::SaveFlow => {
+                self.ask_where_to_save(sender.input_sender(), false, FlowInputs::NoOp);
+            }
+            FlowInputs::SaveAsFlow => {
+                self.ask_where_to_save(sender.input_sender(), true, FlowInputs::NoOp);
+            }
+            FlowInputs::_SaveFlowThen(then) => {
+                self.ask_where_to_save(sender.input_sender(), false, *then);
+                
+            }
+            FlowInputs::__SaveFlowThen(then) => {
+                if let Err(e) = self.save_flow() {
+                    self.create_message_dialog(t!("flows.error-saving"), e.to_string())
+                        .show();
+                } else {
+                    sender.input_sender().emit(*then);
+                }
+            }
+            FlowInputs::CloseFlow => {
+                self.prompt_to_save(sender.input_sender(), FlowInputs::_CloseFlow);
+            }
+            FlowInputs::_CloseFlow => {
+                self.close_flow();
             }
         }
     }

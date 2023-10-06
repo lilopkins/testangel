@@ -1,7 +1,8 @@
+use std::rc::Rc;
+
 use gtk::prelude::*;
 use relm4::{
-    adw, gtk, Component, ComponentController, ComponentParts, Controller, RelmApp,
-    RelmIterChildrenExt, SimpleComponent,
+    adw, gtk, Component, ComponentController, ComponentParts, Controller, RelmApp, SimpleComponent,
 };
 use rust_i18n::t;
 
@@ -21,41 +22,20 @@ pub fn initialise_ui() {
     app.run::<AppModel>(());
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum AppView {
-    Flows,
-    Actions,
-    Help,
-}
-
 #[derive(Debug)]
 enum AppInput {
     NoOp,
-    ChangeView(AppView),
+    /// The view has changed and should be read from visible_child_name, then components updated as needed.
+    ChangedView(Option<String>),
 }
 
 #[derive(Debug)]
 struct AppModel {
-    view: AppView,
-    child_view: gtk::Box,
+    stack: Rc<adw::ViewStack>,
     header: Controller<header_bar::HeaderBarModel>,
 
     flows: Controller<flows::FlowsModel>,
     actions: Controller<actions::ActionsModel>,
-    help: Controller<help::HelpModel>,
-}
-
-impl AppModel {
-    fn update_child_view(&mut self) {
-        for child in self.child_view.iter_children() {
-            self.child_view.remove(&child);
-        }
-        self.child_view.append(match self.view {
-            AppView::Flows => self.flows.widget(),
-            AppView::Actions => self.actions.widget(),
-            AppView::Help => self.help.widget(),
-        });
-    }
 }
 
 #[relm4::component]
@@ -77,7 +57,14 @@ impl SimpleComponent for AppModel {
                 model.header.widget(),
 
                 #[local_ref]
-                child_view -> gtk::Box { },
+                stack -> adw::ViewStack {
+                    add_titled_with_icon[Some("flows"), &t!("header.flows"), relm4_icons::icon_name::PAPYRUS_VERTICAL] = model.flows.widget(),
+                    add_titled_with_icon[Some("actions"), &t!("header.actions"), relm4_icons::icon_name::PUZZLE_PIECE] = model.actions.widget(),
+
+                    connect_visible_child_name_notify[sender] => move |st| {
+                        sender.input(AppInput::ChangedView(st.visible_child_name().map(|s| s.into())));
+                    },
+                },
             }
         }
     }
@@ -93,52 +80,37 @@ impl SimpleComponent for AppModel {
                 gtk::FileChooserDialog::builder()
                     .transient_for(root)
                     .build(),
-                gtk::MessageDialog::builder()
+                gtk::FileChooserDialog::builder()
                     .transient_for(root)
-                    .buttons(gtk::ButtonsType::Ok)
-                    .build(),
-                gtk::MessageDialog::builder()
-                    .transient_for(root)
-                    .buttons(gtk::ButtonsType::Ok)
                     .build(),
             ))
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
         let actions = actions::ActionsModel::builder()
             .launch(())
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
-        let help = help::HelpModel::builder()
-            .launch(())
-            .forward(sender.input_sender(), |_msg| AppInput::NoOp);
+
+        let stack = Rc::new(adw::ViewStack::new());
 
         // Initialise the headerbar
         let header = header_bar::HeaderBarModel::builder()
-            .launch(flows.model().header_controller_rc())
-            .forward(sender.input_sender(), |msg| match msg {
-                header_bar::HeaderBarOutput::Flows => AppInput::ChangeView(AppView::Flows),
-                header_bar::HeaderBarOutput::Actions => AppInput::ChangeView(AppView::Actions),
-                header_bar::HeaderBarOutput::Help => AppInput::ChangeView(AppView::Help),
-            });
+            .launch((flows.model().header_controller_rc(), stack.clone()))
+            .forward(sender.input_sender(), |_msg| AppInput::NoOp);
 
         // Build model
-        let mut model = AppModel {
-            view: AppView::Flows,
-            child_view: gtk::Box::new(gtk::Orientation::Vertical, 0),
+        let model = AppModel {
+            stack,
             header,
             flows,
             actions,
-            help,
         };
-        model.update_child_view();
 
         // Render window parts
-        let child_view = &model.child_view;
+        let stack = &*model.stack;
         let widgets = view_output!();
         log::debug!("Initialised model: {model:?}");
 
-        // Last step, initialise by setting view
-        sender
-            .input_sender()
-            .emit(AppInput::ChangeView(AppView::Flows));
+        // Trigger initial header bar update
+        sender.input(AppInput::ChangedView(stack.visible_child_name().map(|s| s.into())));
 
         ComponentParts { model, widgets }
     }
@@ -146,13 +118,8 @@ impl SimpleComponent for AppModel {
     fn update(&mut self, message: Self::Input, _sender: relm4::ComponentSender<Self>) {
         match message {
             AppInput::NoOp => (),
-            AppInput::ChangeView(view) => {
-                // Change tracked view
-                self.view = view;
-                // Change frame
-                self.update_child_view();
-                // Update header bar
-                self.header.emit(HeaderBarInput::ViewChanged(view));
+            AppInput::ChangedView(new_view) => {
+                self.header.emit(HeaderBarInput::ChangedView(new_view.unwrap_or_default()));
             }
         }
     }

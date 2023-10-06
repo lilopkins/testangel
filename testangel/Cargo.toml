@@ -39,5 +39,5 @@ rfd = { version = "0.11.4", optional = true }
 octocrab = "0.30.1"
 semver = "1.0.19"
 relm4 = { version = "0.6", optional = true, features = [ "libadwaita", "gnome_43" ] }
-relm4-icons = { version = "0.6", optional = true, features = [ "paper", "floppy", "loupe", "play", "menu", "lightbulb" ] }
+relm4-icons = { version = "0.6", optional = true, features = [ "paper", "floppy", "loupe", "play", "menu", "lightbulb", "papyrus-vertical", "puzzle-piece", "question-round" ] }
 rust-i18n = { version = "2.2.1", optional = true }

@@ -2,19 +2,20 @@ use std::rc::Rc;
 
 use gtk::prelude::*;
 use relm4::{
-    adw, gtk, ComponentController, ComponentParts, ComponentSender, Controller,
-    RelmIterChildrenExt, SimpleComponent,
+    adw, gtk, ComponentParts, ComponentSender, Controller, RelmIterChildrenExt, SimpleComponent, ComponentController,
 };
-use rust_i18n::t;
 
 use super::flows::FlowsHeader;
 
 #[derive(Debug)]
+pub enum HeaderBarInput {
+    ChangedView(String),
+}
+
+#[derive(Debug)]
 pub struct HeaderBarModel {
     start_box: gtk::Box,
-    actions_enabled: bool,
-
-    flows_header: Rc<Controller<FlowsHeader>>,
+    flow_header_rc: Rc<Controller<FlowsHeader>>,
 }
 
 impl HeaderBarModel {
@@ -26,23 +27,11 @@ impl HeaderBarModel {
     }
 }
 
-#[derive(Debug)]
-pub enum HeaderBarInput {
-    ViewChanged(super::AppView),
-}
-
-#[derive(Debug)]
-pub enum HeaderBarOutput {
-    Flows,
-    Actions,
-    Help,
-}
-
 #[relm4::component(pub)]
 impl SimpleComponent for HeaderBarModel {
-    type Init = Rc<Controller<FlowsHeader>>;
+    type Init = (Rc<Controller<FlowsHeader>>, Rc<adw::ViewStack>);
     type Input = HeaderBarInput;
-    type Output = HeaderBarOutput;
+    type Output = ();
 
     view! {
         #[root]
@@ -51,37 +40,13 @@ impl SimpleComponent for HeaderBarModel {
             pack_start = start_box -> gtk::Box,
 
             #[wrap(Some)]
-            set_title_widget = &gtk::Box {
-                add_css_class: "linked",
+            set_title_widget = &adw::ViewSwitcher {
+                #[local_ref]
+                #[wrap(Some)]
+                set_stack = stack -> adw::ViewStack,
 
-                #[name = "group"]
-                gtk::ToggleButton {
-                    set_label: &t!("header.flows"),
-                    set_active: true,
-                    connect_toggled[sender] => move |btn| {
-                        if btn.is_active() {
-                            sender.output(HeaderBarOutput::Flows).unwrap()
-                        }
-                    },
-                },
-                gtk::ToggleButton {
-                    set_label: &t!("header.actions"),
-                    set_group: Some(&group),
-                    set_visible: model.actions_enabled,
-                    connect_toggled[sender] => move |btn| {
-                        if btn.is_active() {
-                            sender.output(HeaderBarOutput::Actions).unwrap()
-                        }
-                    },
-                },
-                gtk::ToggleButton {
-                    set_label: &t!("header.help"),
-                    set_group: Some(&group),
-                    connect_toggled[sender] => move |btn| {
-                        if btn.is_active() {
-                            sender.output(HeaderBarOutput::Help).unwrap()
-                        }
-                    },
+                connect_stack_notify => |_| {
+                    log::debug!("SIGNAL!");
                 },
             },
 
@@ -94,17 +59,14 @@ impl SimpleComponent for HeaderBarModel {
     fn init(
         init: Self::Init,
         root: &Self::Root,
-        sender: ComponentSender<Self>,
+        _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = HeaderBarModel {
+            flow_header_rc: init.0,
             start_box: gtk::Box::new(gtk::Orientation::Horizontal, 0),
-            actions_enabled: !std::env::var("TA_HIDE_ACTION_EDITOR")
-                .unwrap_or("no".to_string())
-                .eq_ignore_ascii_case("yes"),
-
-            flows_header: init,
         };
 
+        let stack = &*init.1;
         let start_box = &model.start_box;
         let widgets = view_output!();
 
@@ -113,16 +75,12 @@ impl SimpleComponent for HeaderBarModel {
 
     fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
         match message {
-            HeaderBarInput::ViewChanged(new_view) => {
-                match new_view {
-                    super::AppView::Flows => {
-                        let header = self.flows_header.clone();
-                        self.change_start_box(header.widget());
-                    }
-                    _ => {
-                        // Clear header box
-                        self.change_start_box(&gtk::Box::builder().build());
-                    }
+            HeaderBarInput::ChangedView(new_view) => {
+                if new_view == "flows" {
+                    let rc_clone = self.flow_header_rc.clone();
+                    self.change_start_box(rc_clone.widget());
+                } else {
+                    self.change_start_box(&gtk::Box::builder().build());
                 }
             }
         }
