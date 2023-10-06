@@ -82,7 +82,19 @@ impl SimpleComponent for AppModel {
     ) -> relm4::ComponentParts<Self> {
         // Initialise the sub-components (pages)
         let flows = flows::FlowsModel::builder()
-            .launch(())
+            .launch((
+                gtk::FileChooserDialog::builder()
+                    .transient_for(root)
+                    .build(),
+                gtk::MessageDialog::builder()
+                    .transient_for(root)
+                    .buttons(gtk::ButtonsType::Ok)
+                    .build(),
+                gtk::MessageDialog::builder()
+                    .transient_for(root)
+                    .buttons(gtk::ButtonsType::Ok)
+                    .build(),
+            ))
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
         let actions = actions::ActionsModel::builder()
             .launch(())
@@ -92,14 +104,13 @@ impl SimpleComponent for AppModel {
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
 
         // Initialise the headerbar
-        let header = header_bar::HeaderBarModel::builder().launch(flows.model().header_controller_rc()).forward(
-            sender.input_sender(),
-            |msg| match msg {
+        let header = header_bar::HeaderBarModel::builder()
+            .launch(flows.model().header_controller_rc())
+            .forward(sender.input_sender(), |msg| match msg {
                 header_bar::HeaderBarOutput::Flows => AppInput::ChangeView(AppView::Flows),
                 header_bar::HeaderBarOutput::Actions => AppInput::ChangeView(AppView::Actions),
                 header_bar::HeaderBarOutput::Help => AppInput::ChangeView(AppView::Help),
-            },
-        );
+            });
 
         // Build model
         let mut model = AppModel {
@@ -118,7 +129,9 @@ impl SimpleComponent for AppModel {
         log::debug!("Initialised model: {model:?}");
 
         // Last step, initialise by setting view
-        sender.input_sender().emit(AppInput::ChangeView(AppView::Flows));
+        sender
+            .input_sender()
+            .emit(AppInput::ChangeView(AppView::Flows));
 
         ComponentParts { model, widgets }
     }

@@ -17,13 +17,6 @@ pub struct ActionComponentModel {
     action: Action,
 }
 
-impl ActionComponentModel {
-    /// Update the step number that this action consists of.
-    pub fn set_step(&mut self, step: usize) {
-        self.step = step;
-    }
-}
-
 #[relm4::component(pub)]
 impl SimpleComponent for ActionComponentModel {
     type Init = ActionComponentInitialiser;

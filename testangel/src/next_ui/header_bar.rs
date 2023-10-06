@@ -1,7 +1,10 @@
 use std::rc::Rc;
 
 use gtk::prelude::*;
-use relm4::{gtk, ComponentParts, ComponentSender, RelmIterChildrenExt, SimpleComponent, Controller, ComponentController};
+use relm4::{
+    gtk, ComponentController, ComponentParts, ComponentSender, Controller, RelmIterChildrenExt,
+    SimpleComponent,
+};
 use rust_i18n::t;
 
 use super::flows::FlowsHeader;
@@ -111,13 +114,13 @@ impl SimpleComponent for HeaderBarModel {
                     super::AppView::Flows => {
                         let header = self.flows_header.clone();
                         self.change_start_box(header.widget());
-                    },
+                    }
                     _ => {
                         // Clear header box
                         self.change_start_box(&gtk::Box::builder().build());
-                    },
+                    }
                 }
-            },
+            }
         }
     }
 }
