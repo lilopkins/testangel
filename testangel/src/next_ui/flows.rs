@@ -31,6 +31,7 @@ impl SimpleComponent for FlowsHeader {
     type Output = FlowsHeaderOutput;
 
     view! {
+        #[name = "start"]
         gtk::Box {
             set_spacing: 5,
 
@@ -255,8 +256,8 @@ impl FlowsModel {
                 t!("flows.save-before"),
                 t!("flows.save-before-message"),
             );
-            question.add_response("save", &t!("yes"));
-            question.add_response("discard", &t!("no"));
+            question.add_response("discard", &t!("discard"));
+            question.add_response("save", &t!("save"));
             question.set_response_appearance("discard", adw::ResponseAppearance::Destructive);
             question.set_default_response(Some("save"));
             question.set_close_response("discard");
@@ -264,6 +265,7 @@ impl FlowsModel {
             question.connect_response(Some("save"), move |_, _| {
                 sender.emit(FlowInputs::_SaveFlowThen(Box::new(then.clone())));
             });
+            question.show();
         } else {
             sender.emit(then);
         }
@@ -394,7 +396,7 @@ impl SimpleComponent for FlowsModel {
             }
             FlowInputs::_NewFlow => {
                 self.open_path = None;
-                self.needs_saving = false;
+                self.needs_saving = true;
                 self.open_flow = Some(AutomationFlow::default());
             }
             FlowInputs::OpenFlow => {

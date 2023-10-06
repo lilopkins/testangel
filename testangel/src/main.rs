@@ -31,6 +31,7 @@ fn main() {
 
     #[cfg(feature = "next-ui")]
     {
+        // TODO Set language for i18n
         next_ui::initialise_ui();
     }
     #[cfg(feature = "ui")]

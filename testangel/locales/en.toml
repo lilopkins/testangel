@@ -5,6 +5,7 @@ yes = "Yes"
 no = "No"
 open = "Open"
 save = "Save"
+discard = "Discard"
 
 [about]
 testing = "Software Testing"
