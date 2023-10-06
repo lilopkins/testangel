@@ -31,32 +31,16 @@ impl SimpleComponent for FlowsHeader {
     type Output = FlowsHeaderOutput;
 
     view! {
+        #[root]
         #[name = "start"]
         gtk::Box {
             set_spacing: 5,
 
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::PAPER,
-                set_tooltip: &t!("flows.header.new"),
-                connect_clicked[sender] => move |_| {
-                    // unwrap rationale: receivers will never be dropped
-                    sender.output(FlowsHeaderOutput::NewFlow).unwrap();
-                },
-            },
-            gtk::Button {
-                set_icon_name: relm4_icons::icon_name::LOUPE,
-                set_tooltip: &t!("flows.header.open"),
+                set_label: &t!("open"),
                 connect_clicked[sender] => move |_| {
                     // unwrap rationale: receivers will never be dropped
                     sender.output(FlowsHeaderOutput::OpenFlow).unwrap();
-                },
-            },
-            gtk::Button {
-                set_icon_name: relm4_icons::icon_name::FLOPPY,
-                set_tooltip: &t!("flows.header.save"),
-                connect_clicked[sender] => move |_| {
-                    // unwrap rationale: receivers will never be dropped
-                    sender.output(FlowsHeaderOutput::SaveFlow).unwrap();
                 },
             },
             gtk::Button {
@@ -65,6 +49,19 @@ impl SimpleComponent for FlowsHeader {
                 connect_clicked[sender] => move |_| {
                     // unwrap rationale: receivers will never be dropped
                     sender.output(FlowsHeaderOutput::RunFlow).unwrap();
+                },
+            },
+        },
+
+        #[name = "end"]
+        gtk::Box {
+            set_spacing: 5,
+            
+            gtk::Button {
+                set_label: &t!("save"),
+                connect_clicked[sender] => move |_| {
+                    // unwrap rationale: receivers will never be dropped
+                    sender.output(FlowsHeaderOutput::SaveFlow).unwrap();
                 },
             },
             gtk::MenuButton {
@@ -81,7 +78,15 @@ impl SimpleComponent for FlowsHeader {
                         set_spacing: 1,
 
                         gtk::Button {
-                            set_label: "Save flow as...",
+                            set_label: &t!("flows.header.new"),
+                            connect_clicked[sender] => move |_| {
+                                // unwrap rationale: receivers will never be dropped
+                                sender.output(FlowsHeaderOutput::NewFlow).unwrap();
+                            },
+                        },
+
+                        gtk::Button {
+                            set_label: &t!("flows.header.save-as"),
                             add_css_class: "flat",
 
                             connect_clicked[sender] => move |_| {
@@ -91,7 +96,7 @@ impl SimpleComponent for FlowsHeader {
                         },
 
                         gtk::Button {
-                            set_label: "Close flow",
+                            set_label: &t!("flows.header.close"),
                             add_css_class: "flat",
 
                             connect_clicked[sender] => move |_| {
@@ -99,10 +104,23 @@ impl SimpleComponent for FlowsHeader {
                                 sender.output(FlowsHeaderOutput::CloseFlow).unwrap();
                             },
                         },
+
+                        gtk::Button {
+                            set_label: &t!("header.about"),
+                            add_css_class: "flat",
+
+                            connect_clicked => move |b| {
+                                super::about::AppAbout::builder()
+                                    .transient_for(b.toplevel_window().unwrap())
+                                    .launch(())
+                                    .widget()
+                                    .show();
+                            },
+                        },
                     },
                 }
             },
-        }
+        },
     }
 
     fn init(
@@ -438,14 +456,17 @@ impl SimpleComponent for FlowsModel {
                 }
             }
             FlowInputs::SaveFlow => {
-                self.ask_where_to_save(sender.input_sender(), false, FlowInputs::NoOp);
+                if self.open_flow.is_some() {
+                    self.ask_where_to_save(sender.input_sender(), false, FlowInputs::NoOp);
+                }
             }
             FlowInputs::SaveAsFlow => {
-                self.ask_where_to_save(sender.input_sender(), true, FlowInputs::NoOp);
+                if self.open_flow.is_some() {
+                    self.ask_where_to_save(sender.input_sender(), true, FlowInputs::NoOp);
+                }
             }
             FlowInputs::_SaveFlowThen(then) => {
                 self.ask_where_to_save(sender.input_sender(), false, *then);
-                
             }
             FlowInputs::__SaveFlowThen(then) => {
                 if let Err(e) = self.save_flow() {

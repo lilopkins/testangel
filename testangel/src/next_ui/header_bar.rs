@@ -15,6 +15,7 @@ pub enum HeaderBarInput {
 #[derive(Debug)]
 pub struct HeaderBarModel {
     start_box: gtk::Box,
+    end_box: gtk::Box,
     flow_header_rc: Rc<Controller<FlowsHeader>>,
 }
 
@@ -24,6 +25,13 @@ impl HeaderBarModel {
             self.start_box.remove(&child);
         }
         self.start_box.append(new_box);
+    }
+
+    fn change_end_box(&mut self, new_box: &gtk::Box) {
+        for child in self.end_box.iter_children() {
+            self.end_box.remove(&child);
+        }
+        self.end_box.append(new_box);
     }
 }
 
@@ -50,9 +58,8 @@ impl SimpleComponent for HeaderBarModel {
                 },
             },
 
-            pack_end = &gtk::Box {
-
-            },
+            #[local_ref]
+            pack_end = end_box -> gtk::Box,
         }
     }
 
@@ -64,10 +71,12 @@ impl SimpleComponent for HeaderBarModel {
         let model = HeaderBarModel {
             flow_header_rc: init.0,
             start_box: gtk::Box::new(gtk::Orientation::Horizontal, 0),
+            end_box: gtk::Box::new(gtk::Orientation::Horizontal, 0),
         };
 
         let stack = &*init.1;
         let start_box = &model.start_box;
+        let end_box = &model.end_box;
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
@@ -78,9 +87,11 @@ impl SimpleComponent for HeaderBarModel {
             HeaderBarInput::ChangedView(new_view) => {
                 if new_view == "flows" {
                     let rc_clone = self.flow_header_rc.clone();
-                    self.change_start_box(rc_clone.widget());
+                    self.change_start_box(&rc_clone.widgets().start);
+                    self.change_end_box(&rc_clone.widgets().end);
                 } else {
                     self.change_start_box(&gtk::Box::builder().build());
+                    self.change_end_box(&gtk::Box::builder().build());
                 }
             }
         }

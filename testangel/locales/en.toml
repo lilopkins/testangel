@@ -14,6 +14,7 @@ testing = "Software Testing"
 flows = "Flows"
 actions = "Actions"
 help = "Help"
+about = "About TestAngel"
 
 [flows]
 open = "Open a flow..."
@@ -36,9 +37,9 @@ missing-action = "An action in this flow is missing: %{error}"
 
 [flows.header]
 new = "New flow"
-open = "Open flow"
-save = "Save flow"
 run = "Run flow"
+save-as = "Save flow as..."
+close = "Close flow"
 more = "More..."
 
 [flows.action-component]
