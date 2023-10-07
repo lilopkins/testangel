@@ -4,7 +4,7 @@ use adw::prelude::*;
 use gtk::prelude::*;
 use relm4::{
     adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
-    RelmWidgetExt, SimpleComponent,
+    RelmWidgetExt, SimpleComponent, actions::{RelmAction, RelmActionGroup, AccelsPlus},
 };
 use rust_i18n::t;
 use testangel::types::{AutomationFlow, VersionedFile};
@@ -24,10 +24,15 @@ pub enum FlowsHeaderOutput {
     RunFlow,
 }
 
+#[derive(Debug)]
+pub enum FlowsHeaderInput {
+    OpenAboutDialog,
+}
+
 #[relm4::component(pub)]
 impl SimpleComponent for FlowsHeader {
     type Init = ();
-    type Input = ();
+    type Input = FlowsHeaderInput;
     type Output = FlowsHeaderOutput;
 
     view! {
@@ -70,57 +75,22 @@ impl SimpleComponent for FlowsHeader {
                 set_direction: gtk::ArrowType::Down,
 
                 #[wrap(Some)]
-                set_popover = &gtk::Popover {
+                set_popover = &gtk::PopoverMenu::from_model(Some(&flows_menu)) {
                     set_position: gtk::PositionType::Bottom,
-
-                    gtk::Box {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_spacing: 1,
-
-                        gtk::Button {
-                            set_label: &t!("flows.header.new"),
-                            connect_clicked[sender] => move |_| {
-                                // unwrap rationale: receivers will never be dropped
-                                sender.output(FlowsHeaderOutput::NewFlow).unwrap();
-                            },
-                        },
-
-                        gtk::Button {
-                            set_label: &t!("flows.header.save-as"),
-                            add_css_class: "flat",
-
-                            connect_clicked[sender] => move |_| {
-                                // unwrap rationale: receivers will never be dropped
-                                sender.output(FlowsHeaderOutput::SaveAsFlow).unwrap();
-                            },
-                        },
-
-                        gtk::Button {
-                            set_label: &t!("flows.header.close"),
-                            add_css_class: "flat",
-
-                            connect_clicked[sender] => move |_| {
-                                // unwrap rationale: receivers will never be dropped
-                                sender.output(FlowsHeaderOutput::CloseFlow).unwrap();
-                            },
-                        },
-
-                        gtk::Button {
-                            set_label: &t!("header.about"),
-                            add_css_class: "flat",
-
-                            connect_clicked => move |b| {
-                                super::about::AppAbout::builder()
-                                    .transient_for(b.toplevel_window().unwrap())
-                                    .launch(())
-                                    .widget()
-                                    .show();
-                            },
-                        },
-                    },
                 }
             },
         },
+    }
+
+    menu! {
+        flows_menu: {
+            &t!("flows.header.new") => FlowsNewAction,
+            &t!("flows.header.save-as") => FlowsSaveAsAction,
+            &t!("flows.header.close") => FlowsCloseAction,
+            section! {
+                &t!("header.about") => FlowsAboutAction,
+            }
+        }
     }
 
     fn init(
@@ -131,9 +101,36 @@ impl SimpleComponent for FlowsHeader {
         let model = FlowsHeader;
         let widgets = view_output!();
 
+        let about_action: RelmAction<FlowsAboutAction> = RelmAction::new_stateless(move |_| {
+            sender.input(FlowsHeaderInput::OpenAboutDialog);
+        });
+        relm4::main_application().set_accelerators_for_action::<FlowsAboutAction>(&["<primary>A"]);
+
+        let mut group = RelmActionGroup::<FlowsActionGroup>::new();
+        group.add_action(about_action);
+        group.register_for_widget(&widgets.end);
+
         ComponentParts { model, widgets }
     }
+    
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+        match message {
+            FlowsHeaderInput::OpenAboutDialog => {
+                super::about::AppAbout::builder()
+                    // .transient_for()
+                    .launch(())
+                    .widget()
+                    .show();
+            }
+        }
+    }
 }
+
+relm4::new_action_group!(FlowsActionGroup, "flows");
+relm4::new_stateless_action!(FlowsNewAction, FlowsActionGroup, "new");
+relm4::new_stateless_action!(FlowsSaveAsAction, FlowsActionGroup, "save-as");
+relm4::new_stateless_action!(FlowsCloseAction, FlowsActionGroup, "close");
+relm4::new_stateless_action!(FlowsAboutAction, FlowsActionGroup, "about");
 
 pub enum SaveOrOpenFlowError {
     IoError(std::io::Error),
