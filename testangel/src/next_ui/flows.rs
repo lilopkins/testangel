@@ -1,13 +1,20 @@
-use std::{fs, path::PathBuf, rc::Rc};
+use std::{fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use gtk::prelude::*;
 use relm4::{
-    adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
-    RelmWidgetExt, SimpleComponent, actions::{RelmAction, RelmActionGroup, AccelsPlus},
+    actions::{AccelsPlus, RelmAction, RelmActionGroup},
+    adw,
+    factory::FactoryVecDeque,
+    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
+    RelmWidgetExt, SimpleComponent,
 };
 use rust_i18n::t;
-use testangel::types::{AutomationFlow, VersionedFile};
+use testangel::{
+    action_loader::ActionMap,
+    ipc::EngineList,
+    types::{AutomationFlow, VersionedFile},
+};
 
 mod action_component;
 
@@ -61,7 +68,7 @@ impl SimpleComponent for FlowsHeader {
         #[name = "end"]
         gtk::Box {
             set_spacing: 5,
-            
+
             gtk::Button {
                 set_label: &t!("save"),
                 connect_clicked[sender] => move |_| {
@@ -112,7 +119,7 @@ impl SimpleComponent for FlowsHeader {
 
         ComponentParts { model, widgets }
     }
-    
+
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             FlowsHeaderInput::OpenAboutDialog => {
@@ -137,7 +144,7 @@ pub enum SaveOrOpenFlowError {
     ParsingError(ron::error::SpannedError),
     SerializingError(ron::Error),
     FlowNotVersionCompatible,
-    MissingAction(String),
+    MissingAction(usize, String),
 }
 
 impl ToString for SaveOrOpenFlowError {
@@ -151,7 +158,7 @@ impl ToString for SaveOrOpenFlowError {
             Self::FlowNotVersionCompatible => {
                 t!("flows.save-or-open-flow-error.flow-not-version-compatible")
             }
-            Self::MissingAction(e) => t!("flows.save-or-open-flow-error.missing-action", error = e),
+            Self::MissingAction(step, e) => t!("flows.save-or-open-flow-error.missing-action", step = step + 1, error = e),
         }
     }
 }
@@ -180,15 +187,24 @@ pub enum FlowInputs {
     __SaveFlowThen(Box<FlowInputs>),
     /// Close the flow, prompting if needing to save first
     CloseFlow,
+    /// Actually close the flow
     _CloseFlow,
+    /// Update the UI steps from the open flow. This will clear first and overwrite any changes!
+    UpdateStepsFromModel,
+    /// Update the open flow from the UI steps
+    UpdateModelFromSteps,
 }
 
 #[derive(Debug)]
 pub struct FlowsModel {
+    action_map: Arc<ActionMap>,
+    engine_list: Arc<EngineList>,
+
     open_flow: Option<AutomationFlow>,
     open_path: Option<PathBuf>,
     needs_saving: bool,
     header: Rc<Controller<FlowsHeader>>,
+    live_actions_list: FactoryVecDeque<action_component::ActionComponent>,
 
     open_dialog: gtk::FileChooserDialog,
     save_dialog: gtk::FileChooserDialog,
@@ -210,6 +226,7 @@ impl FlowsModel {
                 "FlowsModel::create_message_dialog cannot be called until the header is attached",
             ))
             .title(title.as_ref())
+            .heading(title.as_ref())
             .body(message.as_ref())
             .modal(true)
             .build()
@@ -244,16 +261,15 @@ impl FlowsModel {
         }
         let mut steps_reset = vec![];
         for (step, ac) in flow.actions.iter_mut().enumerate() {
-            // TODO Check for missing action
-            // match self.actions_list.get_action_by_id(&ac.action_id) {
-            //     None => return Err(SaveOrOpenFlowError::MissingAction(ac.action_id.clone())),
-            //     Some(action) => {
-            //         // Check that action parameters haven't changed. If they have, reset values.
-            //         if ac.update(action) {
-            //             steps_reset.push(step + 1);
-            //         }
-            //     }
-            // }
+            match self.action_map.get_action_by_id(&ac.action_id) {
+                None => return Err(SaveOrOpenFlowError::MissingAction(step, ac.action_id.clone())),
+                Some(action) => {
+                    // Check that action parameters haven't changed. If they have, reset values.
+                    if ac.update(action) {
+                        steps_reset.push(step + 1);
+                    }
+                }
+            }
         }
         self.open_flow = Some(flow);
         self.open_path = Some(file);
@@ -287,7 +303,12 @@ impl FlowsModel {
     }
 
     /// Ask the user where to save the flow, or just save if that's good enough
-    fn ask_where_to_save(&mut self, sender: &relm4::Sender<FlowInputs>, always_ask_where: bool, then: FlowInputs) {
+    fn ask_where_to_save(
+        &mut self,
+        sender: &relm4::Sender<FlowInputs>,
+        always_ask_where: bool,
+        then: FlowInputs,
+    ) {
         if always_ask_where || self.open_path.is_none() {
             // Ask where
             self.save_dialog.show();
@@ -319,6 +340,8 @@ impl SimpleComponent for FlowsModel {
     type Init = (
         gtk::FileChooserDialog, // A file chooser transient for the parent window
         gtk::FileChooserDialog, // A file chooser transient for the parent window
+        Arc<ActionMap>,
+        Arc<EngineList>,
     );
     type Input = FlowInputs;
     type Output = ();
@@ -336,6 +359,11 @@ impl SimpleComponent for FlowsModel {
                 #[watch]
                 set_visible: model.open_flow.is_none(),
                 set_vexpand: true,
+            },
+
+            #[local_ref]
+            live_actions_list -> gtk::ListBox {
+
             },
         },
 
@@ -388,14 +416,21 @@ impl SimpleComponent for FlowsModel {
         ));
 
         let model = FlowsModel {
+            action_map: init.2,
+            engine_list: init.3,
             open_flow: None,
             open_path: None,
             needs_saving: false,
             open_dialog: init.0,
             save_dialog: init.1,
             header,
+            live_actions_list: FactoryVecDeque::new(gtk::ListBox::default(), sender.input_sender()),
         };
 
+        // Trigger update actions from model
+        sender.input(FlowInputs::UpdateStepsFromModel);
+
+        let live_actions_list = model.live_actions_list.widget();
         let open_dialog = &model.open_dialog;
         let save_dialog = &model.save_dialog;
         let widgets = view_output!();
@@ -427,6 +462,9 @@ impl SimpleComponent for FlowsModel {
                     if let Some(path) = file.path() {
                         match self.open_flow(path) {
                             Ok(changes) => {
+                                // Reload UI
+                                sender.input(FlowInputs::UpdateStepsFromModel);
+
                                 if !changes.is_empty() {
                                     let changed_steps = changes
                                         .iter()
@@ -478,6 +516,23 @@ impl SimpleComponent for FlowsModel {
             }
             FlowInputs::_CloseFlow => {
                 self.close_flow();
+            }
+
+            FlowInputs::UpdateStepsFromModel => {
+                let mut live_list = self.live_actions_list.guard();
+                live_list.clear();
+                if let Some(flow) = &self.open_flow {
+                    for (step, config) in flow.actions.iter().enumerate() {
+                        live_list.push_back(action_component::ActionComponentInitialiser {
+                            step,
+                            config: config.clone(),
+                            action: self.action_map.get_action_by_id(&config.action_id).unwrap(), // rationale: we have already checked the actions are here when the file is opened
+                        });
+                    }
+                }
+            }
+            FlowInputs::UpdateModelFromSteps => {
+                todo!()
             }
         }
     }

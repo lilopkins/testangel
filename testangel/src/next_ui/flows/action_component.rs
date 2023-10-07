@@ -1,64 +1,63 @@
+use adw::prelude::*;
 use gtk::prelude::*;
-use relm4::{gtk, ComponentParts, RelmWidgetExt, SimpleComponent};
+use relm4::{
+    adw, gtk,
+    prelude::{DynamicIndex, FactoryComponent},
+    ComponentParts, RelmWidgetExt, SimpleComponent,
+};
 use rust_i18n::t;
 use testangel::types::{Action, ActionConfiguration};
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
 pub struct ActionComponentInitialiser {
+    pub step: usize,
+    pub config: ActionConfiguration,
+    pub action: Action,
+}
+
+#[derive(Debug)]
+pub struct ActionComponent {
     step: usize,
     config: ActionConfiguration,
     action: Action,
 }
 
 #[derive(Debug)]
-pub struct ActionComponentModel {
-    step: usize,
-    config: ActionConfiguration,
-    action: Action,
+pub enum ActionComponentOutput {
+    MoveTo(DynamicIndex),
+    Remove(DynamicIndex),
 }
 
-#[relm4::component(pub)]
-impl SimpleComponent for ActionComponentModel {
+#[relm4::factory(pub)]
+impl FactoryComponent for ActionComponent {
     type Init = ActionComponentInitialiser;
     type Input = ();
-    type Output = ();
+    type Output = ActionComponentOutput;
+    type CommandOutput = ();
+    type ParentInput = super::FlowInputs;
+    type ParentWidget = gtk::ListBox;
 
     view! {
-        #[root]
-        gtk::Frame {
+        root = adw::ActionRow {
             #[watch]
-            set_label: Some(&t!("flows.action-component.label", step = model.step, label = model.action.friendly_name)),
-
-            #[wrap(Some)]
-            set_child = &gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_margin_all: 5,
-                set_spacing: 5,
-
-                gtk::Label {
-                    set_label: &model.action.description,
-                },
-            }
+            set_title: &t!("flows.action-component.label", step = self.step + 1, name = self.action.friendly_name),
         }
     }
 
-    fn init(
+    fn init_model(
         init: Self::Init,
-        root: &Self::Root,
-        _sender: relm4::ComponentSender<Self>,
-    ) -> relm4::ComponentParts<Self> {
+        _index: &Self::Index,
+        _sender: relm4::FactorySender<Self>,
+    ) -> Self {
         let ActionComponentInitialiser {
             step,
             action,
             config,
         } = init;
-        let model = ActionComponentModel {
+        Self {
             step,
             config,
             action,
-        };
-        let widgets = view_output!();
-
-        ComponentParts { model, widgets }
+        }
     }
 }

@@ -1,10 +1,14 @@
-use std::rc::Rc;
+use std::{rc::Rc, sync::Arc};
 
 use gtk::prelude::*;
 use relm4::{
     adw, gtk, Component, ComponentController, ComponentParts, Controller, RelmApp, SimpleComponent,
 };
 use rust_i18n::t;
+use testangel::{
+    action_loader::{self, ActionMap},
+    ipc::{self, EngineList},
+};
 
 use self::header_bar::HeaderBarInput;
 
@@ -19,7 +23,15 @@ pub fn initialise_ui() {
     log::info!("Starting Next UI...");
     let app = RelmApp::new("lilopkins.testangel");
     relm4_icons::initialize_icons();
-    app.run::<AppModel>(());
+
+    let engines = Arc::new(ipc::get_engines());
+    let actions = Arc::new(action_loader::get_actions(engines.clone()));
+    app.run::<AppModel>(AppInit { engines, actions });
+}
+
+pub struct AppInit {
+    engines: Arc<EngineList>,
+    actions: Arc<ActionMap>,
 }
 
 #[derive(Debug)]
@@ -36,13 +48,16 @@ struct AppModel {
 
     flows: Controller<flows::FlowsModel>,
     actions: Controller<actions::ActionsModel>,
+
+    engines_list: Arc<EngineList>,
+    actions_map: Arc<ActionMap>,
 }
 
 #[relm4::component]
 impl SimpleComponent for AppModel {
+    type Init = AppInit;
     type Input = AppInput;
     type Output = ();
-    type Init = ();
 
     view! {
         main_window = adw::Window {
@@ -70,7 +85,7 @@ impl SimpleComponent for AppModel {
     }
 
     fn init(
-        _init: Self::Init,
+        init: Self::Init,
         root: &Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
@@ -83,6 +98,8 @@ impl SimpleComponent for AppModel {
                 gtk::FileChooserDialog::builder()
                     .transient_for(root)
                     .build(),
+                init.actions.clone(),
+                init.engines.clone(),
             ))
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
         let actions = actions::ActionsModel::builder()
@@ -98,6 +115,8 @@ impl SimpleComponent for AppModel {
 
         // Build model
         let model = AppModel {
+            actions_map: init.actions,
+            engines_list: init.engines,
             stack,
             header,
             flows,
@@ -110,7 +129,9 @@ impl SimpleComponent for AppModel {
         log::debug!("Initialised model: {model:?}");
 
         // Trigger initial header bar update
-        sender.input(AppInput::ChangedView(stack.visible_child_name().map(|s| s.into())));
+        sender.input(AppInput::ChangedView(
+            stack.visible_child_name().map(|s| s.into()),
+        ));
 
         ComponentParts { model, widgets }
     }
@@ -119,7 +140,8 @@ impl SimpleComponent for AppModel {
         match message {
             AppInput::NoOp => (),
             AppInput::ChangedView(new_view) => {
-                self.header.emit(HeaderBarInput::ChangedView(new_view.unwrap_or_default()));
+                self.header
+                    .emit(HeaderBarInput::ChangedView(new_view.unwrap_or_default()));
             }
         }
     }

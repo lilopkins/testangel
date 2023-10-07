@@ -2,7 +2,8 @@ use std::rc::Rc;
 
 use gtk::prelude::*;
 use relm4::{
-    adw, gtk, ComponentParts, ComponentSender, Controller, RelmIterChildrenExt, SimpleComponent, ComponentController,
+    adw, gtk, ComponentController, ComponentParts, ComponentSender, Controller,
+    RelmIterChildrenExt, SimpleComponent,
 };
 
 use super::flows::FlowsHeader;

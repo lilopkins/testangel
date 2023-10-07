@@ -33,7 +33,7 @@ io-error = "I/O error: %{error}"
 parsing-error = "The flow file is corrupted: %{error}"
 serializing-error = "The flow could not be saved due to an internal serialisation error: %{error}"
 flow-not-version-compatible = "The flow you tried to load is not compatible with this version of TestAngel."
-missing-action = "An action in this flow is missing: %{error}"
+missing-action = "The action for step %{step} (with internal ID: %{error}) in this flow is missing."
 
 [flows.header]
 new = "New flow"
