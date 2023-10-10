@@ -1,5 +1,5 @@
 use gtk::prelude::*;
-use relm4::{gtk, ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
+use relm4::{adw, gtk, ComponentParts, ComponentSender, RelmWidgetExt, SimpleComponent};
 
 #[derive(Debug)]
 pub struct ActionsModel;
@@ -16,8 +16,11 @@ impl SimpleComponent for ActionsModel {
             set_orientation: gtk::Orientation::Vertical,
             set_margin_all: 5,
 
-            gtk::Label {
-                set_markup: r#"<span size="large">Actions are not implemented in this preview of the new UI.</span>"#,
+            adw::StatusPage {
+                set_title: "Not yet implemented",
+                set_description: Some("Actions are not implemented in this UI preview for TestAngel"),
+                set_icon_name: Some(relm4_icons::icon_name::HOURGLASS),
+                set_vexpand: true,
             },
         }
     }
