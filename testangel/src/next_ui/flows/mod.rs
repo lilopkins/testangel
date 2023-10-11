@@ -195,9 +195,14 @@ impl FlowsModel {
             question.set_response_appearance("discard", adw::ResponseAppearance::Destructive);
             question.set_default_response(Some("save"));
             question.set_close_response("discard");
-            let sender = sender.clone();
+            let sender_c = sender.clone();
+            let then_c = then.clone();
             question.connect_response(Some("save"), move |_, _| {
-                sender.emit(FlowInputs::_SaveFlowThen(Box::new(then.clone())));
+                sender_c.emit(FlowInputs::_SaveFlowThen(Box::new(then_c.clone())));
+            });
+            let sender_c = sender.clone();
+            question.connect_response(Some("discard"), move |_, _| {
+                sender_c.emit(then.clone());
             });
             question.show();
         } else {

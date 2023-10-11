@@ -38,6 +38,8 @@ missing-action = "The action for step %{step} (with internal ID: %{error}) in th
 [flows.header]
 new = "New flow"
 run = "Run flow"
+open = "Open flow..."
+save = "Save flow"
 save-as = "Save flow as..."
 close = "Close flow"
 more = "More..."
