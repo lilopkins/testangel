@@ -6,7 +6,7 @@ use relm4::{
     RelmIterChildrenExt, SimpleComponent,
 };
 
-use super::flows::FlowsHeader;
+use super::flows::header::FlowsHeader;
 
 #[derive(Debug)]
 pub enum HeaderBarInput {

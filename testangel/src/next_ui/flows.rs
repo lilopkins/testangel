@@ -1,143 +1,20 @@
 use std::{fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
-use gtk::prelude::*;
 use relm4::{
-    actions::{AccelsPlus, RelmAction, RelmActionGroup},
-    adw,
-    factory::FactoryVecDeque,
-    gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
-    RelmWidgetExt, SimpleComponent,
+    adw, factory::FactoryVecDeque, gtk, Component, ComponentController, ComponentParts,
+    ComponentSender, Controller, RelmWidgetExt, SimpleComponent, prelude::DynamicIndex,
 };
 use rust_i18n::t;
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
-    types::{AutomationFlow, VersionedFile},
+    types::{AutomationFlow, VersionedFile, ActionParameterSource, ActionConfiguration},
 };
 
 mod action_component;
-
-#[derive(Debug)]
-pub struct FlowsHeader;
-
-#[derive(Debug)]
-pub enum FlowsHeaderOutput {
-    NewFlow,
-    OpenFlow,
-    SaveFlow,
-    SaveAsFlow,
-    CloseFlow,
-    RunFlow,
-}
-
-#[derive(Debug)]
-pub enum FlowsHeaderInput {
-    OpenAboutDialog,
-}
-
-#[relm4::component(pub)]
-impl SimpleComponent for FlowsHeader {
-    type Init = ();
-    type Input = FlowsHeaderInput;
-    type Output = FlowsHeaderOutput;
-
-    view! {
-        #[root]
-        #[name = "start"]
-        gtk::Box {
-            set_spacing: 5,
-
-            gtk::Button {
-                set_label: &t!("open"),
-                connect_clicked[sender] => move |_| {
-                    // unwrap rationale: receivers will never be dropped
-                    sender.output(FlowsHeaderOutput::OpenFlow).unwrap();
-                },
-            },
-            gtk::Button {
-                set_icon_name: relm4_icons::icon_name::PLAY,
-                set_tooltip: &t!("flows.header.run"),
-                connect_clicked[sender] => move |_| {
-                    // unwrap rationale: receivers will never be dropped
-                    sender.output(FlowsHeaderOutput::RunFlow).unwrap();
-                },
-            },
-        },
-
-        #[name = "end"]
-        gtk::Box {
-            set_spacing: 5,
-
-            gtk::Button {
-                set_label: &t!("save"),
-                connect_clicked[sender] => move |_| {
-                    // unwrap rationale: receivers will never be dropped
-                    sender.output(FlowsHeaderOutput::SaveFlow).unwrap();
-                },
-            },
-            gtk::MenuButton {
-                set_icon_name: relm4_icons::icon_name::MENU,
-                set_tooltip: &t!("flows.header.more"),
-                set_direction: gtk::ArrowType::Down,
-
-                #[wrap(Some)]
-                set_popover = &gtk::PopoverMenu::from_model(Some(&flows_menu)) {
-                    set_position: gtk::PositionType::Bottom,
-                }
-            },
-        },
-    }
-
-    menu! {
-        flows_menu: {
-            &t!("flows.header.new") => FlowsNewAction,
-            &t!("flows.header.save-as") => FlowsSaveAsAction,
-            &t!("flows.header.close") => FlowsCloseAction,
-            section! {
-                &t!("header.about") => FlowsAboutAction,
-            }
-        }
-    }
-
-    fn init(
-        _init: Self::Init,
-        root: &Self::Root,
-        sender: ComponentSender<Self>,
-    ) -> ComponentParts<Self> {
-        let model = FlowsHeader;
-        let widgets = view_output!();
-
-        let about_action: RelmAction<FlowsAboutAction> = RelmAction::new_stateless(move |_| {
-            sender.input(FlowsHeaderInput::OpenAboutDialog);
-        });
-        relm4::main_application().set_accelerators_for_action::<FlowsAboutAction>(&["<primary>A"]);
-
-        let mut group = RelmActionGroup::<FlowsActionGroup>::new();
-        group.add_action(about_action);
-        group.register_for_widget(&widgets.end);
-
-        ComponentParts { model, widgets }
-    }
-
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
-        match message {
-            FlowsHeaderInput::OpenAboutDialog => {
-                super::about::AppAbout::builder()
-                    // .transient_for()
-                    .launch(())
-                    .widget()
-                    .show();
-            }
-        }
-    }
-}
-
-relm4::new_action_group!(FlowsActionGroup, "flows");
-relm4::new_stateless_action!(FlowsNewAction, FlowsActionGroup, "new");
-relm4::new_stateless_action!(FlowsSaveAsAction, FlowsActionGroup, "save-as");
-relm4::new_stateless_action!(FlowsCloseAction, FlowsActionGroup, "close");
-relm4::new_stateless_action!(FlowsAboutAction, FlowsActionGroup, "about");
+mod add_step_dialog;
+pub mod header;
 
 pub enum SaveOrOpenFlowError {
     IoError(std::io::Error),
@@ -158,7 +35,11 @@ impl ToString for SaveOrOpenFlowError {
             Self::FlowNotVersionCompatible => {
                 t!("flows.save-or-open-flow-error.flow-not-version-compatible")
             }
-            Self::MissingAction(step, e) => t!("flows.save-or-open-flow-error.missing-action", step = step + 1, error = e),
+            Self::MissingAction(step, e) => t!(
+                "flows.save-or-open-flow-error.missing-action",
+                step = step + 1,
+                error = e
+            ),
         }
     }
 }
@@ -167,6 +48,8 @@ impl ToString for SaveOrOpenFlowError {
 pub enum FlowInputs {
     /// Do nothing
     NoOp,
+    /// The map of actions has changed and should be updated
+    ActionsMapChanged(Arc<ActionMap>),
     /// Create a new flow
     NewFlow,
     /// Actually create the new flow
@@ -189,10 +72,19 @@ pub enum FlowInputs {
     CloseFlow,
     /// Actually close the flow
     _CloseFlow,
+    /// Start adding a step by prompting the user which step to add
+    AddStep,
     /// Update the UI steps from the open flow. This will clear first and overwrite any changes!
     UpdateStepsFromModel,
-    /// Update the open flow from the UI steps
-    UpdateModelFromSteps,
+    /// Remove the step with the provided index, resetting all references to it.
+    RemoveStep(DynamicIndex),
+    /// Remove the step with the provided index, but change references to it to a temporary value (`usize::MAX`)
+    /// that can be set again with [`FlowInputs::PasteStep`].
+    /// This doesn't refresh the UI until Paste is called.
+    CutStep(DynamicIndex),
+    /// Insert a step at the specified index and set references back to the correct step.
+    /// This refreshes the UI.
+    PasteStep(usize, ActionConfiguration),
 }
 
 #[derive(Debug)]
@@ -203,7 +95,7 @@ pub struct FlowsModel {
     open_flow: Option<AutomationFlow>,
     open_path: Option<PathBuf>,
     needs_saving: bool,
-    header: Rc<Controller<FlowsHeader>>,
+    header: Rc<Controller<header::FlowsHeader>>,
     live_actions_list: FactoryVecDeque<action_component::ActionComponent>,
 
     open_dialog: gtk::FileChooserDialog,
@@ -212,7 +104,7 @@ pub struct FlowsModel {
 
 impl FlowsModel {
     /// Get an [`Rc`] clone of the header controller
-    pub fn header_controller_rc(&self) -> Rc<Controller<FlowsHeader>> {
+    pub fn header_controller_rc(&self) -> Rc<Controller<header::FlowsHeader>> {
         self.header.clone()
     }
 
@@ -262,7 +154,12 @@ impl FlowsModel {
         let mut steps_reset = vec![];
         for (step, ac) in flow.actions.iter_mut().enumerate() {
             match self.action_map.get_action_by_id(&ac.action_id) {
-                None => return Err(SaveOrOpenFlowError::MissingAction(step, ac.action_id.clone())),
+                None => {
+                    return Err(SaveOrOpenFlowError::MissingAction(
+                        step,
+                        ac.action_id.clone(),
+                    ))
+                }
                 Some(action) => {
                     // Check that action parameters haven't changed. If they have, reset values.
                     if ac.update(action) {
@@ -348,22 +245,31 @@ impl SimpleComponent for FlowsModel {
 
     view! {
         #[root]
-        gtk::Box {
-            set_orientation: gtk::Orientation::Vertical,
-            set_margin_all: 5,
+        gtk::ScrolledWindow {
+            set_vexpand: true,
+            set_hscrollbar_policy: gtk::PolicyType::Never,
 
-            adw::StatusPage {
-                set_title: &t!("flows.nothing-open"),
-                set_description: Some(&t!("flows.nothing-open-description")),
-                set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
-                #[watch]
-                set_visible: model.open_flow.is_none(),
-                set_vexpand: true,
-            },
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_margin_all: 5,
 
-            #[local_ref]
-            live_actions_list -> gtk::ListBox {
+                gtk::Label {
+                    set_label: "Drag-and-drop is not yet implemented to reorder steps.",
+                },
 
+                adw::StatusPage {
+                    set_title: &t!("flows.nothing-open"),
+                    set_description: Some(&t!("flows.nothing-open-description")),
+                    set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
+                    #[watch]
+                    set_visible: model.open_flow.is_none(),
+                    set_vexpand: true,
+                },
+
+                #[local_ref]
+                live_actions_list -> gtk::ListBox {
+
+                },
             },
         },
 
@@ -375,9 +281,8 @@ impl SimpleComponent for FlowsModel {
             add_button[gtk::ResponseType::Ok]: &t!("open"),
 
             connect_response[sender] => move |_, response| {
-                match response {
-                    gtk::ResponseType::Ok => sender.input(FlowInputs::__OpenFlow),
-                    _ => (),
+                if response == gtk::ResponseType::Ok {
+                    sender.input(FlowInputs::__OpenFlow);
                 }
             },
         },
@@ -390,9 +295,8 @@ impl SimpleComponent for FlowsModel {
             add_button[gtk::ResponseType::Ok]: &t!("save"),
 
             connect_response[sender] => move |_, response| {
-                match response {
-                    gtk::ResponseType::Ok => sender.input(FlowInputs::_SaveFlowThen(Box::new(FlowInputs::NoOp))),
-                    _ => (),
+                if response == gtk::ResponseType::Ok {
+                    sender.input(FlowInputs::_SaveFlowThen(Box::new(FlowInputs::NoOp)));
                 }
             },
         },
@@ -403,15 +307,16 @@ impl SimpleComponent for FlowsModel {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let header = Rc::new(FlowsHeader::builder().launch(()).forward(
+        let header = Rc::new(header::FlowsHeader::builder().launch(()).forward(
             sender.input_sender(),
             |msg| match msg {
-                FlowsHeaderOutput::NewFlow => FlowInputs::NewFlow,
-                FlowsHeaderOutput::OpenFlow => FlowInputs::OpenFlow,
-                FlowsHeaderOutput::SaveFlow => FlowInputs::SaveFlow,
-                FlowsHeaderOutput::SaveAsFlow => FlowInputs::SaveAsFlow,
-                FlowsHeaderOutput::CloseFlow => FlowInputs::CloseFlow,
-                FlowsHeaderOutput::RunFlow => FlowInputs::NoOp,
+                header::FlowsHeaderOutput::NewFlow => FlowInputs::NewFlow,
+                header::FlowsHeaderOutput::OpenFlow => FlowInputs::OpenFlow,
+                header::FlowsHeaderOutput::SaveFlow => FlowInputs::SaveFlow,
+                header::FlowsHeaderOutput::SaveAsFlow => FlowInputs::SaveAsFlow,
+                header::FlowsHeaderOutput::CloseFlow => FlowInputs::CloseFlow,
+                header::FlowsHeaderOutput::RunFlow => FlowInputs::NoOp,
+                header::FlowsHeaderOutput::AddStep => FlowInputs::AddStep,
             },
         ));
 
@@ -424,7 +329,10 @@ impl SimpleComponent for FlowsModel {
             open_dialog: init.0,
             save_dialog: init.1,
             header,
-            live_actions_list: FactoryVecDeque::new(gtk::ListBox::default(), sender.input_sender()),
+            live_actions_list: FactoryVecDeque::new(
+                gtk::ListBox::builder().css_classes(["boxed-list"]).build(),
+                sender.input_sender(),
+            ),
         };
 
         // Trigger update actions from model
@@ -441,6 +349,9 @@ impl SimpleComponent for FlowsModel {
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
             FlowInputs::NoOp => (),
+            FlowInputs::ActionsMapChanged(new_map) => {
+                self.action_map = new_map;
+            }
             FlowInputs::NewFlow => {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
             }
@@ -518,6 +429,8 @@ impl SimpleComponent for FlowsModel {
                 self.close_flow();
             }
 
+            FlowInputs::AddStep => {}
+
             FlowInputs::UpdateStepsFromModel => {
                 let mut live_list = self.live_actions_list.guard();
                 live_list.clear();
@@ -531,8 +444,70 @@ impl SimpleComponent for FlowsModel {
                     }
                 }
             }
-            FlowInputs::UpdateModelFromSteps => {
-                todo!()
+
+            FlowInputs::RemoveStep(step_idx) => {
+                let idx = step_idx.current_index();
+                let flow = self.open_flow.as_mut().unwrap();
+                log::info!("Deleting step {}", idx + 1);
+
+                flow.actions.remove(idx);
+
+                // Remove references to step and renumber references above step to one less than they were
+                for step in flow.actions.iter_mut() {
+                    for (_step_idx, source) in step.parameter_sources.iter_mut() {
+                        if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
+                            match (*from_step).cmp(&idx) {
+                                std::cmp::Ordering::Equal => *source = ActionParameterSource::Literal,
+                                std::cmp::Ordering::Greater => *from_step -= 1,
+                                _ => (),
+                            }
+                        }
+                    }
+                }
+
+                // Trigger UI steps refresh
+                sender.input(FlowInputs::UpdateStepsFromModel);
+            }
+            FlowInputs::CutStep(step_idx) => {
+                let idx = step_idx.current_index();
+                let flow = self.open_flow.as_mut().unwrap();
+                log::info!("Deleting step {}", idx + 1);
+
+                flow.actions.remove(idx);
+
+                // Remove references to step and renumber references above step to one less than they were
+                for step in flow.actions.iter_mut() {
+                    for (_step_idx, source) in step.parameter_sources.iter_mut() {
+                        if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
+                            match (*from_step).cmp(&idx) {
+                                std::cmp::Ordering::Equal => *from_step = usize::MAX,
+                                std::cmp::Ordering::Greater => *from_step -= 1,
+                                _ => (),
+                            }
+                        }
+                    }
+                }
+            }
+            FlowInputs::PasteStep(idx, config) => {
+                let flow = self.open_flow.as_mut().unwrap();
+                let idx = idx.max(0).min(flow.actions.len());
+                flow.actions.insert(idx, config);
+
+                // Remove references to step and renumber references above step to one less than they were
+                for step in flow.actions.iter_mut() {
+                    for (_step_idx, source) in step.parameter_sources.iter_mut() {
+                        if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
+                            if *from_step == usize::MAX {
+                                *from_step = idx;
+                            } else if *from_step >= idx {
+                                *from_step += 1;
+                            }
+                        }
+                    }
+                }
+
+                // Trigger UI steps refresh
+                sender.input(FlowInputs::UpdateStepsFromModel);
             }
         }
     }

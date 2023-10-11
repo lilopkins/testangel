@@ -41,9 +41,15 @@ run = "Run flow"
 save-as = "Save flow as..."
 close = "Close flow"
 more = "More..."
+add = "Add action"
 
 [flows.action-component]
 label = "Step %{step}: %{name}"
+subtitle = "%{kind}, %{source}"
+subtitle-with-value = "%{kind}, %{source}: %{value}"
+edit-param = "Edit Parameter"
+actions = "Step Actions"
+delete = "Delete step"
 
 [help]
 contact-local = "For help, please contact: %{contact}"

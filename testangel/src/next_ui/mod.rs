@@ -39,6 +39,9 @@ enum AppInput {
     NoOp,
     /// The view has changed and should be read from visible_child_name, then components updated as needed.
     ChangedView(Option<String>),
+    /// The actions might have changed and should be reloaded
+    #[allow(dead_code)] // TODO Allowed until actions are implemented
+    ReloadActionsMap,
 }
 
 #[derive(Debug)]
@@ -142,6 +145,10 @@ impl SimpleComponent for AppModel {
             AppInput::ChangedView(new_view) => {
                 self.header
                     .emit(HeaderBarInput::ChangedView(new_view.unwrap_or_default()));
+            }
+            AppInput::ReloadActionsMap => {
+                self.actions_map = Arc::new(action_loader::get_actions(self.engines_list.clone()));
+                self.flows.emit(flows::FlowInputs::ActionsMapChanged(self.actions_map.clone()))
             }
         }
     }
