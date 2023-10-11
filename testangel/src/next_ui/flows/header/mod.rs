@@ -1,13 +1,21 @@
+use std::sync::Arc;
+
 use adw::prelude::*;
 use relm4::{
     actions::{AccelsPlus, RelmAction, RelmActionGroup},
     adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, RelmWidgetExt,
-    SimpleComponent,
+    SimpleComponent, factory::FactoryVecDeque,
 };
 use rust_i18n::t;
+use testangel::action_loader::ActionMap;
+
+mod add_step_factory;
 
 #[derive(Debug)]
-pub struct FlowsHeader;
+pub struct FlowsHeader {
+    action_map: Arc<ActionMap>,
+    search_results: FactoryVecDeque<add_step_factory::StepSearchResult>,
+}
 
 #[derive(Debug)]
 pub enum FlowsHeaderOutput {
@@ -17,17 +25,22 @@ pub enum FlowsHeaderOutput {
     SaveAsFlow,
     CloseFlow,
     RunFlow,
-    AddStep,
+    AddStep(String),
 }
 
 #[derive(Debug)]
 pub enum FlowsHeaderInput {
     OpenAboutDialog,
+    ActionsMapChanged(Arc<ActionMap>),
+    /// Add the step with the action ID given
+    AddStep(String),
+    /// Trigger a search for the steps provided
+    SearchForSteps(String),
 }
 
 #[relm4::component(pub)]
 impl SimpleComponent for FlowsHeader {
-    type Init = ();
+    type Init = Arc<ActionMap>;
     type Input = FlowsHeaderInput;
     type Output = FlowsHeaderOutput;
 
@@ -44,12 +57,36 @@ impl SimpleComponent for FlowsHeader {
                     sender.output(FlowsHeaderOutput::OpenFlow).unwrap();
                 },
             },
-            gtk::Button {
+            gtk::MenuButton {
                 set_icon_name: relm4_icons::icon_name::PLUS,
                 set_tooltip: &t!("flows.header.add"),
-                connect_clicked[sender] => move |_| {
-                    // unwrap rationale: receivers will never be dropped
-                    sender.output(FlowsHeaderOutput::AddStep).unwrap();
+
+                #[wrap(Some)]
+                set_popover = &gtk::Popover {
+                    gtk::Box {
+                        set_spacing: 2,
+                        set_orientation: gtk::Orientation::Vertical,
+
+                        gtk::SearchEntry {
+                            set_max_width_chars: 20,
+
+                            connect_search_changed[sender] => move |slf| {
+                                let query = slf.text().to_string();
+                                sender.input(FlowsHeaderInput::SearchForSteps(query));
+                            },
+                        },
+
+                        gtk::ScrolledWindow {
+                            set_hscrollbar_policy: gtk::PolicyType::Never,
+                            set_min_content_height: 150,
+
+                            #[local_ref]
+                            results_box -> gtk::Box {
+                                set_spacing: 2,
+                                set_orientation: gtk::Orientation::Vertical,
+                            },
+                        },
+                    },
                 },
             },
             gtk::Button {
@@ -116,11 +153,18 @@ impl SimpleComponent for FlowsHeader {
     }
 
     fn init(
-        _init: Self::Init,
+        init: Self::Init,
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = FlowsHeader;
+        let model = FlowsHeader {
+            action_map: init,
+            search_results: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
+        };
+        // Reset search results
+        sender.input(FlowsHeaderInput::SearchForSteps(String::new()));
+
+        let results_box = model.search_results.widget();
         let widgets = view_output!();
 
         let about_action: RelmAction<FlowsAboutAction> = RelmAction::new_stateless(move |_| {
@@ -143,6 +187,51 @@ impl SimpleComponent for FlowsHeader {
                     .launch(())
                     .widget()
                     .show();
+            }
+            FlowsHeaderInput::ActionsMapChanged(new_map) => {
+                self.action_map = new_map;
+            }
+            FlowsHeaderInput::AddStep(step_id) => {
+                // unwrap rationale: the receiver will never be disconnected
+                sender.output(FlowsHeaderOutput::AddStep(step_id)).unwrap();
+            }
+            FlowsHeaderInput::SearchForSteps(query) => {
+                let mut results = self.search_results.guard();
+                results.clear();
+
+                // Collect results
+                if query.is_empty() {
+                    // List all alphabetically
+                    let mut unsorted_results = vec![];
+                    for (group, actions) in self.action_map.get_by_group() {
+                        for action in actions {
+                            unsorted_results.push((format!("{group}: {}", action.friendly_name), action));
+                        }
+                    }
+
+                    // Sort
+                    unsorted_results.sort_by(|(a, _a), (b, _b)| a.cmp(b));
+                    for (_, a) in unsorted_results {
+                        results.push_back(a);
+                    }
+                } else {
+                    let mut unsorted_results = vec![];
+                    use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
+                    let matcher = SkimMatcherV2::default();
+                    for (group, actions) in self.action_map.get_by_group() {
+                        for action in actions {
+                            if let Some(score) = matcher.fuzzy_match(&format!("{group}: {}", action.friendly_name), &query) {
+                                unsorted_results.push((score, action));
+                            }
+                        }
+                    }
+
+                    // Sort
+                    unsorted_results.sort_by(|(a, _a), (b, _b)| a.cmp(b));
+                    for (_, a) in unsorted_results {
+                        results.push_back(a);
+                    }
+                }
             }
         }
     }

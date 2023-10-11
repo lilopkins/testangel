@@ -13,7 +13,6 @@ use testangel::{
 };
 
 mod action_component;
-mod add_step_dialog;
 pub mod header;
 
 pub enum SaveOrOpenFlowError {
@@ -72,8 +71,8 @@ pub enum FlowInputs {
     CloseFlow,
     /// Actually close the flow
     _CloseFlow,
-    /// Start adding a step by prompting the user which step to add
-    AddStep,
+    /// Add the step with the ID provided
+    AddStep(String),
     /// Update the UI steps from the open flow. This will clear first and overwrite any changes!
     UpdateStepsFromModel,
     /// Remove the step with the provided index, resetting all references to it.
@@ -134,6 +133,13 @@ impl FlowsModel {
         dialog.set_default_response(Some("ok"));
         dialog.set_close_response("ok");
         dialog
+    }
+
+    /// Just open a brand new flow
+    fn new_flow(&mut self) {
+        self.open_path = None;
+        self.needs_saving = true;
+        self.open_flow = Some(AutomationFlow::default());
     }
 
     /// Open a flow. This does not ask to save first.
@@ -307,7 +313,7 @@ impl SimpleComponent for FlowsModel {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let header = Rc::new(header::FlowsHeader::builder().launch(()).forward(
+        let header = Rc::new(header::FlowsHeader::builder().launch(init.2.clone()).forward(
             sender.input_sender(),
             |msg| match msg {
                 header::FlowsHeaderOutput::NewFlow => FlowInputs::NewFlow,
@@ -316,7 +322,7 @@ impl SimpleComponent for FlowsModel {
                 header::FlowsHeaderOutput::SaveAsFlow => FlowInputs::SaveAsFlow,
                 header::FlowsHeaderOutput::CloseFlow => FlowInputs::CloseFlow,
                 header::FlowsHeaderOutput::RunFlow => FlowInputs::NoOp,
-                header::FlowsHeaderOutput::AddStep => FlowInputs::AddStep,
+                header::FlowsHeaderOutput::AddStep(step) => FlowInputs::AddStep(step),
             },
         ));
 
@@ -350,15 +356,14 @@ impl SimpleComponent for FlowsModel {
         match message {
             FlowInputs::NoOp => (),
             FlowInputs::ActionsMapChanged(new_map) => {
-                self.action_map = new_map;
+                self.action_map = new_map.clone();
+                self.header.emit(header::FlowsHeaderInput::ActionsMapChanged(new_map));
             }
             FlowInputs::NewFlow => {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
             }
             FlowInputs::_NewFlow => {
-                self.open_path = None;
-                self.needs_saving = true;
-                self.open_flow = Some(AutomationFlow::default());
+                self.new_flow();
             }
             FlowInputs::OpenFlow => {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_OpenFlow);
@@ -429,7 +434,18 @@ impl SimpleComponent for FlowsModel {
                 self.close_flow();
             }
 
-            FlowInputs::AddStep => {}
+            FlowInputs::AddStep(step_id) => {
+                if self.open_flow.is_none() {
+                    self.new_flow();
+                }
+
+                // unwrap rationale: we've just guaranteed a flow is open
+                let flow = self.open_flow.as_mut().unwrap();
+                // unwrap rationale: the header can't ask to add an action that doesn't exist
+                flow.actions.push(ActionConfiguration::from(self.action_map.get_action_by_id(&step_id).unwrap()));
+                // Trigger UI steps refresh
+                sender.input(FlowInputs::UpdateStepsFromModel);
+            }
 
             FlowInputs::UpdateStepsFromModel => {
                 let mut live_list = self.live_actions_list.guard();

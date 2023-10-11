@@ -13,7 +13,7 @@ required-features = [ "cli" ]
 [features]
 default = [ "ui" ]
 ui = [ "dep:iced", "dep:opener", "dep:rfd", "dep:fern" ]
-next-ui = [ "dep:relm4", "dep:relm4-icons", "dep:fern", "dep:rust-i18n" ]
+next-ui = [ "dep:relm4", "dep:relm4-icons", "dep:fern", "dep:rust-i18n", "dep:fuzzy-matcher" ]
 cli = [ "dep:clap", "dep:pretty_env_logger" ]
 windows-keep-console-window = []
 
@@ -41,3 +41,4 @@ semver = "1.0.19"
 relm4 = { version = "0.6", optional = true, features = [ "libadwaita", "gnome_43" ] }
 relm4-icons = { version = "0.6", optional = true, features = [ "hourglass", "paper", "play", "menu", "lightbulb", "papyrus-vertical", "puzzle-piece", "question-round", "edit", "plus", "size-vertically", "x-circular", "up", "down" ] }
 rust-i18n = { version = "2.2.1", optional = true }
+fuzzy-matcher = { version = "0.3.7", optional = true }
