@@ -19,6 +19,7 @@ about = "About TestAngel"
 [flows]
 open = "Open a flow..."
 save = "Save a flow..."
+saved = "Flow saved."
 nothing-open = "Nothing is Open"
 nothing-open-description = "Open a flow to get started"
 error-opening = "Error Opening Flow"

@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf, rc::Rc, sync::Arc};
 use adw::prelude::*;
 use relm4::{
     adw, factory::FactoryVecDeque, gtk, Component, ComponentController, ComponentParts,
-    ComponentSender, Controller, RelmWidgetExt, SimpleComponent, prelude::DynamicIndex,
+    ComponentSender, Controller, RelmWidgetExt, SimpleComponent, prelude::DynamicIndex, actions::RelmActionGroup,
 };
 use rust_i18n::t;
 use testangel::{
@@ -96,6 +96,7 @@ pub struct FlowsModel {
     needs_saving: bool,
     header: Rc<Controller<header::FlowsHeader>>,
     live_actions_list: FactoryVecDeque<action_component::ActionComponent>,
+    toast_target: adw::ToastOverlay,
 
     open_dialog: gtk::FileChooserDialog,
     save_dialog: gtk::FileChooserDialog,
@@ -256,30 +257,33 @@ impl SimpleComponent for FlowsModel {
 
     view! {
         #[root]
-        gtk::ScrolledWindow {
-            set_vexpand: true,
-            set_hscrollbar_policy: gtk::PolicyType::Never,
-
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_margin_all: 5,
-
-                gtk::Label {
-                    set_label: "Drag-and-drop is not yet implemented to reorder steps.",
-                },
-
-                adw::StatusPage {
-                    set_title: &t!("flows.nothing-open"),
-                    set_description: Some(&t!("flows.nothing-open-description")),
-                    set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
-                    #[watch]
-                    set_visible: model.open_flow.is_none(),
+        root = adw::Bin {
+            #[local_ref]
+            toast_target -> adw::ToastOverlay {
+                gtk::ScrolledWindow {
                     set_vexpand: true,
-                },
+                    set_hscrollbar_policy: gtk::PolicyType::Never,
 
-                #[local_ref]
-                live_actions_list -> gtk::ListBox {
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
+                        set_margin_all: 5,
 
+                        gtk::Label {
+                            set_label: "Drag-and-drop is not yet implemented to reorder steps.",
+                        },
+
+                        adw::StatusPage {
+                            set_title: &t!("flows.nothing-open"),
+                            set_description: Some(&t!("flows.nothing-open-description")),
+                            set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
+                            #[watch]
+                            set_visible: model.open_flow.is_none(),
+                            set_vexpand: true,
+                        },
+
+                        #[local_ref]
+                        live_actions_list -> gtk::ListBox { },
+                    },
                 },
             },
         },
@@ -334,6 +338,7 @@ impl SimpleComponent for FlowsModel {
         let model = FlowsModel {
             action_map: init.2,
             engine_list: init.3,
+            toast_target: adw::ToastOverlay::default(),
             open_flow: None,
             open_path: None,
             needs_saving: false,
@@ -350,6 +355,7 @@ impl SimpleComponent for FlowsModel {
         sender.input(FlowInputs::UpdateStepsFromModel);
 
         let live_actions_list = model.live_actions_list.widget();
+        let toast_target = &model.toast_target;
         let open_dialog = &model.open_dialog;
         let save_dialog = &model.save_dialog;
         let widgets = view_output!();
@@ -429,6 +435,7 @@ impl SimpleComponent for FlowsModel {
                     self.create_message_dialog(t!("flows.error-saving"), e.to_string())
                         .show();
                 } else {
+                    self.toast_target.add_toast(adw::Toast::new(&t!("flows.saved")));
                     sender.input_sender().emit(*then);
                 }
             }
