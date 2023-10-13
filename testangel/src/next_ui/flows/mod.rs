@@ -87,6 +87,9 @@ pub enum FlowInputs {
     PasteStep(usize, ActionConfiguration),
     /// Start the flow exection
     RunFlow,
+    /// The [`ActionConfiguration`] has changed for the step indicated by the [`DynamicIndex`].
+    /// This does not refresh the UI.
+    ConfigUpdate(DynamicIndex, ActionConfiguration),
 }
 
 #[derive(Debug)]
@@ -367,6 +370,11 @@ impl Component for FlowsModel {
                 self.header
                     .emit(header::FlowsHeaderInput::ActionsMapChanged(new_map));
             }
+            FlowInputs::ConfigUpdate(step, new_config) => {
+                // unwrap rationale: config updates can't happen if nothing is open
+                let flow = self.open_flow.as_mut().unwrap();
+                flow.actions[step.current_index()] = new_config;
+            }
             FlowInputs::NewFlow => {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
             }
@@ -377,10 +385,15 @@ impl Component for FlowsModel {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_OpenFlow);
             }
             FlowInputs::_OpenFlow => {
+                let filter = gtk::FileFilter::new();
+                filter.set_name(Some(&t!("flows.filetype")));
+                filter.add_suffix("taflow");
+
                 let dialog = gtk::FileChooserDialog::builder()
                     // unwrap rationale: this cannot be triggered if not attached to a window
                     .transient_for(&root.toplevel_window().unwrap())
                     .title(t!("flows.open"))
+                    .filter(&filter)
                     .action(gtk::FileChooserAction::Open)
                     .modal(true)
                     .build();
@@ -508,12 +521,33 @@ impl Component for FlowsModel {
                 let mut live_list = self.live_actions_list.guard();
                 live_list.clear();
                 if let Some(flow) = &self.open_flow {
+                    let mut possible_outputs = vec![];
                     for (step, config) in flow.actions.iter().enumerate() {
                         live_list.push_back(action_component::ActionComponentInitialiser {
-                            step,
+                            possible_outputs: possible_outputs.clone(),
                             config: config.clone(),
                             action: self.action_map.get_action_by_id(&config.action_id).unwrap(), // rationale: we have already checked the actions are here when the file is opened
                         });
+                        // add possible outputs to list AFTER processing this step
+                        // unwrap rationale: actions are check to exist prior to opening.
+                        for (output_idx, (name, kind, _)) in self
+                            .action_map
+                            .get_action_by_id(&config.action_id)
+                            .unwrap()
+                            .outputs
+                            .iter()
+                            .enumerate()
+                        {
+                            possible_outputs.push((
+                                t!(
+                                    "flows.action-component.source-from-step",
+                                    step = step + 1,
+                                    name = name
+                                ),
+                                *kind,
+                                ActionParameterSource::FromOutput(step, output_idx),
+                            ));
+                        }
                     }
                 }
             }
@@ -546,7 +580,7 @@ impl Component for FlowsModel {
             FlowInputs::CutStep(step_idx) => {
                 let idx = step_idx.current_index();
                 let flow = self.open_flow.as_mut().unwrap();
-                log::info!("Deleting step {}", idx + 1);
+                log::info!("Cut step {}", idx + 1);
 
                 flow.actions.remove(idx);
 
@@ -566,6 +600,7 @@ impl Component for FlowsModel {
             FlowInputs::PasteStep(idx, config) => {
                 let flow = self.open_flow.as_mut().unwrap();
                 let idx = idx.max(0).min(flow.actions.len());
+                log::info!("Pasting step to {}", idx + 1);
                 flow.actions.insert(idx, config);
 
                 // Remove references to step and renumber references above step to one less than they were

@@ -6,6 +6,7 @@ no = "No"
 open = "Open"
 save = "Save"
 discard = "Discard"
+value = "Value"
 
 [about]
 testing = "Software Testing"
@@ -17,6 +18,7 @@ help = "Help"
 about = "About TestAngel"
 
 [flows]
+filetype = "TestAngel Flow file"
 open = "Open a flow..."
 save = "Save a flow..."
 saved = "Flow saved."
@@ -63,6 +65,8 @@ subtitle = "%{kind}, %{source}"
 subtitle-with-value = "%{kind}, %{source}: %{value}"
 edit-param = "Edit Parameter"
 delete = "Delete step"
+source-literal = "Literal value"
+source-from-step = "From Step %{step}: %{name}"
 
 [help]
 contact-local = "For help, please contact: %{contact}"
