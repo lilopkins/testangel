@@ -23,6 +23,9 @@ jobs:
           default: true
           override: true
 
+      - name: Install dependencies
+        run: yum -y update && yum -y install atk-devel
+
       - name: Build
         run: |
           # Build
