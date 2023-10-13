@@ -301,15 +301,17 @@ impl Application for App {
                     match self.flow_editor.open_flow(file) {
                         Ok(changed) => {
                             self.state = State::AutomationFlowEditor;
-                            return Command::perform(rfd::AsyncMessageDialog::new()
-                                .set_level(rfd::MessageLevel::Warning)
-                                .set_title("Action has changed")
-                                .set_buttons(rfd::MessageButtons::Ok)
-                                .set_description(&format!(
-                                    "The parameters in steps {} have changed so it has been reset.",
-                                    changed.iter().map(|step| step.to_string()).collect::<Vec<_>>().join(",")
-                                ))
-                                .show(), |_| AppMessage::NoOp);
+                            if !changed.is_empty() {
+                                return Command::perform(rfd::AsyncMessageDialog::new()
+                                    .set_level(rfd::MessageLevel::Warning)
+                                    .set_title("Action has changed")
+                                    .set_buttons(rfd::MessageButtons::Ok)
+                                    .set_description(&format!(
+                                        "The parameters in steps {} have changed so it has been reset.",
+                                        changed.iter().map(|step| step.to_string()).collect::<Vec<_>>().join(",")
+                                    ))
+                                    .show(), |_| AppMessage::NoOp);
+                            }
                         }
                         Err(e) => {
                             return Command::perform(
