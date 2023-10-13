@@ -27,8 +27,6 @@ jobs:
         run: |
           # Build
           cargo build -p testangel --bin testangel --release --no-default-features --features next-ui
-          mv target/release/testangel target/release/testangel-new-ui
-          cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-arithmetic --release
           cargo build -p testangel-compare --release
@@ -41,7 +39,6 @@ jobs:
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
-          cp target/release/testangel-new-ui build/
           cp target/release/testangel-executor build/
           # Prepare engines
           mkdir -p build/engines || exit 1
