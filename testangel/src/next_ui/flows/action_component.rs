@@ -85,8 +85,10 @@ impl FactoryComponent for ActionComponent {
                         set_tooltip: "Move Up",
 
                         connect_clicked[sender, index, config] => move |_| {
-                            sender.output(ActionComponentOutput::Cut(index.clone()));
-                            sender.output(ActionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone()));
+                            if index.clone().current_index() != 0 {
+                                sender.output(ActionComponentOutput::Cut(index.clone()));
+                                sender.output(ActionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone()));
+                            }
                         },
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
