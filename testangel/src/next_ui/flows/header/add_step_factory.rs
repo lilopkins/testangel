@@ -1,6 +1,6 @@
-use relm4::prelude::*;
-use relm4::gtk;
 use gtk::prelude::*;
+use relm4::gtk;
+use relm4::prelude::*;
 use testangel::types::Action;
 
 #[derive(Debug)]

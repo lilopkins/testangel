@@ -2,19 +2,19 @@ use std::{fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
-    adw, factory::FactoryVecDeque, gtk, Component, ComponentController, ComponentParts,
-    ComponentSender, Controller, RelmWidgetExt, prelude::DynamicIndex, component::Connector,
+    adw, component::Connector, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component,
+    ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
 };
 use rust_i18n::t;
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
-    types::{AutomationFlow, VersionedFile, ActionParameterSource, ActionConfiguration},
+    types::{ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
 };
 
 mod action_component;
-pub mod header;
 mod execution_dialog;
+pub mod header;
 
 pub enum SaveOrOpenFlowError {
     IoError(std::io::Error),
@@ -142,7 +142,9 @@ impl FlowsModel {
         self.open_path = None;
         self.needs_saving = true;
         self.open_flow = Some(AutomationFlow::default());
-        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(self.open_flow.is_some()));
+        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
+            self.open_flow.is_some(),
+        ));
     }
 
     /// Open a flow. This does not ask to save first.
@@ -178,7 +180,9 @@ impl FlowsModel {
             }
         }
         self.open_flow = Some(flow);
-        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(self.open_flow.is_some()));
+        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
+            self.open_flow.is_some(),
+        ));
         self.open_path = Some(file);
         self.needs_saving = false;
         log::debug!("New flow open.");
@@ -225,23 +229,23 @@ impl FlowsModel {
         if always_ask_where || self.open_path.is_none() {
             // Ask where
             let dialog = gtk::FileChooserDialog::builder()
-                    .transient_for(transient_for)
-                    .title(t!("flows.save"))
-                    .action(gtk::FileChooserAction::Save)
-                    .modal(true)
-                    .build();
-                dialog.add_button(&t!("save"), gtk::ResponseType::Ok);
-                let sender_c = sender.clone();
-                dialog.connect_response(move |dlg, response| {
-                    if response == gtk::ResponseType::Ok {
-                        if let Some(path) = dlg.file() {
-                            let path = path.path().unwrap();
-                            sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
-                        }
-                        dlg.close();
+                .transient_for(transient_for)
+                .title(t!("flows.save"))
+                .action(gtk::FileChooserAction::Save)
+                .modal(true)
+                .build();
+            dialog.add_button(&t!("save"), gtk::ResponseType::Ok);
+            let sender_c = sender.clone();
+            dialog.connect_response(move |dlg, response| {
+                if response == gtk::ResponseType::Ok {
+                    if let Some(path) = dlg.file() {
+                        let path = path.path().unwrap();
+                        sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
                     }
-                });
-                dialog.show();
+                    dlg.close();
+                }
+            });
+            dialog.show();
         } else {
             sender.emit(FlowInputs::_SaveFlowThen(Box::new(then)));
         }
@@ -262,16 +266,16 @@ impl FlowsModel {
         self.open_flow = None;
         self.open_path = None;
         self.needs_saving = false;
-        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(self.open_flow.is_some()));
+        self.live_actions_list.guard().clear();
+        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
+            self.open_flow.is_some(),
+        ));
     }
 }
 
 #[relm4::component(pub)]
 impl Component for FlowsModel {
-    type Init = (
-        Arc<ActionMap>,
-        Arc<EngineList>,
-    );
+    type Init = (Arc<ActionMap>, Arc<EngineList>);
     type Input = FlowInputs;
     type Output = ();
     type CommandOutput = ();
@@ -301,7 +305,10 @@ impl Component for FlowsModel {
                     },
 
                     #[local_ref]
-                    live_actions_list -> gtk::ListBox { },
+                    live_actions_list -> gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
+                        set_spacing: 5,
+                    },
                 },
             },
         },
@@ -312,18 +319,19 @@ impl Component for FlowsModel {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let header = Rc::new(header::FlowsHeader::builder().launch(init.0.clone()).forward(
-            sender.input_sender(),
-            |msg| match msg {
-                header::FlowsHeaderOutput::NewFlow => FlowInputs::NewFlow,
-                header::FlowsHeaderOutput::OpenFlow => FlowInputs::OpenFlow,
-                header::FlowsHeaderOutput::SaveFlow => FlowInputs::SaveFlow,
-                header::FlowsHeaderOutput::SaveAsFlow => FlowInputs::SaveAsFlow,
-                header::FlowsHeaderOutput::CloseFlow => FlowInputs::CloseFlow,
-                header::FlowsHeaderOutput::RunFlow => FlowInputs::RunFlow,
-                header::FlowsHeaderOutput::AddStep(step) => FlowInputs::AddStep(step),
-            },
-        ));
+        let header = Rc::new(
+            header::FlowsHeader::builder()
+                .launch(init.0.clone())
+                .forward(sender.input_sender(), |msg| match msg {
+                    header::FlowsHeaderOutput::NewFlow => FlowInputs::NewFlow,
+                    header::FlowsHeaderOutput::OpenFlow => FlowInputs::OpenFlow,
+                    header::FlowsHeaderOutput::SaveFlow => FlowInputs::SaveFlow,
+                    header::FlowsHeaderOutput::SaveAsFlow => FlowInputs::SaveAsFlow,
+                    header::FlowsHeaderOutput::CloseFlow => FlowInputs::CloseFlow,
+                    header::FlowsHeaderOutput::RunFlow => FlowInputs::RunFlow,
+                    header::FlowsHeaderOutput::AddStep(step) => FlowInputs::AddStep(step),
+                }),
+        );
 
         let model = FlowsModel {
             action_map: init.0,
@@ -333,10 +341,7 @@ impl Component for FlowsModel {
             needs_saving: false,
             execution_dialog: None,
             header,
-            live_actions_list: FactoryVecDeque::new(
-                gtk::ListBox::builder().css_classes(["boxed-list"]).build(),
-                sender.input_sender(),
-            ),
+            live_actions_list: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
         };
 
         // Trigger update actions from model
@@ -359,7 +364,8 @@ impl Component for FlowsModel {
             FlowInputs::NoOp => (),
             FlowInputs::ActionsMapChanged(new_map) => {
                 self.action_map = new_map.clone();
-                self.header.emit(header::FlowsHeaderInput::ActionsMapChanged(new_map));
+                self.header
+                    .emit(header::FlowsHeaderInput::ActionsMapChanged(new_map));
             }
             FlowInputs::NewFlow => {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
@@ -412,29 +418,41 @@ impl Component for FlowsModel {
                     }
                     Err(e) => {
                         // Show error dialog
-                        self.create_message_dialog(
-                            t!("flows.error-opening"),
-                            e.to_string(),
-                        )
-                        .show();
+                        self.create_message_dialog(t!("flows.error-opening"), e.to_string())
+                            .show();
                     }
                 }
             }
             FlowInputs::SaveFlow => {
                 if self.open_flow.is_some() {
                     // unwrap rationale: this cannot be triggered if not attached to a window
-                    self.ask_where_to_save(sender.input_sender(), &root.toplevel_window().unwrap(), false, FlowInputs::NoOp);
+                    self.ask_where_to_save(
+                        sender.input_sender(),
+                        &root.toplevel_window().unwrap(),
+                        false,
+                        FlowInputs::NoOp,
+                    );
                 }
             }
             FlowInputs::SaveAsFlow => {
                 if self.open_flow.is_some() {
                     // unwrap rationale: this cannot be triggered if not attached to a window
-                    self.ask_where_to_save(sender.input_sender(), &root.toplevel_window().unwrap(), true, FlowInputs::NoOp);
+                    self.ask_where_to_save(
+                        sender.input_sender(),
+                        &root.toplevel_window().unwrap(),
+                        true,
+                        FlowInputs::NoOp,
+                    );
                 }
             }
             FlowInputs::_SaveFlowThen(then) => {
                 // unwrap rationale: this cannot be triggered if not attached to a window
-                self.ask_where_to_save(sender.input_sender(), &root.toplevel_window().unwrap(), false, *then);
+                self.ask_where_to_save(
+                    sender.input_sender(),
+                    &root.toplevel_window().unwrap(),
+                    false,
+                    *then,
+                );
             }
             FlowInputs::__SaveFlowThen(path, then) => {
                 self.open_path = Some(path);
@@ -442,7 +460,9 @@ impl Component for FlowsModel {
                     self.create_message_dialog(t!("flows.error-saving"), e.to_string())
                         .show();
                 } else {
-                    widgets.toast_target.add_toast(adw::Toast::new(&t!("flows.saved")));
+                    widgets
+                        .toast_target
+                        .add_toast(adw::Toast::new(&t!("flows.saved")));
                     sender.input_sender().emit(*then);
                 }
             }
@@ -477,7 +497,9 @@ impl Component for FlowsModel {
                 // unwrap rationale: we've just guaranteed a flow is open
                 let flow = self.open_flow.as_mut().unwrap();
                 // unwrap rationale: the header can't ask to add an action that doesn't exist
-                flow.actions.push(ActionConfiguration::from(self.action_map.get_action_by_id(&step_id).unwrap()));
+                flow.actions.push(ActionConfiguration::from(
+                    self.action_map.get_action_by_id(&step_id).unwrap(),
+                ));
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
@@ -508,7 +530,9 @@ impl Component for FlowsModel {
                     for (_step_idx, source) in step.parameter_sources.iter_mut() {
                         if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                             match (*from_step).cmp(&idx) {
-                                std::cmp::Ordering::Equal => *source = ActionParameterSource::Literal,
+                                std::cmp::Ordering::Equal => {
+                                    *source = ActionParameterSource::Literal
+                                }
                                 std::cmp::Ordering::Greater => *from_step -= 1,
                                 _ => (),
                             }
@@ -561,5 +585,6 @@ impl Component for FlowsModel {
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
         }
+        self.update_view(widgets, sender);
     }
 }

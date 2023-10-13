@@ -94,10 +94,7 @@ impl SimpleComponent for AppModel {
     ) -> relm4::ComponentParts<Self> {
         // Initialise the sub-components (pages)
         let flows = flows::FlowsModel::builder()
-            .launch((
-                init.actions.clone(),
-                init.engines.clone(),
-            ))
+            .launch((init.actions.clone(), init.engines.clone()))
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
         let actions = actions::ActionsModel::builder()
             .launch(())
@@ -142,7 +139,9 @@ impl SimpleComponent for AppModel {
             }
             AppInput::ReloadActionsMap => {
                 self.actions_map = Arc::new(action_loader::get_actions(self.engines_list.clone()));
-                self.flows.emit(flows::FlowInputs::ActionsMapChanged(self.actions_map.clone()))
+                self.flows.emit(flows::FlowInputs::ActionsMapChanged(
+                    self.actions_map.clone(),
+                ))
             }
         }
     }

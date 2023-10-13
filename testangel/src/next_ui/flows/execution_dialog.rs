@@ -1,10 +1,15 @@
 use std::{collections::HashMap, sync::Arc};
 
-use relm4::{adw, gtk, Component, ComponentParts, RelmWidgetExt};
 use adw::prelude::*;
+use relm4::{adw, gtk, Component, ComponentParts, RelmWidgetExt};
 use rust_i18n::t;
-use testangel::{types::{AutomationFlow, FlowError}, ipc::EngineList, action_loader::ActionMap, report_generation::{self, ReportGenerationError}};
-use testangel_ipc::prelude::{Evidence, ParameterValue, EvidenceContent};
+use testangel::{
+    action_loader::ActionMap,
+    ipc::EngineList,
+    report_generation::{self, ReportGenerationError},
+    types::{AutomationFlow, FlowError},
+};
+use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterValue};
 
 #[derive(Debug)]
 pub enum ExecutionDialogCommandOutput {
@@ -120,11 +125,22 @@ impl Component for ExecutionDialog {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, sender: relm4::ComponentSender<Self>, root: &Self::Root) {
+    fn update(
+        &mut self,
+        message: Self::Input,
+        sender: relm4::ComponentSender<Self>,
+        root: &Self::Root,
+    ) {
         match message {
             ExecutionDialogInput::Close => root.destroy(),
             ExecutionDialogInput::FailedToGenerateReport(reason) => {
-                let dialog = self.create_message_dialog(t!("flows.execution.report-failed"), t!("flows.exection.report-failed-message", reason = reason.to_string()));
+                let dialog = self.create_message_dialog(
+                    t!("flows.execution.report-failed"),
+                    t!(
+                        "flows.exection.report-failed-message",
+                        reason = reason.to_string()
+                    ),
+                );
                 dialog.set_transient_for(Some(root));
                 dialog.add_response("ok", &t!("ok"));
                 dialog.set_default_response(Some("ok"));
@@ -171,9 +187,10 @@ impl Component for ExecutionDialog {
                         dialog.close();
                         if let Some(path) = dialog.file() {
                             let path = path.path().unwrap();
-                            if let Err(e) =
-                                report_generation::save_report(path.with_extension("pdf"), evidence.clone())
-                            {
+                            if let Err(e) = report_generation::save_report(
+                                path.with_extension("pdf"),
+                                evidence.clone(),
+                            ) {
                                 // Failed to generate report
                                 sender_c.input(ExecutionDialogInput::FailedToGenerateReport(e));
                                 return;
@@ -189,7 +206,14 @@ impl Component for ExecutionDialog {
 
             ExecutionDialogCommandOutput::Failed(step, reason) => {
                 log::warn!("Execution failed");
-                let dialog = self.create_message_dialog(t!("flows.execution.failed"), t!("flows.exection.failed-message", step = step, reason = reason.to_string()));
+                let dialog = self.create_message_dialog(
+                    t!("flows.execution.failed"),
+                    t!(
+                        "flows.exection.failed-message",
+                        step = step,
+                        reason = reason.to_string()
+                    ),
+                );
                 dialog.set_transient_for(Some(root));
                 dialog.add_response("ok", &t!("ok"));
                 dialog.set_default_response(Some("ok"));

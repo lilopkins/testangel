@@ -62,7 +62,6 @@ label = "Step %{step}: %{name}"
 subtitle = "%{kind}, %{source}"
 subtitle-with-value = "%{kind}, %{source}: %{value}"
 edit-param = "Edit Parameter"
-actions = "Step Actions"
 delete = "Delete step"
 
 [help]

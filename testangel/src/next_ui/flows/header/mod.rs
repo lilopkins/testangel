@@ -3,8 +3,10 @@ use std::sync::Arc;
 use adw::prelude::*;
 use relm4::{
     actions::{AccelsPlus, RelmAction, RelmActionGroup},
-    adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, RelmWidgetExt,
-    SimpleComponent, factory::FactoryVecDeque,
+    adw,
+    factory::FactoryVecDeque,
+    gtk, Component, ComponentController, ComponentParts, ComponentSender, RelmWidgetExt,
+    SimpleComponent,
 };
 use rust_i18n::t;
 use testangel::action_loader::ActionMap;
@@ -173,7 +175,8 @@ impl SimpleComponent for FlowsHeader {
             // unwrap rationale: receiver will never be disconnected
             sender_c.output(FlowsHeaderOutput::SaveAsFlow).unwrap();
         });
-        relm4::main_application().set_accelerators_for_action::<FlowsSaveAsAction>(&["<primary><shift>S"]);
+        relm4::main_application()
+            .set_accelerators_for_action::<FlowsSaveAsAction>(&["<primary><shift>S"]);
 
         let sender_c = sender.clone();
         let close_action: RelmAction<FlowsCloseAction> = RelmAction::new_stateless(move |_| {
@@ -231,7 +234,8 @@ impl SimpleComponent for FlowsHeader {
                     let mut unsorted_results = vec![];
                     for (group, actions) in self.action_map.get_by_group() {
                         for action in actions {
-                            unsorted_results.push((format!("{group}: {}", action.friendly_name), action));
+                            unsorted_results
+                                .push((format!("{group}: {}", action.friendly_name), action));
                         }
                     }
 
@@ -242,11 +246,13 @@ impl SimpleComponent for FlowsHeader {
                     }
                 } else {
                     let mut unsorted_results = vec![];
-                    use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
+                    use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
                     let matcher = SkimMatcherV2::default();
                     for (group, actions) in self.action_map.get_by_group() {
                         for action in actions {
-                            if let Some(score) = matcher.fuzzy_match(&format!("{group}: {}", action.friendly_name), &query) {
+                            if let Some(score) = matcher
+                                .fuzzy_match(&format!("{group}: {}", action.friendly_name), &query)
+                            {
                                 unsorted_results.push((score, action));
                             }
                         }

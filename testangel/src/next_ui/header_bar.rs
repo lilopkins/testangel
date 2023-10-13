@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use gtk::prelude::*;
 use relm4::{
-    adw, gtk, ComponentController, ComponentParts, ComponentSender, Controller,
-    Component, RelmIterChildrenExt,
+    adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
+    RelmIterChildrenExt,
 };
 
 use super::flows::header::FlowsHeader;
@@ -71,7 +71,7 @@ impl Component for HeaderBarModel {
         &mut self,
         widgets: &mut Self::Widgets,
         message: Self::Input,
-        _sender: ComponentSender<Self>,
+        sender: ComponentSender<Self>,
         _root: &Self::Root,
     ) {
         match message {
@@ -86,5 +86,6 @@ impl Component for HeaderBarModel {
                 }
             }
         }
+        self.update_view(widgets, sender);
     }
 }

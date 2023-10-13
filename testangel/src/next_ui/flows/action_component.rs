@@ -1,11 +1,14 @@
-use gtk::prelude::*;
 use adw::prelude::*;
 use relm4::{
-    adw, gtk,
-    prelude::{DynamicIndex, FactoryComponent}, RelmWidgetExt,
+    adw,
+    factory::FactoryVecDeque,
+    gtk,
+    prelude::{DynamicIndex, FactoryComponent},
+    RelmWidgetExt,
 };
 use rust_i18n::t;
 use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
+use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
 pub struct ActionComponentInitialiser {
@@ -14,12 +17,14 @@ pub struct ActionComponentInitialiser {
     pub action: Action,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ActionComponent {
     step: usize,
     config: ActionConfiguration,
     action: Action,
     visible: bool,
+
+    variable_rows: FactoryVecDeque<VariableRow>,
 }
 
 #[derive(Debug)]
@@ -42,41 +47,22 @@ impl FactoryComponent for ActionComponent {
     type Output = ActionComponentOutput;
     type CommandOutput = ();
     type ParentInput = super::FlowInputs;
-    type ParentWidget = gtk::ListBox;
+    type ParentWidget = gtk::Box;
 
     view! {
-        root = adw::ExpanderRow {
-            #[watch]
-            set_title: &t!("flows.action-component.label", step = self.step + 1, name = self.action.friendly_name),
-            set_subtitle: &self.action.description,
-            set_icon_name: Some(relm4_icons::icon_name::SIZE_VERTICALLY),
-            #[watch]
-            set_visible: self.visible,
+        root = adw::Bin {
+            set_margin_all: 5,
 
-            add_controller = gtk::DragSource {
-                set_actions: gtk::gdk::DragAction::MOVE,
+            #[local_ref]
+            row -> adw::PreferencesGroup {
+                #[watch]
+                set_title: &t!("flows.action-component.label", step = self.step + 1, name = self.action.friendly_name),
+                set_description: Some(&self.action.description),
+                #[watch]
+                set_visible: self.visible,
 
-                connect_prepare[index] => move |_src, _x, _y| {
-                    Some(relm4::gtk::gdk::ContentProvider::for_value(&gtk::glib::Value::from(index.clone().current_index() as u64)))
-                },
-
-                connect_drag_begin[sender] => move |_src, _drag| {
-                    sender.input(ActionComponentInput::SetVisible(false))
-                },
-
-                connect_drag_end[sender] => move |_src, _drag, delete| {
-                    if !delete {
-                        sender.input(ActionComponentInput::SetVisible(true))
-                    }
-                },
-            },
-            add_controller = gtk::DropTarget {
-
-            },
-
-            add_row = &adw::ActionRow {
-                set_title: &t!("flows.action-component.actions"),
-                add_suffix = &gtk::Box {
+                #[wrap(Some)]
+                set_header_suffix = &gtk::Box {
                     set_spacing: 5,
 
                     gtk::Button::builder().css_classes(["flat"]).build() {
@@ -108,14 +94,35 @@ impl FactoryComponent for ActionComponent {
                         },
                     },
                 },
-            },
+
+                add_controller = gtk::DragSource {
+                    set_actions: gtk::gdk::DragAction::MOVE,
+
+                    connect_prepare[index] => move |_src, _x, _y| {
+                        Some(relm4::gtk::gdk::ContentProvider::for_value(&gtk::glib::Value::from(index.clone().current_index() as u64)))
+                    },
+
+                    connect_drag_begin[sender] => move |_src, _drag| {
+                        sender.input(ActionComponentInput::SetVisible(false))
+                    },
+
+                    connect_drag_end[sender] => move |_src, _drag, delete| {
+                        if !delete {
+                            sender.input(ActionComponentInput::SetVisible(true))
+                        }
+                    },
+                },
+                add_controller = gtk::DropTarget {
+
+                },
+            }
         }
     }
 
     fn init_model(
         init: Self::Init,
         _index: &Self::Index,
-        _sender: relm4::FactorySender<Self>,
+        sender: relm4::FactorySender<Self>,
     ) -> Self {
         let ActionComponentInitialiser {
             step,
@@ -127,6 +134,10 @@ impl FactoryComponent for ActionComponent {
             config,
             action,
             visible: true,
+            variable_rows: FactoryVecDeque::new(
+                adw::PreferencesGroup::default(),
+                sender.input_sender(),
+            ),
         }
     }
 
@@ -138,36 +149,23 @@ impl FactoryComponent for ActionComponent {
         sender: relm4::FactorySender<Self>,
     ) -> Self::Widgets {
         let config = self.config.clone();
-        let widgets = view_output!();
-        for (idx, (name, kind)) in self.action.parameters.iter().enumerate() {
-            let src = &self.config.parameter_sources[&idx];
 
-            let row = adw::ActionRow::builder()
-                .title(name)
-                .subtitle(if *src == ActionParameterSource::Literal {
-                    t!(
-                        "flows.action-component.subtitle-with-value",
-                        kind = kind,
-                        source = src,
-                        value = self.config.parameter_values[&idx],
-                    )
-                } else {
-                    t!(
-                        "flows.action-component.subtitle",
-                        kind = kind,
-                        source = src
-                    )
-                })
-                .build();
-            let edit_btn = gtk::Button::builder()
-                .icon_name(relm4_icons::icon_name::EDIT)
-                .tooltip_text(t!("flows.action-component.edit-param"))
-                .css_classes(["flat"])
-                .build();
-            row.add_suffix(&edit_btn);
-            edit_btn.connect_clicked(|_| todo!("show source and literal edit dialog here"));
-            widgets.root.add_row(&row);
+        {
+            // initialise rows
+            let mut variable_rows = self.variable_rows.guard();
+            for (idx, (name, kind)) in self.action.parameters.iter().enumerate() {
+                variable_rows.push_back((
+                    idx,
+                    name.clone(),
+                    *kind,
+                    self.config.parameter_sources[&idx].clone(),
+                    self.config.parameter_values[&idx].clone(),
+                ));
+            }
         }
+
+        let row = self.variable_rows.widget();
+        let widgets = view_output!();
 
         widgets
     }
@@ -182,7 +180,80 @@ impl FactoryComponent for ActionComponent {
         match output {
             ActionComponentOutput::Remove(idx) => Some(super::FlowInputs::RemoveStep(idx)),
             ActionComponentOutput::Cut(idx) => Some(super::FlowInputs::CutStep(idx)),
-            ActionComponentOutput::Paste(idx, step) => Some(super::FlowInputs::PasteStep(idx, step)),
+            ActionComponentOutput::Paste(idx, step) => {
+                Some(super::FlowInputs::PasteStep(idx, step))
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+struct VariableRow {
+    name: String,
+    kind: ParameterKind,
+    source: ActionParameterSource,
+    value: ParameterValue,
+}
+
+#[derive(Debug)]
+enum VariableRowInput {}
+
+#[derive(Debug)]
+enum VariableRowOutput {}
+
+#[relm4::factory]
+impl FactoryComponent for VariableRow {
+    type Init = (
+        usize,
+        String,
+        ParameterKind,
+        ActionParameterSource,
+        ParameterValue,
+    );
+    type Input = VariableRowInput;
+    type Output = VariableRowOutput;
+    type CommandOutput = ();
+    type ParentWidget = adw::PreferencesGroup;
+    type ParentInput = ActionComponentInput;
+
+    view! {
+        adw::ActionRow {
+            set_title: &self.name,
+            #[watch]
+            set_subtitle: &if self.source == ActionParameterSource::Literal {
+                t!(
+                    "flows.action-component.subtitle-with-value",
+                    kind = self.kind,
+                    source = self.source,
+                    value = self.value,
+                )
+            } else {
+                t!(
+                    "flows.action-component.subtitle",
+                    kind = self.kind,
+                    source = self.source,
+                )
+            },
+
+            add_suffix = &gtk::MenuButton {
+                set_icon_name: relm4_icons::icon_name::EDIT,
+                set_tooltip_text: Some(&t!("flows.action-component.edit-param")),
+                set_css_classes: &["flat"],
+                set_direction: gtk::ArrowType::Left,
+            }
+        }
+    }
+
+    fn init_model(
+        init: Self::Init,
+        _index: &Self::Index,
+        _sender: relm4::FactorySender<Self>,
+    ) -> Self {
+        Self {
+            name: init.1,
+            kind: init.2,
+            source: init.3,
+            value: init.4,
         }
     }
 }
