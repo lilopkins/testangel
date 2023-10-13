@@ -29,6 +29,15 @@ action-changed-message = "The parameters in steps %{steps} have changed so it ha
 save-before = "Save this Flow?"
 save-before-message = "This flow has been modified since it was last saved. Would you like to save it before continuing?"
 
+[flows.execution]
+running = "Flow running..."
+failed = "Failed to execute flow"
+failed-message = "Flow failed at step %{step}: %{reason}"
+report-failed = "Failed to produce report"
+report-failed-message = "Failed to produce: %{reason}"
+save-title = "Save evidence..."
+pdf-files = "PDF files"
+
 [flows.save-or-open-flow-error]
 io-error = "I/O error: %{error}"
 parsing-error = "The flow file is corrupted: %{error}"

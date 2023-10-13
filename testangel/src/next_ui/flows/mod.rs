@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf, rc::Rc, sync::Arc};
 use adw::prelude::*;
 use relm4::{
     adw, factory::FactoryVecDeque, gtk, Component, ComponentController, ComponentParts,
-    ComponentSender, Controller, RelmWidgetExt, SimpleComponent, prelude::DynamicIndex, actions::RelmActionGroup,
+    ComponentSender, Controller, RelmWidgetExt, prelude::DynamicIndex, component::Connector,
 };
 use rust_i18n::t;
 use testangel::{
@@ -14,6 +14,7 @@ use testangel::{
 
 mod action_component;
 pub mod header;
+mod execution_dialog;
 
 pub enum SaveOrOpenFlowError {
     IoError(std::io::Error),
@@ -84,6 +85,8 @@ pub enum FlowInputs {
     /// Insert a step at the specified index and set references back to the correct step.
     /// This refreshes the UI.
     PasteStep(usize, ActionConfiguration),
+    /// Start the flow exection
+    RunFlow,
 }
 
 #[derive(Debug)]
@@ -98,6 +101,7 @@ pub struct FlowsModel {
     live_actions_list: FactoryVecDeque<action_component::ActionComponent>,
     toast_target: adw::ToastOverlay,
 
+    execution_dialog: Option<Connector<execution_dialog::ExecutionDialog>>,
     open_dialog: gtk::FileChooserDialog,
     save_dialog: gtk::FileChooserDialog,
 }
@@ -245,7 +249,7 @@ impl FlowsModel {
 }
 
 #[relm4::component(pub)]
-impl SimpleComponent for FlowsModel {
+impl Component for FlowsModel {
     type Init = (
         gtk::FileChooserDialog, // A file chooser transient for the parent window
         gtk::FileChooserDialog, // A file chooser transient for the parent window
@@ -254,6 +258,7 @@ impl SimpleComponent for FlowsModel {
     );
     type Input = FlowInputs;
     type Output = ();
+    type CommandOutput = ();
 
     view! {
         #[root]
@@ -330,7 +335,7 @@ impl SimpleComponent for FlowsModel {
                 header::FlowsHeaderOutput::SaveFlow => FlowInputs::SaveFlow,
                 header::FlowsHeaderOutput::SaveAsFlow => FlowInputs::SaveAsFlow,
                 header::FlowsHeaderOutput::CloseFlow => FlowInputs::CloseFlow,
-                header::FlowsHeaderOutput::RunFlow => FlowInputs::NoOp,
+                header::FlowsHeaderOutput::RunFlow => FlowInputs::RunFlow,
                 header::FlowsHeaderOutput::AddStep(step) => FlowInputs::AddStep(step),
             },
         ));
@@ -344,6 +349,7 @@ impl SimpleComponent for FlowsModel {
             needs_saving: false,
             open_dialog: init.0,
             save_dialog: init.1,
+            execution_dialog: None,
             header,
             live_actions_list: FactoryVecDeque::new(
                 gtk::ListBox::builder().css_classes(["boxed-list"]).build(),
@@ -363,7 +369,7 @@ impl SimpleComponent for FlowsModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, root: &Self::Root) {
         match message {
             FlowInputs::NoOp => (),
             FlowInputs::ActionsMapChanged(new_map) => {
@@ -444,6 +450,22 @@ impl SimpleComponent for FlowsModel {
             }
             FlowInputs::_CloseFlow => {
                 self.close_flow();
+            }
+
+            FlowInputs::RunFlow => {
+                if let Some(flow) = &self.open_flow {
+                    let e_dialog = execution_dialog::ExecutionDialog::builder()
+                        .transient_for(root)
+                        .launch(execution_dialog::ExecutionDialogInit {
+                            flow: flow.clone(),
+                            engine_list: self.engine_list.clone(),
+                            action_map: self.action_map.clone(),
+                        });
+                    let dialog = e_dialog.widget();
+                    dialog.set_modal(true);
+                    dialog.show();
+                    self.execution_dialog = Some(e_dialog);
+                }
             }
 
             FlowInputs::AddStep(step_id) => {
