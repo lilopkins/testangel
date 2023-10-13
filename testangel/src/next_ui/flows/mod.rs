@@ -231,9 +231,14 @@ impl FlowsModel {
     ) {
         if always_ask_where || self.open_path.is_none() {
             // Ask where
+            let filter = gtk::FileFilter::new();
+            filter.set_name(Some(&t!("flows.filetype")));
+            filter.add_suffix("taflow");
+
             let dialog = gtk::FileChooserDialog::builder()
                 .transient_for(transient_for)
                 .title(t!("flows.save"))
+                .filter(&filter)
                 .action(gtk::FileChooserAction::Save)
                 .modal(true)
                 .build();
