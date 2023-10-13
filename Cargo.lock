@@ -4511,6 +4511,7 @@ dependencies = [
  "rust-i18n",
  "semver 1.0.19",
  "serde",
+ "sys-locale",
  "testangel-ipc",
  "thiserror",
  "uuid",

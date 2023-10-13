@@ -31,7 +31,29 @@ fn main() {
 
     #[cfg(feature = "next-ui")]
     {
-        // TODO Set language for i18n
+        log::info!("Deciding on locale...");
+        let avail_locales = rust_i18n::available_locales!();
+        let mut locale_is_default = true;
+        for locale in sys_locale::get_locales() {
+            log::info!("System offers locale: {locale}");
+            if avail_locales.contains(&locale.as_ref()) {
+                log::info!("This locale is available! Using: {locale}");
+                rust_i18n::set_locale(&locale);
+                locale_is_default = false;
+                break;
+            } else if let Some(lang_only) = &locale.split("-").next() {
+                if avail_locales.contains(lang_only) {
+                    log::info!("This language is available! Using: {lang_only}");
+                    rust_i18n::set_locale(&locale);
+                    locale_is_default = false;
+                    break;
+                }
+            }
+        }
+        if locale_is_default {
+            log::info!("No suitable locale found, using default.");
+        }
+
         next_ui::initialise_ui();
     }
     #[cfg(feature = "ui")]
