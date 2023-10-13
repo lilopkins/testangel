@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest
     permissions: write-all
 
     steps:
@@ -28,6 +30,8 @@ jobs:
       - name: Build
         run: |
           # Build
+          cargo build -p testangel --bin testangel --release --no-default-features --features next-ui
+          mv target/release/testangel target/release/testangel-new-ui
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-arithmetic --release
@@ -41,6 +45,7 @@ jobs:
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
+          cp target/release/testangel-new-ui build/
           cp target/release/testangel-executor build/
           # Prepare engines
           mkdir -p build/engines || exit 1
@@ -76,6 +81,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
 
+      - name: Restore GTK4
+        id: cache-gtk4
+        uses: actions/cache/restore@v3
+        with:
+          key: windows-gtk4
+          path: |
+            C:\gtk-build
+
+      - name: Move git binary
+        run: |
+          Move-Item "C:\Program Files\Git\usr\bin" "C:\Program Files\Git\usr\notbin"
+          Move-Item "C:\Program Files\Git\bin" "C:\Program Files\Git\notbin"
+
+      - name: Build GTK4
+        run: |
+          python -m pip install --user pipx
+          python -m pipx ensurepath
+          pipx install gvsbuild
+          gvsbuild build gtk4 libadwaita --ninja-opts -j2
+
+      - name: Restore git binary
+        run: |
+          Move-Item "C:\Program Files\Git\usr\notbin" "C:\Program Files\Git\usr\bin"
+          Move-Item "C:\Program Files\Git\notbin" "C:\Program Files\Git\bin"
+
+      - name: Save GTK4
+        uses: actions/cache/save@v3
+        with:
+          key: ${{ steps.cache-gtk4.outputs.cache-primary-key }}
+          path: |
+            C:\gtk-build
+
       - name: Install latest rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -85,6 +122,8 @@ jobs:
 
       - name: Build
         run: |
+          cargo build -p testangel --bin testangel --release --no-default-features --features next-ui
+          move target/release/testangel.exe target/release/testangel-new-ui.exe
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-arithmetic --release
@@ -97,6 +136,7 @@ jobs:
           cargo build -p testangel-user-interaction --release
           mkdir build
           copy target/release/testangel.exe build/
+          copy target/release/testangel-new-ui.exe build/
           cargo build -p testangel --bin testangel --release --features windows-keep-console-window
           copy target/release/testangel.exe build/testangel-dbg.exe
           copy target/release/testangel-executor.exe build/
@@ -141,9 +181,14 @@ jobs:
           default: true
           override: true
 
+      - name: Install dependencies
+        run: brew install gtk4 libadwaita
+
       - name: Build for mac
         run: |
           # Build
+          cargo build -p testangel --bin testangel --release --no-default-features --features next-ui
+          mv target/release/testangel target/release/testangel-new-ui
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-arithmetic --release
@@ -157,6 +202,7 @@ jobs:
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
+          cp target/release/testangel-new-ui build/
           cp target/release/testangel-executor build/
           # Prepare engines
           mkdir -p build/engines || exit 1
