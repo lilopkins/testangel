@@ -79,10 +79,9 @@ impl FactoryComponent for ActionComponent {
                 add_suffix = &gtk::Box {
                     set_spacing: 5,
 
-                    // TODO Replace with drag and drop
                     gtk::Button::builder().css_classes(["flat"]).build() {
                         set_icon_name: relm4_icons::icon_name::UP,
-                        set_tooltip: "Move Up",
+                        set_tooltip: &t!("flows.move-up"),
 
                         connect_clicked[sender, index, config] => move |_| {
                             if index.clone().current_index() != 0 {
@@ -93,7 +92,7 @@ impl FactoryComponent for ActionComponent {
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
                         set_icon_name: relm4_icons::icon_name::DOWN,
-                        set_tooltip: "Move Down",
+                        set_tooltip: &t!("flows.move-down"),
 
                         connect_clicked[sender, index, config] => move |_| {
                             sender.output(ActionComponentOutput::Cut(index.clone()));
