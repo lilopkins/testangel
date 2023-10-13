@@ -3,7 +3,7 @@ use std::rc::Rc;
 use gtk::prelude::*;
 use relm4::{
     adw, gtk, ComponentController, ComponentParts, ComponentSender, Controller,
-    RelmIterChildrenExt, SimpleComponent,
+    Component, RelmIterChildrenExt,
 };
 
 use super::flows::header::FlowsHeader;
@@ -15,52 +15,40 @@ pub enum HeaderBarInput {
 
 #[derive(Debug)]
 pub struct HeaderBarModel {
-    start_box: gtk::Box,
-    end_box: gtk::Box,
     flow_header_rc: Rc<Controller<FlowsHeader>>,
 }
 
 impl HeaderBarModel {
-    fn change_start_box(&mut self, new_box: &gtk::Box) {
-        for child in self.start_box.iter_children() {
-            self.start_box.remove(&child);
+    fn swap_content(&mut self, swap_target: &gtk::Box, new_content: &gtk::Box) {
+        for child in swap_target.iter_children() {
+            swap_target.remove(&child);
         }
-        self.start_box.append(new_box);
-    }
-
-    fn change_end_box(&mut self, new_box: &gtk::Box) {
-        for child in self.end_box.iter_children() {
-            self.end_box.remove(&child);
-        }
-        self.end_box.append(new_box);
+        swap_target.append(new_content);
     }
 }
 
 #[relm4::component(pub)]
-impl SimpleComponent for HeaderBarModel {
+impl Component for HeaderBarModel {
     type Init = (Rc<Controller<FlowsHeader>>, Rc<adw::ViewStack>);
     type Input = HeaderBarInput;
     type Output = ();
+    type CommandOutput = ();
 
     view! {
         #[root]
         adw::HeaderBar {
-            #[local_ref]
-            pack_start = start_box -> gtk::Box,
+            #[name = "start_box"]
+            pack_start = &gtk::Box,
 
             #[wrap(Some)]
             set_title_widget = &adw::ViewSwitcher {
                 #[local_ref]
                 #[wrap(Some)]
                 set_stack = stack -> adw::ViewStack,
-
-                connect_stack_notify => |_| {
-                    log::debug!("SIGNAL!");
-                },
             },
 
-            #[local_ref]
-            pack_end = end_box -> gtk::Box,
+            #[name = "end_box"]
+            pack_end = &gtk::Box,
         }
     }
 
@@ -71,28 +59,30 @@ impl SimpleComponent for HeaderBarModel {
     ) -> ComponentParts<Self> {
         let model = HeaderBarModel {
             flow_header_rc: init.0,
-            start_box: gtk::Box::new(gtk::Orientation::Horizontal, 0),
-            end_box: gtk::Box::new(gtk::Orientation::Horizontal, 0),
         };
 
         let stack = &*init.1;
-        let start_box = &model.start_box;
-        let end_box = &model.end_box;
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: ComponentSender<Self>) {
+    fn update_with_view(
+        &mut self,
+        widgets: &mut Self::Widgets,
+        message: Self::Input,
+        _sender: ComponentSender<Self>,
+        _root: &Self::Root,
+    ) {
         match message {
             HeaderBarInput::ChangedView(new_view) => {
                 if new_view == "flows" {
                     let rc_clone = self.flow_header_rc.clone();
-                    self.change_start_box(&rc_clone.widgets().start);
-                    self.change_end_box(&rc_clone.widgets().end);
+                    self.swap_content(&widgets.start_box, &rc_clone.widgets().start);
+                    self.swap_content(&widgets.end_box, &rc_clone.widgets().end);
                 } else {
-                    self.change_start_box(&gtk::Box::builder().build());
-                    self.change_end_box(&gtk::Box::builder().build());
+                    self.swap_content(&widgets.start_box, &gtk::Box::builder().build());
+                    self.swap_content(&widgets.end_box, &gtk::Box::builder().build());
                 }
             }
         }
