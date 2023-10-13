@@ -3,7 +3,7 @@ use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc};
 use crate::ipc::EngineList;
 use crate::types::{Action, VersionedFile};
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ActionMap(HashMap<PathBuf, Action>);
 
 impl ActionMap {
