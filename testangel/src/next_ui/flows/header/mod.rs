@@ -15,6 +15,7 @@ mod add_step_factory;
 pub struct FlowsHeader {
     action_map: Arc<ActionMap>,
     add_button: gtk::MenuButton,
+    flow_open: bool,
     search_results: FactoryVecDeque<add_step_factory::StepSearchResult>,
 }
 
@@ -37,6 +38,8 @@ pub enum FlowsHeaderInput {
     AddStep(String),
     /// Trigger a search for the steps provided
     SearchForSteps(String),
+    /// Inform the header bar if a flow is open or not.
+    ChangeFlowOpen(bool),
 }
 
 #[relm4::component(pub)]
@@ -87,6 +90,8 @@ impl SimpleComponent for FlowsHeader {
             gtk::Button {
                 set_icon_name: relm4_icons::icon_name::PLAY,
                 set_tooltip: &t!("flows.header.run"),
+                #[watch]
+                set_sensitive: model.flow_open,
                 connect_clicked[sender] => move |_| {
                     // unwrap rationale: receivers will never be dropped
                     sender.output(FlowsHeaderOutput::RunFlow).unwrap();
@@ -131,6 +136,7 @@ impl SimpleComponent for FlowsHeader {
     ) -> ComponentParts<Self> {
         let model = FlowsHeader {
             action_map: init,
+            flow_open: false,
             add_button: gtk::MenuButton::default(),
             search_results: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
         };
@@ -196,6 +202,9 @@ impl SimpleComponent for FlowsHeader {
 
     fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
         match message {
+            FlowsHeaderInput::ChangeFlowOpen(now) => {
+                self.flow_open = now;
+            }
             FlowsHeaderInput::OpenAboutDialog => {
                 crate::next_ui::about::AppAbout::builder()
                     // TODO .transient_for()

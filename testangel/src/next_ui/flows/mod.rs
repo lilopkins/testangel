@@ -145,6 +145,7 @@ impl FlowsModel {
         self.open_path = None;
         self.needs_saving = true;
         self.open_flow = Some(AutomationFlow::default());
+        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(self.open_flow.is_some()));
     }
 
     /// Open a flow. This does not ask to save first.
@@ -180,6 +181,7 @@ impl FlowsModel {
             }
         }
         self.open_flow = Some(flow);
+        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(self.open_flow.is_some()));
         self.open_path = Some(file);
         self.needs_saving = false;
         log::debug!("New flow open.");
@@ -245,6 +247,7 @@ impl FlowsModel {
         self.open_flow = None;
         self.open_path = None;
         self.needs_saving = false;
+        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(self.open_flow.is_some()));
     }
 }
 
