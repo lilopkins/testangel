@@ -95,12 +95,6 @@ impl SimpleComponent for AppModel {
         // Initialise the sub-components (pages)
         let flows = flows::FlowsModel::builder()
             .launch((
-                gtk::FileChooserDialog::builder()
-                    .transient_for(root)
-                    .build(),
-                gtk::FileChooserDialog::builder()
-                    .transient_for(root)
-                    .build(),
                 init.actions.clone(),
                 init.engines.clone(),
             ))

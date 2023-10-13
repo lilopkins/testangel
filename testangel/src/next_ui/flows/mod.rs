@@ -59,7 +59,7 @@ pub enum FlowInputs {
     /// Actually show the user the open file dialog
     _OpenFlow,
     /// Actually open a flow after the user has finished selecting
-    __OpenFlow,
+    __OpenFlow(PathBuf),
     /// Save the flow, prompting if needed to set file path
     SaveFlow,
     /// Save the flow as a new file, always prompting for a file path
@@ -67,7 +67,7 @@ pub enum FlowInputs {
     /// Ask where to save if needed, then save
     _SaveFlowThen(Box<FlowInputs>),
     /// Actually write the flow to disk, then emit then input
-    __SaveFlowThen(Box<FlowInputs>),
+    __SaveFlowThen(PathBuf, Box<FlowInputs>),
     /// Close the flow, prompting if needing to save first
     CloseFlow,
     /// Actually close the flow
@@ -99,11 +99,8 @@ pub struct FlowsModel {
     needs_saving: bool,
     header: Rc<Controller<header::FlowsHeader>>,
     live_actions_list: FactoryVecDeque<action_component::ActionComponent>,
-    toast_target: adw::ToastOverlay,
 
     execution_dialog: Option<Connector<execution_dialog::ExecutionDialog>>,
-    open_dialog: gtk::FileChooserDialog,
-    save_dialog: gtk::FileChooserDialog,
 }
 
 impl FlowsModel {
@@ -221,12 +218,30 @@ impl FlowsModel {
     fn ask_where_to_save(
         &mut self,
         sender: &relm4::Sender<FlowInputs>,
+        transient_for: &impl IsA<gtk::Window>,
         always_ask_where: bool,
         then: FlowInputs,
     ) {
         if always_ask_where || self.open_path.is_none() {
             // Ask where
-            self.save_dialog.show();
+            let dialog = gtk::FileChooserDialog::builder()
+                    .transient_for(transient_for)
+                    .title(t!("flows.save"))
+                    .action(gtk::FileChooserAction::Save)
+                    .modal(true)
+                    .build();
+                dialog.add_button(&t!("save"), gtk::ResponseType::Ok);
+                let sender_c = sender.clone();
+                dialog.connect_response(move |dlg, response| {
+                    if response == gtk::ResponseType::Ok {
+                        if let Some(path) = dlg.file() {
+                            let path = path.path().unwrap();
+                            sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
+                        }
+                        dlg.close();
+                    }
+                });
+                dialog.show();
         } else {
             sender.emit(FlowInputs::_SaveFlowThen(Box::new(then)));
         }
@@ -254,8 +269,6 @@ impl FlowsModel {
 #[relm4::component(pub)]
 impl Component for FlowsModel {
     type Init = (
-        gtk::FileChooserDialog, // A file chooser transient for the parent window
-        gtk::FileChooserDialog, // A file chooser transient for the parent window
         Arc<ActionMap>,
         Arc<EngineList>,
     );
@@ -265,62 +278,31 @@ impl Component for FlowsModel {
 
     view! {
         #[root]
-        root = adw::Bin {
-            #[local_ref]
-            toast_target -> adw::ToastOverlay {
-                gtk::ScrolledWindow {
-                    set_vexpand: true,
-                    set_hscrollbar_policy: gtk::PolicyType::Never,
+        toast_target = adw::ToastOverlay {
+            gtk::ScrolledWindow {
+                set_vexpand: true,
+                set_hscrollbar_policy: gtk::PolicyType::Never,
 
-                    gtk::Box {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_margin_all: 5,
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_margin_all: 5,
 
-                        gtk::Label {
-                            set_label: "Drag-and-drop is not yet implemented to reorder steps.",
-                        },
-
-                        adw::StatusPage {
-                            set_title: &t!("flows.nothing-open"),
-                            set_description: Some(&t!("flows.nothing-open-description")),
-                            set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
-                            #[watch]
-                            set_visible: model.open_flow.is_none(),
-                            set_vexpand: true,
-                        },
-
-                        #[local_ref]
-                        live_actions_list -> gtk::ListBox { },
+                    gtk::Label {
+                        set_label: "Drag-and-drop is not yet implemented to reorder steps.",
                     },
+
+                    adw::StatusPage {
+                        set_title: &t!("flows.nothing-open"),
+                        set_description: Some(&t!("flows.nothing-open-description")),
+                        set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
+                        #[watch]
+                        set_visible: model.open_flow.is_none(),
+                        set_vexpand: true,
+                    },
+
+                    #[local_ref]
+                    live_actions_list -> gtk::ListBox { },
                 },
-            },
-        },
-
-        #[local_ref]
-        open_dialog -> gtk::FileChooserDialog {
-            set_title: Some(&t!("flows.open")),
-            set_action: gtk::FileChooserAction::Open,
-            set_modal: true,
-            add_button[gtk::ResponseType::Ok]: &t!("open"),
-
-            connect_response[sender] => move |_, response| {
-                if response == gtk::ResponseType::Ok {
-                    sender.input(FlowInputs::__OpenFlow);
-                }
-            },
-        },
-
-        #[local_ref]
-        save_dialog -> gtk::FileChooserDialog {
-            set_title: Some(&t!("flows.save")),
-            set_action: gtk::FileChooserAction::Save,
-            set_modal: true,
-            add_button[gtk::ResponseType::Ok]: &t!("save"),
-
-            connect_response[sender] => move |_, response| {
-                if response == gtk::ResponseType::Ok {
-                    sender.input(FlowInputs::_SaveFlowThen(Box::new(FlowInputs::NoOp)));
-                }
             },
         },
     }
@@ -330,7 +312,7 @@ impl Component for FlowsModel {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let header = Rc::new(header::FlowsHeader::builder().launch(init.2.clone()).forward(
+        let header = Rc::new(header::FlowsHeader::builder().launch(init.0.clone()).forward(
             sender.input_sender(),
             |msg| match msg {
                 header::FlowsHeaderOutput::NewFlow => FlowInputs::NewFlow,
@@ -344,14 +326,11 @@ impl Component for FlowsModel {
         ));
 
         let model = FlowsModel {
-            action_map: init.2,
-            engine_list: init.3,
-            toast_target: adw::ToastOverlay::default(),
+            action_map: init.0,
+            engine_list: init.1,
             open_flow: None,
             open_path: None,
             needs_saving: false,
-            open_dialog: init.0,
-            save_dialog: init.1,
             execution_dialog: None,
             header,
             live_actions_list: FactoryVecDeque::new(
@@ -364,15 +343,18 @@ impl Component for FlowsModel {
         sender.input(FlowInputs::UpdateStepsFromModel);
 
         let live_actions_list = model.live_actions_list.widget();
-        let toast_target = &model.toast_target;
-        let open_dialog = &model.open_dialog;
-        let save_dialog = &model.save_dialog;
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, root: &Self::Root) {
+    fn update_with_view(
+        &mut self,
+        widgets: &mut Self::Widgets,
+        message: Self::Input,
+        sender: ComponentSender<Self>,
+        root: &Self::Root,
+    ) {
         match message {
             FlowInputs::NoOp => (),
             FlowInputs::ActionsMapChanged(new_map) => {
@@ -389,62 +371,78 @@ impl Component for FlowsModel {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_OpenFlow);
             }
             FlowInputs::_OpenFlow => {
-                self.open_dialog.show();
-            }
-            FlowInputs::__OpenFlow => {
-                self.open_dialog.hide();
-
-                if let Some(file) = self.open_dialog.file() {
-                    if let Some(path) = file.path() {
-                        match self.open_flow(path) {
-                            Ok(changes) => {
-                                // Reload UI
-                                sender.input(FlowInputs::UpdateStepsFromModel);
-
-                                if !changes.is_empty() {
-                                    let changed_steps = changes
-                                        .iter()
-                                        .map(|step| step.to_string())
-                                        .collect::<Vec<_>>()
-                                        .join(",");
-                                    self.create_message_dialog(
-                                        t!("flows.action-changed"),
-                                        t!("flows.action-changed-message", steps = changed_steps),
-                                    )
-                                    .show();
-                                }
-                            }
-                            Err(e) => {
-                                // Show error dialog
-                                self.create_message_dialog(
-                                    t!("flows.error-opening"),
-                                    e.to_string(),
-                                )
-                                .show();
-                            }
+                let dialog = gtk::FileChooserDialog::builder()
+                    // unwrap rationale: this cannot be triggered if not attached to a window
+                    .transient_for(&root.toplevel_window().unwrap())
+                    .title(t!("flows.open"))
+                    .action(gtk::FileChooserAction::Open)
+                    .modal(true)
+                    .build();
+                dialog.add_button(&t!("open"), gtk::ResponseType::Ok);
+                let sender_c = sender.clone();
+                dialog.connect_response(move |dlg, response| {
+                    if response == gtk::ResponseType::Ok {
+                        if let Some(path) = dlg.file() {
+                            let path = path.path().unwrap();
+                            sender_c.input(FlowInputs::__OpenFlow(path));
                         }
+                        dlg.close();
+                    }
+                });
+                dialog.show();
+            }
+            FlowInputs::__OpenFlow(path) => {
+                match self.open_flow(path) {
+                    Ok(changes) => {
+                        // Reload UI
+                        sender.input(FlowInputs::UpdateStepsFromModel);
+
+                        if !changes.is_empty() {
+                            let changed_steps = changes
+                                .iter()
+                                .map(|step| step.to_string())
+                                .collect::<Vec<_>>()
+                                .join(",");
+                            self.create_message_dialog(
+                                t!("flows.action-changed"),
+                                t!("flows.action-changed-message", steps = changed_steps),
+                            )
+                            .show();
+                        }
+                    }
+                    Err(e) => {
+                        // Show error dialog
+                        self.create_message_dialog(
+                            t!("flows.error-opening"),
+                            e.to_string(),
+                        )
+                        .show();
                     }
                 }
             }
             FlowInputs::SaveFlow => {
                 if self.open_flow.is_some() {
-                    self.ask_where_to_save(sender.input_sender(), false, FlowInputs::NoOp);
+                    // unwrap rationale: this cannot be triggered if not attached to a window
+                    self.ask_where_to_save(sender.input_sender(), &root.toplevel_window().unwrap(), false, FlowInputs::NoOp);
                 }
             }
             FlowInputs::SaveAsFlow => {
                 if self.open_flow.is_some() {
-                    self.ask_where_to_save(sender.input_sender(), true, FlowInputs::NoOp);
+                    // unwrap rationale: this cannot be triggered if not attached to a window
+                    self.ask_where_to_save(sender.input_sender(), &root.toplevel_window().unwrap(), true, FlowInputs::NoOp);
                 }
             }
             FlowInputs::_SaveFlowThen(then) => {
-                self.ask_where_to_save(sender.input_sender(), false, *then);
+                // unwrap rationale: this cannot be triggered if not attached to a window
+                self.ask_where_to_save(sender.input_sender(), &root.toplevel_window().unwrap(), false, *then);
             }
-            FlowInputs::__SaveFlowThen(then) => {
+            FlowInputs::__SaveFlowThen(path, then) => {
+                self.open_path = Some(path);
                 if let Err(e) = self.save_flow() {
                     self.create_message_dialog(t!("flows.error-saving"), e.to_string())
                         .show();
                 } else {
-                    self.toast_target.add_toast(adw::Toast::new(&t!("flows.saved")));
+                    widgets.toast_target.add_toast(adw::Toast::new(&t!("flows.saved")));
                     sender.input_sender().emit(*then);
                 }
             }
