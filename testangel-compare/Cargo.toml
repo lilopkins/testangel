@@ -2,7 +2,7 @@
 name = "testangel-compare"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "A comparison engine plugin for testangel."
-version = "0.15.2"
+version = "0.16.0"
 edition = "2021"
 
 [lib]
