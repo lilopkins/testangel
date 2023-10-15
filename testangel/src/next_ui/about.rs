@@ -13,6 +13,7 @@ impl SimpleComponent for AppAbout {
         #[root]
         #[name = "about"]
         adw::AboutWindow {
+            set_application_icon: "testangel",
             set_application_name: &t!("name"),
             set_version: env!("CARGO_PKG_VERSION"),
             set_issue_url: &support_url,
