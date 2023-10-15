@@ -142,6 +142,7 @@ jobs:
           cargo build -p testangel --bin testangel --release --features windows-keep-console-window
           copy target/release/testangel.exe build/testangel-dbg.exe
           copy target/release/testangel-executor.exe build/
+          copy C:\gtk-build\gtk\x64\release\bin\*.dll build/
           mkdir build/engines
           copy target/release/testangel_arithmetic.dll build/engines/
           copy target/release/testangel_compare.dll build/engines/
