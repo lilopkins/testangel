@@ -233,7 +233,7 @@ impl FlowEditor {
                     .set_buttons(rfd::MessageButtons::YesNo)
                     .show(),
                 |wants_to_save| {
-                    if wants_to_save {
+                    if wants_to_save == rfd::MessageDialogResult::Yes {
                         super::AppMessage::FlowEditor(FlowEditorMessage::SaveFlow(then))
                     } else {
                         super::AppMessage::FlowEditor(FlowEditorMessage::DoPostSaveActions(then))

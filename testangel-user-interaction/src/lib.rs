@@ -51,7 +51,7 @@ lazy_static! {
                         .set_buttons(rfd::MessageButtons::YesNo)
                         .set_title("Question")
                         .set_description(&message)
-                        .show(),
+                        .show() == rfd::MessageDialogResult::Yes,
                 ),
             );
             Ok(())
@@ -66,12 +66,12 @@ lazy_static! {
         |_state, params, _output, _evidence| {
             let message = params["message"].value_string();
 
-            if !rfd::MessageDialog::new()
+            if rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Info)
                 .set_buttons(rfd::MessageButtons::YesNo)
                 .set_title("Continue flow?")
                 .set_description(&message)
-                .show()
+                .show() == rfd::MessageDialogResult::No
             {
                 return Err(FlowTermination::UserTerminated.into());
             }

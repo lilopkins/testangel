@@ -236,7 +236,7 @@ impl ActionEditor {
                     .set_buttons(rfd::MessageButtons::YesNo)
                     .show(),
                 |wants_to_save| {
-                    if wants_to_save {
+                    if wants_to_save == rfd::MessageDialogResult::Yes {
                         super::AppMessage::ActionEditor(ActionEditorMessage::SaveAction(then))
                     } else {
                         super::AppMessage::ActionEditor(ActionEditorMessage::DoPostSaveActions(
