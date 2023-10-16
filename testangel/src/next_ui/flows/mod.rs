@@ -215,7 +215,7 @@ impl FlowsModel {
             question.connect_response(Some("discard"), move |_, _| {
                 sender_c.emit(then.clone());
             });
-            question.show();
+            question.set_visible(true);
         } else {
             sender.emit(then);
         }
@@ -235,25 +235,20 @@ impl FlowsModel {
             filter.set_name(Some(&t!("flows.filetype")));
             filter.add_suffix("taflow");
 
-            let dialog = gtk::FileChooserDialog::builder()
-                .transient_for(transient_for)
-                .title(t!("flows.save"))
-                .filter(&filter)
-                .action(gtk::FileChooserAction::Save)
-                .modal(true)
-                .build();
-            dialog.add_button(&t!("save"), gtk::ResponseType::Ok);
+            let dialog = gtk::FileDialog::builder()
+                    .modal(true)
+                    .title(t!("flows.save"))
+                    .initial_folder(&gtk::gio::File::for_path(std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string())))
+                    .default_filter(&filter)
+                    .build();
+
             let sender_c = sender.clone();
-            dialog.connect_response(move |dlg, response| {
-                if response == gtk::ResponseType::Ok {
-                    if let Some(path) = dlg.file() {
-                        let path = path.path().unwrap();
-                        sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
-                    }
-                    dlg.close();
+            dialog.save(Some(transient_for), Some(&relm4::gtk::gio::Cancellable::new()), move |res| {
+                if let Ok(file) = res {
+                    let path = file.path().unwrap();
+                    sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
                 }
             });
-            dialog.show();
         } else {
             sender.emit(FlowInputs::_SaveFlowThen(Box::new(then)));
         }
@@ -394,26 +389,20 @@ impl Component for FlowsModel {
                 filter.set_name(Some(&t!("flows.filetype")));
                 filter.add_suffix("taflow");
 
-                let dialog = gtk::FileChooserDialog::builder()
-                    // unwrap rationale: this cannot be triggered if not attached to a window
-                    .transient_for(&root.toplevel_window().unwrap())
-                    .title(t!("flows.open"))
-                    .filter(&filter)
-                    .action(gtk::FileChooserAction::Open)
+                let dialog = gtk::FileDialog::builder()
                     .modal(true)
+                    .title(t!("flows.open"))
+                    .default_filter(&filter)
+                    .initial_folder(&gtk::gio::File::for_path(std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string())))
                     .build();
-                dialog.add_button(&t!("open"), gtk::ResponseType::Ok);
+
                 let sender_c = sender.clone();
-                dialog.connect_response(move |dlg, response| {
-                    if response == gtk::ResponseType::Ok {
-                        if let Some(path) = dlg.file() {
-                            let path = path.path().unwrap();
-                            sender_c.input(FlowInputs::__OpenFlow(path));
-                        }
-                        dlg.close();
+                dialog.open(Some(&root.toplevel_window().unwrap()), Some(&relm4::gtk::gio::Cancellable::new()), move |res| {
+                    if let Ok(file) = res {
+                        let path = file.path().unwrap();
+                        sender_c.input(FlowInputs::__OpenFlow(path));
                     }
                 });
-                dialog.show();
             }
             FlowInputs::__OpenFlow(path) => {
                 match self.open_flow(path) {
@@ -431,13 +420,13 @@ impl Component for FlowsModel {
                                 t!("flows.action-changed"),
                                 t!("flows.action-changed-message", steps = changed_steps),
                             )
-                            .show();
+                            .set_visible(true);
                         }
                     }
                     Err(e) => {
                         // Show error dialog
                         self.create_message_dialog(t!("flows.error-opening"), e.to_string())
-                            .show();
+                            .set_visible(true);
                     }
                 }
             }
@@ -476,7 +465,7 @@ impl Component for FlowsModel {
                 self.open_path = Some(path);
                 if let Err(e) = self.save_flow() {
                     self.create_message_dialog(t!("flows.error-saving"), e.to_string())
-                        .show();
+                        .set_visible(true);
                 } else {
                     widgets
                         .toast_target
@@ -502,7 +491,7 @@ impl Component for FlowsModel {
                         });
                     let dialog = e_dialog.widget();
                     dialog.set_modal(true);
-                    dialog.show();
+                    dialog.set_visible(true);
                     self.execution_dialog = Some(e_dialog);
                 }
             }
