@@ -24,7 +24,7 @@ jobs:
           override: true
 
       - name: Install dependencies
-        run: yum -y update && yum -y install atk-devel
+        run: yum -y update && yum -y install atk-devel libadwaita-devel
 
       - name: Build
         run: |
