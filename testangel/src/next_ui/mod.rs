@@ -23,10 +23,20 @@ pub fn initialise_ui() {
     log::info!("Starting Next UI...");
     let app = RelmApp::new("lilopkins.testangel");
     relm4_icons::initialize_icons();
+    initialise_icons();
 
     let engines = Arc::new(ipc::get_engines());
     let actions = Arc::new(action_loader::get_actions(engines.clone()));
     app.run::<AppModel>(AppInit { engines, actions });
+}
+
+fn initialise_icons() {
+    relm4::gtk::gio::resources_register_include!("icons.gresource").unwrap();
+    log::info!("Loaded icon bundle.");
+
+    let display = relm4::gtk::gdk::Display::default().unwrap();
+    let theme = gtk::IconTheme::for_display(&display);
+    theme.add_resource_path("/uk/hpkns/testangel/icons");
 }
 
 pub struct AppInit {
@@ -67,6 +77,7 @@ impl SimpleComponent for AppModel {
             set_title: Some(&t!("name")),
             set_default_width: 800,
             set_default_height: 600,
+            set_icon_name: Some("testangel"),
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
