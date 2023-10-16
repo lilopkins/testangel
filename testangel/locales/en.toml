@@ -41,6 +41,7 @@ report-failed = "Failed to produce report"
 report-failed-message = "Failed to produce: %{reason}"
 save-title = "Save evidence..."
 pdf-files = "PDF files"
+report-default-name = "report.pdf"
 
 [flows.save-or-open-flow-error]
 io-error = "I/O error: %{error}"

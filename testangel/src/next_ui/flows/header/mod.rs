@@ -6,7 +6,6 @@ use relm4::{
     adw,
     factory::FactoryVecDeque,
     gtk, Component, ComponentController, ComponentParts, ComponentSender, RelmWidgetExt,
-    SimpleComponent,
 };
 use rust_i18n::t;
 use testangel::action_loader::ActionMap;
@@ -45,10 +44,11 @@ pub enum FlowsHeaderInput {
 }
 
 #[relm4::component(pub)]
-impl SimpleComponent for FlowsHeader {
+impl Component for FlowsHeader {
     type Init = Arc<ActionMap>;
     type Input = FlowsHeaderInput;
     type Output = FlowsHeaderOutput;
+    type CommandOutput = ();
 
     view! {
         #[root]
@@ -203,17 +203,17 @@ impl SimpleComponent for FlowsHeader {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, root: &Self::Root) {
         match message {
             FlowsHeaderInput::ChangeFlowOpen(now) => {
                 self.flow_open = now;
             }
             FlowsHeaderInput::OpenAboutDialog => {
                 crate::next_ui::about::AppAbout::builder()
-                    // TODO .transient_for()
+                    .transient_for(root)
                     .launch(())
                     .widget()
-                    .show();
+                    .set_visible(true);
             }
             FlowsHeaderInput::ActionsMapChanged(new_map) => {
                 self.action_map = new_map;

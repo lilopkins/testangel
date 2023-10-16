@@ -149,7 +149,7 @@ impl Component for ExecutionDialog {
                     sender_c.input(ExecutionDialogInput::Close);
                     dlg.close();
                 });
-                dialog.show();
+                dialog.set_visible(true);
             }
         }
     }
@@ -170,38 +170,29 @@ impl Component for ExecutionDialog {
                 filter.add_suffix("pdf");
                 filter.add_mime_type("application/pdf");
 
-                let dialog = gtk::FileChooserDialog::builder()
-                    .transient_for(root)
+                let dialog = gtk::FileDialog::builder()
                     .modal(true)
-                    .action(gtk::FileChooserAction::Save)
-                    .create_folders(true)
                     .title(t!("flows.execution.save-title"))
-                    .filter(&filter)
+                    .initial_name(t!("flows.execution.report-default-name"))
+                    .default_filter(&filter)
                     .build();
 
-                dialog.add_button(&t!("save"), gtk::ResponseType::Ok);
-
                 let sender_c = sender.clone();
-                dialog.connect_response(move |dialog, response| {
-                    if response == gtk::ResponseType::Ok {
-                        dialog.close();
-                        if let Some(path) = dialog.file() {
-                            let path = path.path().unwrap();
-                            if let Err(e) = report_generation::save_report(
-                                path.with_extension("pdf"),
-                                evidence.clone(),
-                            ) {
-                                // Failed to generate report
-                                sender_c.input(ExecutionDialogInput::FailedToGenerateReport(e));
-                                return;
-                            } else if let Err(e) = opener::open(path.with_extension("pdf")) {
-                                log::warn!("Failed to open evidence: {e}");
-                            }
+                dialog.save(Some(root), Some(&relm4::gtk::gio::Cancellable::new()), move |res| {
+                    if let Ok(file) = res {
+                        let path = file.path().unwrap();
+                        if let Err(e) = report_generation::save_report(
+                            path.with_extension("pdf"),
+                            evidence.clone(),
+                        ) {
+                            // Failed to generate report
+                            sender_c.input(ExecutionDialogInput::FailedToGenerateReport(e));
+                            return;
+                        } else if let Err(e) = opener::open(path.with_extension("pdf")) {
+                            log::warn!("Failed to open evidence: {e}");
                         }
-                        sender_c.input(ExecutionDialogInput::Close);
                     }
                 });
-                dialog.show();
             }
 
             ExecutionDialogCommandOutput::Failed(step, reason) => {
@@ -222,7 +213,7 @@ impl Component for ExecutionDialog {
                     sender_c.input(ExecutionDialogInput::Close);
                     dlg.close();
                 });
-                dialog.show();
+                dialog.set_visible(true);
             }
         }
     }
