@@ -115,9 +115,6 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: release-linux-amd64.tar.gz
           tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
@@ -250,9 +247,6 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: release-win.zip
           tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
@@ -341,9 +335,6 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: release-darwin.tar.gz
           tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
