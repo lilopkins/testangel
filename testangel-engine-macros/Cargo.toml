@@ -2,8 +2,8 @@
 name = "testangel-engine-macros"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "Macros for testangel-engine."
-version = "0.17.1"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 proc-macro = true
