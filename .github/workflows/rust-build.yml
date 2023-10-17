@@ -2,12 +2,41 @@ name: Build Rust Applications
 
 on:
   push:
-    tags:
-      - "*"
+    branches:
+      - main
 
 jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions: write-all
+
+    outputs:
+      CARGO_PKG_VERSION: ${{ steps.version.outputs.CARGO_PKG_VERSION }}
+      CARGO_PKG_PRERELEASE: ${{ steps.version.outputs.CARGO_PKG_PRERELEASE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Determine Cargo version
+        id: version
+        run: |
+          export CARGO_PKG_VERSION=$(awk -F '["=]' '/^\[workspace.package\]/{p=1} p && /^version[[:space:]]*=/ {gsub(/"/, "", $3); print $3; p=0}' Cargo.toml)
+          export CARGO_PKG_PRERELEASE=$([[ $CARGO_PKG_VERSION =~ -[0-9A-Za-z]+ ]] && echo "true" || echo "false")
+          echo "CARGO_PKG_VERSION=${CARGO_PKG_VERSION}" >> $GITHUB_OUTPUT
+          echo "CARGO_PKG_PRERELEASE=${CARGO_PKG_PRERELEASE}" >> $GITHUB_OUTPUT
+      - name: Create Tag and Release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.CARGO_PKG_VERSION }}
+          release_name: v${{ steps.version.outputs.CARGO_PKG_VERSION }}
+          prerelease: ${{ steps.version.outputs.CARGO_PKG_PRERELEASE }}
+
   build:
     runs-on: ubuntu-latest
+    needs: create-release
     container:
       image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest
     permissions: write-all
@@ -15,6 +44,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v1
+
+      - name: Restore Cargo cache
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install latest rust toolchain
         uses: actions-rs/toolchain@v1
@@ -54,6 +94,17 @@ jobs:
           cp target/release/libtestangel_regex.so build/engines
           cp target/release/libtestangel_user_interaction.so build/engines
 
+      - name: Save Cargo cache
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
         with:
@@ -66,16 +117,28 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: release-linux-amd64.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
+          prerelease: ${{ needs.create-release.outputs.CARGO_PKG_PRERELEASE }}
 
   build-win:
     runs-on: windows-latest
+    needs: create-release
     permissions: write-all
 
     steps:
       - name: Checkout
         uses: actions/checkout@v1
+
+      - name: Restore Cargo cache
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Restore GTK4
         id: cache-gtk4
@@ -163,6 +226,17 @@ jobs:
           copy target/release/testangel_regex.dll build/engines/
           copy target/release/testangel_user_interaction.dll build/engines/
 
+      - name: Save Cargo cache
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
         with:
@@ -175,16 +249,28 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: release-win.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
+          prerelease: ${{ needs.create-release.outputs.CARGO_PKG_PRERELEASE }}
 
   build-mac:
     runs-on: macos-latest
+    needs: create-release
     permissions: write-all
 
     steps:
       - name: Checkout
         uses: actions/checkout@v1
+
+      - name: Restore Cargo cache
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install latest rust toolchain
         uses: actions-rs/toolchain@v1
@@ -228,6 +314,17 @@ jobs:
           cp target/release/libtestangel_regex.dylib build/engines
           cp target/release/libtestangel_user_interaction.dylib build/engines
 
+      - name: Save Cargo cache
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
         with:
@@ -240,5 +337,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: release-darwin.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
+          prerelease: ${{ needs.create-release.outputs.CARGO_PKG_PRERELEASE }}
