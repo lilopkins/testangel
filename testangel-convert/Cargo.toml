@@ -2,8 +2,8 @@
 name = "testangel-convert"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "A data type conversion engine plugin for testangel."
-version = "0.17.1"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 crate-type = ["cdylib"]

@@ -2,8 +2,8 @@
 name = "testangel-arithmetic"
 authors = ["Lily Hopkins <lily@hpkns.uk>"]
 description = "An arithmetic engine plugin for testangel."
-version = "0.17.1"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
