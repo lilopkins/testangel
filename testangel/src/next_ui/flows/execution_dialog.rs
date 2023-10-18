@@ -190,7 +190,6 @@ impl Component for ExecutionDialog {
                             ) {
                                 // Failed to generate report
                                 sender_c.input(ExecutionDialogInput::FailedToGenerateReport(e));
-                                return;
                             } else if let Err(e) = opener::open(path.with_extension("pdf")) {
                                 log::warn!("Failed to open evidence: {e}");
                             }
