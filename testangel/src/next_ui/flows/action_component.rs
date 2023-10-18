@@ -1,3 +1,5 @@
+use std::ffi;
+
 use adw::prelude::*;
 use relm4::{
     adw,
@@ -26,6 +28,11 @@ pub struct ActionComponent {
 
     possible_outputs: Vec<(String, ParameterKind, ActionParameterSource)>,
     variable_rows: FactoryVecDeque<VariableRow>,
+
+    /// True when a drag-and-drop operation is proposed to add a component above this one
+    drop_proposed_above: bool,
+    /// True when a drag-and-drop operation is proposed to add a component below this one
+    drop_proposed_below: bool,
 }
 
 #[derive(Debug)]
@@ -33,6 +40,7 @@ pub enum ActionComponentInput {
     SetVisible(bool),
     NewSourceFor(usize, ActionParameterSource),
     NewValueFor(usize, ParameterValue),
+    ProposedDrop { above: bool, below: bool },
 }
 
 #[derive(Debug)]
@@ -42,6 +50,8 @@ pub enum ActionComponentOutput {
     Paste(usize, ActionConfiguration),
     Remove(DynamicIndex),
     ConfigUpdate(DynamicIndex, ActionConfiguration),
+    /// (from, to, offset)
+    MoveStep(DynamicIndex, DynamicIndex, isize),
 }
 
 #[relm4::factory(pub)]
@@ -54,8 +64,16 @@ impl FactoryComponent for ActionComponent {
     type ParentWidget = gtk::Box;
 
     view! {
-        root = adw::Bin {
+        root = gtk::Box {
             set_margin_all: 5,
+            set_orientation: gtk::Orientation::Vertical,
+            set_spacing: 5,
+
+            gtk::Label {
+                set_label: &t!("drag-drop.here"),
+                #[watch]
+                set_visible: self.drop_proposed_above,
+            },
 
             #[local_ref]
             row -> adw::PreferencesGroup {
@@ -103,7 +121,8 @@ impl FactoryComponent for ActionComponent {
                     set_actions: gtk::gdk::DragAction::MOVE,
 
                     connect_prepare[index] => move |_src, _x, _y| {
-                        Some(relm4::gtk::gdk::ContentProvider::for_value(&gtk::glib::Value::from(index.clone().current_index() as u64)))
+                        let p_index = Box::into_raw(Box::new(index.clone())) as *mut ffi::c_void;
+                        Some(gtk::gdk::ContentProvider::for_value(&p_index.to_value()))
                     },
 
                     connect_drag_begin[sender] => move |_src, _drag| {
@@ -117,9 +136,64 @@ impl FactoryComponent for ActionComponent {
                     },
                 },
                 add_controller = gtk::DropTarget {
+                    set_actions: gtk::gdk::DragAction::MOVE,
+                    set_types: &[gtk::glib::Type::POINTER],
 
+                    connect_drop[sender, index] => move |drop, val, _x, y| {
+                        log::debug!("type: {}", val.type_());
+
+                        if let Ok(ptr) = val.get::<*mut ffi::c_void>() {
+                            let from = unsafe {
+                                Box::from_raw(ptr as *mut DynamicIndex)
+                            };
+                            let to = index.clone();
+
+                            let half = drop.widget().height() as f64 / 2.0;
+                            let offset = if y < half {
+                                -1
+                            } else {
+                                1
+                            };
+                            sender.output(ActionComponentOutput::MoveStep(*from, to, offset));
+                            sender.input(ActionComponentInput::ProposedDrop { above: false, below: false, });
+                            return true;
+                        }
+                        false
+                    },
+
+                    connect_enter[sender] => move |drop, _x, y| {
+                        let half = drop.widget().height() as f64 / 2.0;
+                        if y < half {
+                            // top half
+                            sender.input(ActionComponentInput::ProposedDrop { above: true, below: false, });
+                        } else {
+                            // bottom half
+                            sender.input(ActionComponentInput::ProposedDrop { above: false, below: true, });
+                        }
+                        gtk::gdk::DragAction::MOVE
+                    },
+
+                    connect_motion[sender] => move |drop, _x, y| {
+                        let half = drop.widget().height() as f64 / 2.0;
+                        if y < half {
+                            // top half
+                            sender.input(ActionComponentInput::ProposedDrop { above: true, below: false, });
+                        } else {
+                            // bottom half
+                            sender.input(ActionComponentInput::ProposedDrop { above: false, below: true, });
+                        }
+                        gtk::gdk::DragAction::MOVE
+                    },
+
+                    connect_leave => ActionComponentInput::ProposedDrop { above: false, below: false, },
                 },
-            }
+            },
+
+            gtk::Label {
+                set_label: &t!("drag-drop.here"),
+                #[watch]
+                set_visible: self.drop_proposed_below,
+            },
         }
     }
 
@@ -144,6 +218,8 @@ impl FactoryComponent for ActionComponent {
                 adw::PreferencesGroup::default(),
                 sender.input_sender(),
             ),
+            drop_proposed_above: false,
+            drop_proposed_below: false,
         }
     }
 
@@ -208,6 +284,10 @@ impl FactoryComponent for ActionComponent {
                     self.config.clone(),
                 ));
             }
+            ActionComponentInput::ProposedDrop { above, below } => {
+                self.drop_proposed_above = above;
+                self.drop_proposed_below = below;
+            }
         }
     }
 
@@ -220,6 +300,9 @@ impl FactoryComponent for ActionComponent {
             }
             ActionComponentOutput::ConfigUpdate(step, config) => {
                 Some(super::FlowInputs::ConfigUpdate(step, config))
+            }
+            ActionComponentOutput::MoveStep(from, to, offset) => {
+                Some(super::FlowInputs::MoveStep(from, to, offset))
             }
         }
     }

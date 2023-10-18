@@ -11,6 +11,9 @@ value = "Value"
 [about]
 testing = "Software Testing"
 
+[drag-drop]
+here = "Drop step here"
+
 [header]
 flows = "Flows"
 actions = "Actions"

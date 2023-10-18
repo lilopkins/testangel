@@ -178,21 +178,25 @@ impl Component for ExecutionDialog {
                     .build();
 
                 let sender_c = sender.clone();
-                dialog.save(Some(root), Some(&relm4::gtk::gio::Cancellable::new()), move |res| {
-                    if let Ok(file) = res {
-                        let path = file.path().unwrap();
-                        if let Err(e) = report_generation::save_report(
-                            path.with_extension("pdf"),
-                            evidence.clone(),
-                        ) {
-                            // Failed to generate report
-                            sender_c.input(ExecutionDialogInput::FailedToGenerateReport(e));
-                            return;
-                        } else if let Err(e) = opener::open(path.with_extension("pdf")) {
-                            log::warn!("Failed to open evidence: {e}");
+                dialog.save(
+                    Some(root),
+                    Some(&relm4::gtk::gio::Cancellable::new()),
+                    move |res| {
+                        if let Ok(file) = res {
+                            let path = file.path().unwrap();
+                            if let Err(e) = report_generation::save_report(
+                                path.with_extension("pdf"),
+                                evidence.clone(),
+                            ) {
+                                // Failed to generate report
+                                sender_c.input(ExecutionDialogInput::FailedToGenerateReport(e));
+                                return;
+                            } else if let Err(e) = opener::open(path.with_extension("pdf")) {
+                                log::warn!("Failed to open evidence: {e}");
+                            }
                         }
-                    }
-                });
+                    },
+                );
             }
 
             ExecutionDialogCommandOutput::Failed(step, reason) => {
