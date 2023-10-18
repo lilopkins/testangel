@@ -39,6 +39,8 @@ pub enum FlowsHeaderInput {
     AddStep(String),
     /// Trigger a search for the steps provided
     SearchForSteps(String),
+    /// Add the top search result to the flow.
+    AddTopSearchResult,
     /// Inform the header bar if a flow is open or not.
     ChangeFlowOpen(bool),
 }
@@ -62,6 +64,7 @@ impl Component for FlowsHeader {
                 set_tooltip: &t!("flows.header.add"),
 
                 #[wrap(Some)]
+                #[name = "menu_popover"]
                 set_popover = &gtk::Popover {
                     gtk::Box {
                         set_spacing: 2,
@@ -69,6 +72,10 @@ impl Component for FlowsHeader {
 
                         gtk::SearchEntry {
                             set_max_width_chars: 20,
+
+                            connect_activate[sender] => move |_| {
+                                sender.input(FlowsHeaderInput::AddTopSearchResult);
+                            },
 
                             connect_search_changed[sender] => move |slf| {
                                 let query = slf.text().to_string();
@@ -203,7 +210,7 @@ impl Component for FlowsHeader {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, sender: ComponentSender<Self>, root: &Self::Root) {
+    fn update_with_view(&mut self, widgets: &mut Self::Widgets, message: Self::Input, sender: ComponentSender<Self>, root: &Self::Root) {
         match message {
             FlowsHeaderInput::ChangeFlowOpen(now) => {
                 self.flow_open = now;
@@ -223,6 +230,14 @@ impl Component for FlowsHeader {
                 self.add_button.popdown();
                 // unwrap rationale: the receiver will never be disconnected
                 sender.output(FlowsHeaderOutput::AddStep(step_id)).unwrap();
+            }
+            FlowsHeaderInput::AddTopSearchResult => {
+                if let Some(result) = self.search_results.get(0) {
+                    widgets.menu_popover.popdown();
+                    let id = result.action_id();
+                    // unwrap rationale: the receiver will never be disconnected
+                    sender.output(FlowsHeaderOutput::AddStep(id)).unwrap();
+                }
             }
             FlowsHeaderInput::SearchForSteps(query) => {
                 let mut results = self.search_results.guard();
@@ -274,6 +289,7 @@ impl Component for FlowsHeader {
                 }
             }
         }
+        self.update_view(widgets, sender);
     }
 }
 
