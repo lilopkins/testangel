@@ -85,6 +85,8 @@ pub enum FlowInputs {
     /// Insert a step at the specified index and set references back to the correct step.
     /// This refreshes the UI.
     PasteStep(usize, ActionConfiguration),
+    /// Move a step from the index to a position offset (param 3) from a new index (param 2).
+    MoveStep(DynamicIndex, DynamicIndex, isize),
     /// Start the flow exection
     RunFlow,
     /// The [`ActionConfiguration`] has changed for the step indicated by the [`DynamicIndex`].
@@ -236,19 +238,25 @@ impl FlowsModel {
             filter.add_suffix("taflow");
 
             let dialog = gtk::FileDialog::builder()
-                    .modal(true)
-                    .title(t!("flows.save"))
-                    .initial_folder(&gtk::gio::File::for_path(std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string())))
-                    .default_filter(&filter)
-                    .build();
+                .modal(true)
+                .title(t!("flows.save"))
+                .initial_folder(&gtk::gio::File::for_path(
+                    std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
+                ))
+                .default_filter(&filter)
+                .build();
 
             let sender_c = sender.clone();
-            dialog.save(Some(transient_for), Some(&relm4::gtk::gio::Cancellable::new()), move |res| {
-                if let Ok(file) = res {
-                    let path = file.path().unwrap();
-                    sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
-                }
-            });
+            dialog.save(
+                Some(transient_for),
+                Some(&relm4::gtk::gio::Cancellable::new()),
+                move |res| {
+                    if let Ok(file) = res {
+                        let path = file.path().unwrap();
+                        sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
+                    }
+                },
+            );
         } else {
             sender.emit(FlowInputs::_SaveFlowThen(Box::new(then)));
         }
@@ -293,10 +301,6 @@ impl Component for FlowsModel {
                 gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
                     set_margin_all: 5,
-
-                    gtk::Label {
-                        set_label: "Drag-and-drop is not yet implemented to reorder steps.",
-                    },
 
                     adw::StatusPage {
                         set_title: &t!("flows.nothing-open"),
@@ -393,16 +397,22 @@ impl Component for FlowsModel {
                     .modal(true)
                     .title(t!("flows.open"))
                     .default_filter(&filter)
-                    .initial_folder(&gtk::gio::File::for_path(std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string())))
+                    .initial_folder(&gtk::gio::File::for_path(
+                        std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
+                    ))
                     .build();
 
                 let sender_c = sender.clone();
-                dialog.open(Some(&root.toplevel_window().unwrap()), Some(&relm4::gtk::gio::Cancellable::new()), move |res| {
-                    if let Ok(file) = res {
-                        let path = file.path().unwrap();
-                        sender_c.input(FlowInputs::__OpenFlow(path));
-                    }
-                });
+                dialog.open(
+                    Some(&root.toplevel_window().unwrap()),
+                    Some(&relm4::gtk::gio::Cancellable::new()),
+                    move |res| {
+                        if let Ok(file) = res {
+                            let path = file.path().unwrap();
+                            sender_c.input(FlowInputs::__OpenFlow(path));
+                        }
+                    },
+                );
             }
             FlowInputs::__OpenFlow(path) => {
                 match self.open_flow(path) {
@@ -612,6 +622,16 @@ impl Component for FlowsModel {
 
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
+            }
+            FlowInputs::MoveStep(from, to, offset) => {
+                let current_from = from.current_index();
+                let step = self.open_flow.as_ref().unwrap().actions[current_from].clone();
+                sender.input(FlowInputs::CutStep(from));
+                let mut to = (to.current_index() as isize + offset).max(0) as usize;
+                if to > current_from && to > 0 {
+                    to -= 1;
+                }
+                sender.input(FlowInputs::PasteStep(to, step));
             }
         }
         self.update_view(widgets, sender);

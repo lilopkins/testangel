@@ -228,7 +228,9 @@ impl Component for FlowsHeader {
                 let mut results = self.search_results.guard();
                 results.clear();
 
-                let show_hidden = std::env::var("TA_SHOW_HIDDEN_ACTIONS").unwrap_or("no".to_string()).eq_ignore_ascii_case("yes");
+                let show_hidden = std::env::var("TA_SHOW_HIDDEN_ACTIONS")
+                    .unwrap_or("no".to_string())
+                    .eq_ignore_ascii_case("yes");
                 // Collect results
                 if query.is_empty() {
                     // List all alphabetically
@@ -254,9 +256,10 @@ impl Component for FlowsHeader {
                     for (group, actions) in self.action_map.get_by_group() {
                         for action in actions {
                             if action.visible || show_hidden {
-                                if let Some(score) = matcher
-                                    .fuzzy_match(&format!("{group}: {}", action.friendly_name), &query)
-                                {
+                                if let Some(score) = matcher.fuzzy_match(
+                                    &format!("{group}: {}", action.friendly_name),
+                                    &query,
+                                ) {
                                     unsorted_results.push((score, action));
                                 }
                             }

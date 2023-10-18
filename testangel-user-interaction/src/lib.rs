@@ -28,7 +28,7 @@ lazy_static! {
                 .set_level(rfd::MessageLevel::Info)
                 .set_buttons(rfd::MessageButtons::Ok)
                 .set_title("Information")
-                .set_description(&message)
+                .set_description(message)
                 .show();
             Ok(())
         })
@@ -50,7 +50,7 @@ lazy_static! {
                         .set_level(rfd::MessageLevel::Info)
                         .set_buttons(rfd::MessageButtons::YesNo)
                         .set_title("Question")
-                        .set_description(&message)
+                        .set_description(message)
                         .show() == rfd::MessageDialogResult::Yes,
                 ),
             );
@@ -70,7 +70,7 @@ lazy_static! {
                 .set_level(rfd::MessageLevel::Info)
                 .set_buttons(rfd::MessageButtons::YesNo)
                 .set_title("Continue flow?")
-                .set_description(&message)
+                .set_description(message)
                 .show() == rfd::MessageDialogResult::No
             {
                 return Err(FlowTermination::UserTerminated.into());
@@ -91,7 +91,7 @@ lazy_static! {
                 .set_level(rfd::MessageLevel::Info)
                 .set_buttons(rfd::MessageButtons::Ok)
                 .set_title("Flow Terminating")
-                .set_description(&message)
+                .set_description(message)
                 .show();
 
             Err(FlowTermination::StepTerminated.into())

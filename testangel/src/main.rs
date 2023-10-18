@@ -41,7 +41,7 @@ fn main() {
                 rust_i18n::set_locale(&locale);
                 locale_is_default = false;
                 break;
-            } else if let Some(lang_only) = &locale.split("-").next() {
+            } else if let Some(lang_only) = &locale.split('-').next() {
                 if avail_locales.contains(lang_only) {
                     log::info!("This language is available! Using: {lang_only}");
                     rust_i18n::set_locale(&locale);

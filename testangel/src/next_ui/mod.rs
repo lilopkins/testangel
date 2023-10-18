@@ -129,9 +129,22 @@ impl SimpleComponent for AppModel {
         let stack = &*model.stack;
 
         // Add pages
-        stack.add_titled_with_icon(model.flows.widget(), Some("flows"), &t!("header.flows"), relm4_icons::icon_name::PAPYRUS_VERTICAL);
-        if !std::env::var("TA_HIDE_ACTION_EDITOR").unwrap_or("no".to_string()).eq_ignore_ascii_case("yes") {
-            stack.add_titled_with_icon(model.actions.widget(), Some("actions"), &t!("header.actions"), relm4_icons::icon_name::PUZZLE_PIECE);
+        stack.add_titled_with_icon(
+            model.flows.widget(),
+            Some("flows"),
+            &t!("header.flows"),
+            relm4_icons::icon_name::PAPYRUS_VERTICAL,
+        );
+        if !std::env::var("TA_HIDE_ACTION_EDITOR")
+            .unwrap_or("no".to_string())
+            .eq_ignore_ascii_case("yes")
+        {
+            stack.add_titled_with_icon(
+                model.actions.widget(),
+                Some("actions"),
+                &t!("header.actions"),
+                relm4_icons::icon_name::PUZZLE_PIECE,
+            );
         }
 
         let widgets = view_output!();
