@@ -9,6 +9,13 @@ pub struct StepSearchResult {
     action_id: String,
 }
 
+impl StepSearchResult {
+    /// Get the action ID this result references
+    pub fn action_id(&self) -> String {
+        self.action_id.clone()
+    }
+}
+
 #[relm4::factory(pub)]
 impl FactoryComponent for StepSearchResult {
     type Init = Action;
