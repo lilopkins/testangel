@@ -210,7 +210,13 @@ impl Component for FlowsHeader {
         ComponentParts { model, widgets }
     }
 
-    fn update_with_view(&mut self, widgets: &mut Self::Widgets, message: Self::Input, sender: ComponentSender<Self>, root: &Self::Root) {
+    fn update_with_view(
+        &mut self,
+        widgets: &mut Self::Widgets,
+        message: Self::Input,
+        sender: ComponentSender<Self>,
+        root: &Self::Root,
+    ) {
         match message {
             FlowsHeaderInput::ChangeFlowOpen(now) => {
                 self.flow_open = now;

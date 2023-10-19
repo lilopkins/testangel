@@ -6,11 +6,13 @@ use relm4::{
     factory::FactoryVecDeque,
     gtk,
     prelude::{DynamicIndex, FactoryComponent},
-    FactorySender, RelmWidgetExt,
+    Component, ComponentController, Controller, FactorySender, RelmWidgetExt,
 };
 use rust_i18n::t;
 use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
+
+use crate::next_ui::components::literal_input::{LiteralInput, LiteralInputOutput};
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
 pub struct ActionComponentInitialiser {
@@ -316,6 +318,7 @@ struct VariableRow {
     source: ActionParameterSource,
     value: ParameterValue,
 
+    literal_input: Controller<LiteralInput>,
     potential_sources_raw: Vec<(String, ActionParameterSource)>,
     potential_sources: FactoryVecDeque<SourceSearchResult>,
 }
@@ -398,61 +401,7 @@ impl FactoryComponent for VariableRow {
                             adw::Bin {
                                 #[watch]
                                 set_visible: self.source == ActionParameterSource::Literal,
-
-                                #[transition = "None"]
-                                match self.kind {
-                                    ParameterKind::String => {
-                                        gtk::Entry {
-                                            set_text: &self.value.value_string(),
-                                            set_placeholder_text: Some(&t!("value")),
-
-                                            connect_changed[sender] => move |btn| {
-                                                sender.input(VariableRowInput::ChangeValue(ParameterValue::String(btn.text().to_string())));
-                                            },
-                                        }
-                                    }
-                                    ParameterKind::Integer => {
-                                        gtk::SpinButton {
-                                            set_digits: 0,
-                                            #[watch]
-                                            set_value: self.value.value_i32() as f64,
-                                            set_increments: (1., 10.),
-                                            set_numeric: true,
-
-                                            connect_changed[sender] => move |btn| {
-                                                if let Ok(val) = btn.text().parse::<i32>() {
-                                                    sender.input(VariableRowInput::ChangeValue(ParameterValue::Integer(val)));
-                                                }
-                                            },
-                                        }
-                                    }
-                                    ParameterKind::Decimal => {
-                                        gtk::SpinButton {
-                                            set_digits: 2,
-                                            #[watch]
-                                            set_value: self.value.value_f32() as f64,
-                                            set_increments: (0.1, 1.),
-                                            set_numeric: true,
-
-                                            connect_changed[sender] => move |btn| {
-                                                if let Ok(val) = btn.text().parse::<f32>() {
-                                                    sender.input(VariableRowInput::ChangeValue(ParameterValue::Decimal(val)));
-                                                }
-                                            },
-                                        }
-                                    }
-                                    ParameterKind::Boolean => {
-                                        gtk::CheckButton {
-                                            set_label: Some(&t!("value")),
-                                            #[watch]
-                                            set_active: self.value.value_bool(),
-
-                                            connect_toggled[sender] => move |btn| {
-                                                sender.input(VariableRowInput::ChangeValue(ParameterValue::Boolean(btn.is_active())));
-                                            },
-                                        }
-                                    }
-                                },
+                                self.literal_input.widget(),
                             },
 
                             #[local_ref]
@@ -482,12 +431,22 @@ impl FactoryComponent for VariableRow {
             }
         }
 
+        let literal_input =
+            LiteralInput::builder()
+                .launch(init.4.clone())
+                .forward(sender.input_sender(), |msg| match msg {
+                    LiteralInputOutput::ValueChanged(new_value) => {
+                        VariableRowInput::ChangeValue(new_value)
+                    }
+                });
+
         Self {
             idx: init.0,
             name: init.1,
             kind: init.2,
             source: init.3,
             value: init.4,
+            literal_input,
             potential_sources_raw: init.5,
             potential_sources,
         }
@@ -498,7 +457,7 @@ impl FactoryComponent for VariableRow {
         _index: &Self::Index,
         root: &Self::Root,
         _returned_widget: &<Self::ParentWidget as relm4::factory::FactoryView>::ReturnedWidget,
-        sender: FactorySender<Self>,
+        _sender: FactorySender<Self>,
     ) -> Self::Widgets {
         let potential_sources = self.potential_sources.widget();
         let widgets = view_output!();
