@@ -3,7 +3,6 @@
     windows_subsystem = "windows"
 )]
 
-use relm4::tokio::runtime;
 use testangel::version;
 
 #[cfg(feature = "next-ui")]
@@ -34,6 +33,8 @@ fn main() {
 
     #[cfg(feature = "next-ui")]
     {
+        use relm4::tokio::runtime;
+
         log::info!("Deciding on locale...");
         let avail_locales = rust_i18n::available_locales!();
         let mut locale_is_default = true;
