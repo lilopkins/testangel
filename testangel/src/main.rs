@@ -3,6 +3,9 @@
     windows_subsystem = "windows"
 )]
 
+use relm4::tokio::runtime;
+use testangel::version;
+
 #[cfg(feature = "next-ui")]
 mod next_ui;
 #[cfg(feature = "ui")]
@@ -52,6 +55,10 @@ fn main() {
         }
         if locale_is_default {
             log::info!("No suitable locale found, using default.");
+        }
+
+        if let Ok(rt) = runtime::Builder::new_current_thread().enable_all().build() {
+            let _is_latest = rt.block_on(version::check_is_latest());
         }
 
         next_ui::initialise_ui();
