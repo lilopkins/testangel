@@ -6,13 +6,15 @@ use relm4::{
     factory::FactoryVecDeque,
     gtk,
     prelude::{DynamicIndex, FactoryComponent},
-    Component, ComponentController, Controller, FactorySender, RelmWidgetExt,
+    RelmWidgetExt,
 };
 use rust_i18n::t;
 use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
-use crate::next_ui::components::literal_input::{LiteralInput, LiteralInputOutput};
+use crate::next_ui::components::variable_row::{
+    ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
+};
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
 pub struct ActionComponentInitialiser {
@@ -29,7 +31,7 @@ pub struct ActionComponent {
     visible: bool,
 
     possible_outputs: Vec<(String, ParameterKind, ActionParameterSource)>,
-    variable_rows: FactoryVecDeque<VariableRow>,
+    variable_rows: FactoryVecDeque<VariableRow<ActionParameterSource, ActionComponentInput>>,
 
     /// True when a drag-and-drop operation is proposed to add a component above this one
     drop_proposed_above: bool,
@@ -43,6 +45,22 @@ pub enum ActionComponentInput {
     NewSourceFor(usize, ActionParameterSource),
     NewValueFor(usize, ParameterValue),
     ProposedDrop { above: bool, below: bool },
+}
+
+impl VariableRowParentInput<ActionParameterSource> for ActionComponentInput {
+    fn new_source_for(idx: usize, new_source: ActionParameterSource) -> Self {
+        Self::NewSourceFor(idx, new_source)
+    }
+
+    fn new_value_for(idx: usize, new_value: ParameterValue) -> Self {
+        Self::NewValueFor(idx, new_value)
+    }
+}
+
+impl ParameterSourceTrait for ActionParameterSource {
+    fn literal() -> Self {
+        Self::Literal
+    }
 }
 
 #[derive(Debug)]
@@ -245,13 +263,13 @@ impl FactoryComponent for ActionComponent {
                     .map(|(a, _, c)| (a.clone(), c.clone()))
                     .collect();
 
-                variable_rows.push_back((
-                    idx,
-                    name.clone(),
-                    *kind,
-                    self.config.parameter_sources[&idx].clone(),
-                    self.config.parameter_values[&idx].clone(),
-                    [
+                variable_rows.push_back(VariableRowInit {
+                    index: idx,
+                    name: name.clone(),
+                    kind: *kind,
+                    current_source: self.config.parameter_sources[&idx].clone(),
+                    current_value: self.config.parameter_values[&idx].clone(),
+                    potential_sources: [
                         vec![(
                             t!("flows.action-component.source-literal"),
                             ActionParameterSource::Literal,
@@ -259,7 +277,7 @@ impl FactoryComponent for ActionComponent {
                         possible_sources,
                     ]
                     .concat(),
-                ));
+                });
             }
         }
 
@@ -307,230 +325,5 @@ impl FactoryComponent for ActionComponent {
                 Some(super::FlowInputs::MoveStep(from, to, offset))
             }
         }
-    }
-}
-
-#[derive(Debug)]
-struct VariableRow {
-    idx: usize,
-    name: String,
-    kind: ParameterKind,
-    source: ActionParameterSource,
-    value: ParameterValue,
-
-    literal_input: Controller<LiteralInput>,
-    potential_sources_raw: Vec<(String, ActionParameterSource)>,
-    potential_sources: FactoryVecDeque<SourceSearchResult>,
-}
-
-impl VariableRow {
-    fn get_nice_name_for(&self, source: &ActionParameterSource) -> String {
-        for (name, src) in &self.potential_sources_raw {
-            if *src == *source {
-                return name.clone();
-            }
-        }
-
-        source.to_string()
-    }
-}
-
-#[derive(Debug)]
-enum VariableRowInput {
-    SourceSelected(ActionParameterSource),
-    ChangeValue(ParameterValue),
-}
-
-#[derive(Debug)]
-enum VariableRowOutput {
-    NewSourceFor(usize, ActionParameterSource),
-    NewValueFor(usize, ParameterValue),
-}
-
-#[relm4::factory]
-impl FactoryComponent for VariableRow {
-    type Init = (
-        usize,
-        String,
-        ParameterKind,
-        ActionParameterSource,
-        ParameterValue,
-        Vec<(String, ActionParameterSource)>,
-    );
-    type Input = VariableRowInput;
-    type Output = VariableRowOutput;
-    type CommandOutput = ();
-    type ParentWidget = adw::PreferencesGroup;
-    type ParentInput = ActionComponentInput;
-
-    view! {
-        adw::ActionRow {
-            set_title: &self.name,
-            #[watch]
-            set_subtitle: &if self.source == ActionParameterSource::Literal {
-                t!(
-                    "flows.action-component.subtitle-with-value",
-                    kind = self.kind,
-                    source = self.source,
-                    value = self.value,
-                )
-            } else {
-                t!(
-                    "flows.action-component.subtitle",
-                    kind = self.kind,
-                    source = &self.get_nice_name_for(&self.source),
-                )
-            },
-
-            add_suffix = &gtk::MenuButton {
-                set_icon_name: relm4_icons::icon_name::EDIT,
-                set_tooltip_text: Some(&t!("flows.action-component.edit-param")),
-                set_css_classes: &["flat"],
-                set_direction: gtk::ArrowType::Left,
-
-                #[wrap(Some)]
-                set_popover = &gtk::Popover {
-                    gtk::ScrolledWindow {
-                        set_hscrollbar_policy: gtk::PolicyType::Never,
-                        set_min_content_height: 150,
-
-                        gtk::Box {
-                            set_spacing: 5,
-                            set_orientation: gtk::Orientation::Vertical,
-
-                            adw::Bin {
-                                #[watch]
-                                set_visible: self.source == ActionParameterSource::Literal,
-                                self.literal_input.widget(),
-                            },
-
-                            #[local_ref]
-                            potential_sources -> gtk::Box {
-                                set_spacing: 5,
-                                set_orientation: gtk::Orientation::Vertical,
-                            },
-                        },
-                    }
-                },
-            },
-        }
-    }
-
-    fn init_model(
-        init: Self::Init,
-        _index: &Self::Index,
-        sender: relm4::FactorySender<Self>,
-    ) -> Self {
-        let mut potential_sources =
-            FactoryVecDeque::new(gtk::Box::default(), sender.input_sender());
-        {
-            // populate sources
-            let mut potential_sources = potential_sources.guard();
-            for (label, source) in init.5.clone() {
-                potential_sources.push_back((label, source));
-            }
-        }
-
-        let literal_input =
-            LiteralInput::builder()
-                .launch(init.4.clone())
-                .forward(sender.input_sender(), |msg| match msg {
-                    LiteralInputOutput::ValueChanged(new_value) => {
-                        VariableRowInput::ChangeValue(new_value)
-                    }
-                });
-
-        Self {
-            idx: init.0,
-            name: init.1,
-            kind: init.2,
-            source: init.3,
-            value: init.4,
-            literal_input,
-            potential_sources_raw: init.5,
-            potential_sources,
-        }
-    }
-
-    fn init_widgets(
-        &mut self,
-        _index: &Self::Index,
-        root: &Self::Root,
-        _returned_widget: &<Self::ParentWidget as relm4::factory::FactoryView>::ReturnedWidget,
-        _sender: FactorySender<Self>,
-    ) -> Self::Widgets {
-        let potential_sources = self.potential_sources.widget();
-        let widgets = view_output!();
-        widgets
-    }
-
-    fn update(&mut self, message: Self::Input, sender: FactorySender<Self>) {
-        match message {
-            VariableRowInput::SourceSelected(new_source) => {
-                self.source = new_source.clone();
-                sender.output(VariableRowOutput::NewSourceFor(self.idx, new_source));
-            }
-            VariableRowInput::ChangeValue(new_value) => {
-                self.value = new_value.clone();
-                sender.output(VariableRowOutput::NewValueFor(self.idx, new_value));
-            }
-        }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        match output {
-            VariableRowOutput::NewSourceFor(idx, source) => {
-                Some(ActionComponentInput::NewSourceFor(idx, source))
-            }
-            VariableRowOutput::NewValueFor(idx, source) => {
-                Some(ActionComponentInput::NewValueFor(idx, source))
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-struct SourceSearchResult {
-    label: String,
-    source: ActionParameterSource,
-}
-
-#[derive(Debug)]
-enum SourceSearchResultInput {
-    Select,
-}
-
-#[relm4::factory]
-impl FactoryComponent for SourceSearchResult {
-    type Init = (String, ActionParameterSource);
-    type Input = SourceSearchResultInput;
-    type Output = ActionParameterSource;
-    type CommandOutput = ();
-    type ParentWidget = gtk::Box;
-    type ParentInput = VariableRowInput;
-
-    view! {
-        root = gtk::Button::builder().css_classes(["flat"]).build() {
-            set_label: &self.label,
-
-            connect_clicked => SourceSearchResultInput::Select,
-        }
-    }
-
-    fn init_model(init: Self::Init, _index: &Self::Index, _sender: FactorySender<Self>) -> Self {
-        Self {
-            label: init.0,
-            source: init.1,
-        }
-    }
-
-    fn update(&mut self, message: Self::Input, sender: FactorySender<Self>) {
-        match message {
-            SourceSearchResultInput::Select => sender.output(self.source.clone()),
-        }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        Some(VariableRowInput::SourceSelected(output))
     }
 }

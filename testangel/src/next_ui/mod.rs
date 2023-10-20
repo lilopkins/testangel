@@ -17,7 +17,6 @@ mod actions;
 mod components;
 mod flows;
 mod header_bar;
-mod help;
 
 /// Initialise and open the UI.
 pub fn initialise_ui() {

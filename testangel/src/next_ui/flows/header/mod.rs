@@ -8,12 +8,13 @@ use relm4::{
     gtk, Component, ComponentController, ComponentParts, ComponentSender, RelmWidgetExt,
 };
 use rust_i18n::t;
-use testangel::action_loader::ActionMap;
+use testangel::{action_loader::ActionMap, ipc::EngineList};
 
 mod add_step_factory;
 
 #[derive(Debug)]
 pub struct FlowsHeader {
+    engine_list: Arc<EngineList>,
     action_map: Arc<ActionMap>,
     add_button: gtk::MenuButton,
     flow_open: bool,
@@ -47,7 +48,7 @@ pub enum FlowsHeaderInput {
 
 #[relm4::component(pub)]
 impl Component for FlowsHeader {
-    type Init = Arc<ActionMap>;
+    type Init = (Arc<EngineList>, Arc<ActionMap>);
     type Input = FlowsHeaderInput;
     type Output = FlowsHeaderOutput;
     type CommandOutput = ();
@@ -144,7 +145,8 @@ impl Component for FlowsHeader {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = FlowsHeader {
-            action_map: init,
+            engine_list: init.0,
+            action_map: init.1,
             flow_open: false,
             add_button: gtk::MenuButton::default(),
             search_results: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
@@ -224,7 +226,7 @@ impl Component for FlowsHeader {
             FlowsHeaderInput::OpenAboutDialog => {
                 crate::next_ui::about::AppAbout::builder()
                     .transient_for(root)
-                    .launch(())
+                    .launch((self.engine_list.clone(), self.action_map.clone()))
                     .widget()
                     .set_visible(true);
             }
