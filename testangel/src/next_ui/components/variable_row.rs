@@ -176,7 +176,7 @@ where
             literal_input,
             potential_sources_raw: init.potential_sources,
             potential_sources,
-            _input_marker: PhantomData::default(),
+            _input_marker: PhantomData,
         }
     }
 

@@ -258,6 +258,7 @@ impl ActionConfiguration {
         Self::execute_directly(engine_map, &action, action_parameters).map_err(|(_step, err)| err)
     }
 
+    #[allow(clippy::type_complexity)]
     /// Directly execute an action with a set of parameters.
     pub fn execute_directly(
         engine_map: Arc<EngineList>,
