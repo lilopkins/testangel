@@ -13,7 +13,7 @@ use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
 use crate::next_ui::components::variable_row::{
-    ParameterSourceTrait, VariableRow, VariableRowParentInput,
+    ParameterSourceTrait, VariableRow, VariableRowParentInput, VariableRowInit,
 };
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
@@ -263,13 +263,13 @@ impl FactoryComponent for ActionComponent {
                     .map(|(a, _, c)| (a.clone(), c.clone()))
                     .collect();
 
-                variable_rows.push_back((
-                    idx,
-                    name.clone(),
-                    *kind,
-                    self.config.parameter_sources[&idx].clone(),
-                    self.config.parameter_values[&idx].clone(),
-                    [
+                variable_rows.push_back(VariableRowInit {
+                    index: idx,
+                    name: name.clone(),
+                    kind: *kind,
+                    current_source: self.config.parameter_sources[&idx].clone(),
+                    current_value: self.config.parameter_values[&idx].clone(),
+                    potential_sources: [
                         vec![(
                             t!("flows.action-component.source-literal"),
                             ActionParameterSource::Literal,
@@ -277,7 +277,7 @@ impl FactoryComponent for ActionComponent {
                         possible_sources,
                     ]
                     .concat(),
-                ));
+                });
             }
         }
 

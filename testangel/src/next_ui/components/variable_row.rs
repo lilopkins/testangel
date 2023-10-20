@@ -12,7 +12,11 @@ use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 use crate::next_ui::components::literal_input::{LiteralInput, LiteralInputOutput};
 
 #[derive(Debug)]
-pub struct VariableRow<PS: Debug + Clone + 'static, I: VariableRowParentInput<PS>> {
+pub struct VariableRow<PS, I>
+where
+    PS: Debug + Clone + 'static,
+    I: VariableRowParentInput<PS>,
+{
     idx: usize,
     name: String,
     kind: ParameterKind,
@@ -23,6 +27,17 @@ pub struct VariableRow<PS: Debug + Clone + 'static, I: VariableRowParentInput<PS
     potential_sources_raw: Vec<(String, PS)>,
     potential_sources: FactoryVecDeque<SourceSearchResult<PS>>,
     _input_marker: PhantomData<I>,
+}
+
+pub struct VariableRowInit<PS>
+    where PS: ParameterSourceTrait + Debug + std::fmt::Display + PartialEq<PS> + Clone + 'static,
+{
+    pub index: usize,
+    pub name: String,
+    pub kind: ParameterKind,
+    pub current_source: PS,
+    pub current_value: ParameterValue,
+    pub potential_sources: Vec<(String, PS)>,
 }
 
 pub trait VariableRowParentInput<PS> {
@@ -63,19 +78,12 @@ pub enum VariableRowOutput<PS> {
 }
 
 #[relm4::factory(pub)]
-impl<
-        PS: ParameterSourceTrait + Debug + std::fmt::Display + PartialEq<PS> + Clone + 'static,
-        I: Debug + VariableRowParentInput<PS> + 'static,
-    > FactoryComponent for VariableRow<PS, I>
+impl<PS, I> FactoryComponent for VariableRow<PS, I>
+where
+    PS: ParameterSourceTrait + Debug + std::fmt::Display + PartialEq<PS> + Clone + 'static,
+    I: Debug + VariableRowParentInput<PS> + 'static,
 {
-    type Init = (
-        usize,
-        String,
-        ParameterKind,
-        PS,
-        ParameterValue,
-        Vec<(String, PS)>,
-    );
+    type Init = VariableRowInit<PS>;
     type Input = VariableRowInput<PS>;
     type Output = VariableRowOutput<PS>;
     type CommandOutput = ();
@@ -145,14 +153,14 @@ impl<
         {
             // populate sources
             let mut potential_sources = potential_sources.guard();
-            for (label, source) in init.5.clone() {
+            for (label, source) in init.potential_sources.clone() {
                 potential_sources.push_back((label, source));
             }
         }
 
         let literal_input =
             LiteralInput::builder()
-                .launch(init.4.clone())
+                .launch(init.current_value.clone())
                 .forward(sender.input_sender(), |msg| match msg {
                     LiteralInputOutput::ValueChanged(new_value) => {
                         VariableRowInput::ChangeValue(new_value)
@@ -160,13 +168,13 @@ impl<
                 });
 
         Self {
-            idx: init.0,
-            name: init.1,
-            kind: init.2,
-            source: init.3,
-            value: init.4,
+            idx: init.index,
+            name: init.name,
+            kind: init.kind,
+            source: init.current_source,
+            value: init.current_value,
             literal_input,
-            potential_sources_raw: init.5,
+            potential_sources_raw: init.potential_sources,
             potential_sources,
             _input_marker: PhantomData::default(),
         }
