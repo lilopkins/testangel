@@ -30,7 +30,8 @@ where
 }
 
 pub struct VariableRowInit<PS>
-    where PS: ParameterSourceTrait + Debug + std::fmt::Display + PartialEq<PS> + Clone + 'static,
+where
+    PS: ParameterSourceTrait + Debug + std::fmt::Display + PartialEq<PS> + Clone + 'static,
 {
     pub index: usize,
     pub name: String,
@@ -158,14 +159,13 @@ where
             }
         }
 
-        let literal_input =
-            LiteralInput::builder()
-                .launch(init.current_value.clone())
-                .forward(sender.input_sender(), |msg| match msg {
-                    LiteralInputOutput::ValueChanged(new_value) => {
-                        VariableRowInput::ChangeValue(new_value)
-                    }
-                });
+        let literal_input = LiteralInput::builder()
+            .launch(init.current_value.clone())
+            .forward(sender.input_sender(), |msg| match msg {
+                LiteralInputOutput::ValueChanged(new_value) => {
+                    VariableRowInput::ChangeValue(new_value)
+                }
+            });
 
         Self {
             idx: init.index,

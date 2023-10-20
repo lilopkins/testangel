@@ -13,7 +13,7 @@ use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
 use crate::next_ui::components::variable_row::{
-    ParameterSourceTrait, VariableRow, VariableRowParentInput, VariableRowInit,
+    ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
 };
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
