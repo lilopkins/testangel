@@ -609,10 +609,15 @@ impl Component for FlowsModel {
 
                 // Remove references to step and renumber references above step to one less than they were
                 for step in flow.actions.iter_mut() {
-                    for (_step_idx, source) in step.parameter_sources.iter_mut() {
+                    for (step_idx, source) in step.parameter_sources.iter_mut() {
                         if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                             if *from_step == usize::MAX {
-                                *from_step = idx;
+                                if *step_idx < idx {
+                                    // can't refer to it anymore
+                                    *source = ActionParameterSource::Literal;
+                                } else {
+                                    *from_step = idx;
+                                }
                             } else if *from_step >= idx {
                                 *from_step += 1;
                             }
