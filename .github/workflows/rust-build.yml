@@ -227,6 +227,10 @@ jobs:
           copy target/release/testangel_regex.dll build/engines/
           copy target/release/testangel_user_interaction.dll build/engines/
 
+          # GSchemas for FileChooser
+          mkdir -p build/share/glib-2.0/schemas
+          copy C:\gtk-build\gtk\x64\release\share\glib-2.0\schemas\gschemas.compiled build/share/glib-2.0/schemas/
+
       - name: Save Cargo cache
         uses: actions/cache/save@v3
         with:
