@@ -231,6 +231,11 @@ jobs:
           mkdir -p build/share/glib-2.0/schemas
           copy C:\gtk-build\gtk\x64\release\share\glib-2.0\schemas\gschemas.compiled build/share/glib-2.0/schemas/
 
+          # SVG loader for icons
+          mkdir -p build/lib/gdk-pixbuf-2.0/2.10.0/loaders
+          copy C:\gtk-build\gtk\x64\release\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache build/lib/gdk-pixbuf-2.0/2.10.0/
+          copy C:\gtk-build\gtk\x64\release\lib\gdk-pixbuf-2.0\2.10.0\loaders\libpixbufloader-svg.dll build/lib/gdk-pixbuf-2.0/2.10.0/loaders/
+
       - name: Save Cargo cache
         uses: actions/cache/save@v3
         with:
