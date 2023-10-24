@@ -258,7 +258,7 @@ impl FlowsModel {
                 },
             );
         } else {
-            sender.emit(FlowInputs::_SaveFlowThen(Box::new(then)));
+            sender.emit(FlowInputs::__SaveFlowThen(self.open_path.clone().unwrap(), Box::new(then)));
         }
     }
 

@@ -159,7 +159,7 @@ jobs:
           python -m pip install --user pipx
           python -m pipx ensurepath
           pipx install gvsbuild
-          gvsbuild build gtk4 libadwaita --ninja-opts -j2
+          gvsbuild build gtk4 libadwaita librsvg --ninja-opts -j2
 
       - name: Implement missing icon workaround
         run: |
@@ -226,6 +226,15 @@ jobs:
           copy target/release/testangel_rand.dll build/engines/
           copy target/release/testangel_regex.dll build/engines/
           copy target/release/testangel_user_interaction.dll build/engines/
+
+          # GSchemas for FileChooser
+          mkdir -p build/share/glib-2.0/schemas
+          copy C:\gtk-build\gtk\x64\release\share\glib-2.0\schemas\gschemas.compiled build/share/glib-2.0/schemas/
+
+          # SVG loader for icons
+          mkdir -p build/lib/gdk-pixbuf-2.0/2.10.0/loaders
+          copy C:\gtk-build\gtk\x64\release\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache build/lib/gdk-pixbuf-2.0/2.10.0/
+          copy C:\gtk-build\gtk\x64\release\lib\gdk-pixbuf-2.0\2.10.0\loaders\libpixbufloader-svg.dll build/lib/gdk-pixbuf-2.0/2.10.0/loaders/
 
       - name: Save Cargo cache
         uses: actions/cache/save@v3
