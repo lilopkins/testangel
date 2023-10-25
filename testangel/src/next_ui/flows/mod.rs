@@ -596,6 +596,14 @@ impl Component for FlowsModel {
             FlowInputs::RemoveStep(step_idx) => {
                 let idx = step_idx.current_index();
                 let flow = self.open_flow.as_mut().unwrap();
+
+                // This is needed as sometimes, if a menu item lines up above the delete step button,
+                // they can both be simultaneously triggered.
+                if idx < flow.actions.len() {
+                    log::warn!("Skipped running RemoveStep as the index was invalid.");
+                    return;
+                }
+
                 log::info!("Deleting step {}", idx + 1);
 
                 flow.actions.remove(idx);
@@ -622,6 +630,13 @@ impl Component for FlowsModel {
                 let idx = step_idx.current_index();
                 let flow = self.open_flow.as_mut().unwrap();
                 log::info!("Cut step {}", idx + 1);
+
+                // This is needed as sometimes, if a menu item lines up above a button that triggers this,
+                // they can both be simultaneously triggered.
+                if idx < flow.actions.len() {
+                    log::warn!("Skipped running CutStep as the index was invalid.");
+                    return;
+                }
 
                 flow.actions.remove(idx);
 
