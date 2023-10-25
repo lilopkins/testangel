@@ -8,6 +8,7 @@ value = Value
 nothing-open = Nothing is Open
 
 acknowledgements-testing-title = Software Testing
+acknowledgements-translations-title = Translations
 
 tab-flows = Flows
 tab-actions = Actions
@@ -50,7 +51,7 @@ flow-error-opening = Error Opening Flow
 flow-save-open-error-io-error = I/O error: { $error }
 flow-save-open-error-parsing-error = The flow file is corrupted: { $error }
 flow-save-open-error-serializing-error = The flow could not be saved due to an internal serialisation error: { $error }
-flow-save-open-error-flow-not-version-compatible = The flow you tried to load is not compatible with this version of TestAngel.
+flow-save-open-error-flow-not-version-compatible = The flow you tried to load is not compatible with this version of { app-name }.
 flow-save-open-error-missing-action = The action for step { $step } (with internal ID: { $error }) in this flow is missing.
 
 flow-execution-running = Flow running...
