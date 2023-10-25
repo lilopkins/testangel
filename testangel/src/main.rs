@@ -10,9 +10,6 @@ mod next_ui;
 #[cfg(feature = "ui")]
 mod ui;
 
-#[cfg(feature = "next-ui")]
-rust_i18n::i18n!("locales", fallback = "en");
-
 fn main() {
     fern::Dispatch::new()
         .format(|out, message, record| {
@@ -35,28 +32,7 @@ fn main() {
     {
         use relm4::tokio::runtime;
 
-        log::info!("Deciding on locale...");
-        let avail_locales = rust_i18n::available_locales!();
-        let mut locale_is_default = true;
-        for locale in sys_locale::get_locales() {
-            log::info!("System offers locale: {locale}");
-            if avail_locales.contains(&locale.as_ref()) {
-                log::info!("This locale is available! Using: {locale}");
-                rust_i18n::set_locale(&locale);
-                locale_is_default = false;
-                break;
-            } else if let Some(lang_only) = &locale.split('-').next() {
-                if avail_locales.contains(lang_only) {
-                    log::info!("This language is available! Using: {lang_only}");
-                    rust_i18n::set_locale(&locale);
-                    locale_is_default = false;
-                    break;
-                }
-            }
-        }
-        if locale_is_default {
-            log::info!("No suitable locale found, using default.");
-        }
+        log::info!("Using locale: {}", next_ui::lang::initialise_i18n());
 
         if let Ok(rt) = runtime::Builder::new_current_thread().enable_all().build() {
             let _is_latest = rt.block_on(version::check_is_latest());

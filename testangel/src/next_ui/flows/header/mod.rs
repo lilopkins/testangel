@@ -7,8 +7,9 @@ use relm4::{
     factory::FactoryVecDeque,
     gtk, Component, ComponentController, ComponentParts, ComponentSender, RelmWidgetExt,
 };
-use rust_i18n::t;
 use testangel::{action_loader::ActionMap, ipc::EngineList};
+
+use crate::next_ui::lang;
 
 mod add_step_factory;
 
@@ -62,7 +63,7 @@ impl Component for FlowsHeader {
             #[local_ref]
             add_button -> gtk::MenuButton {
                 set_icon_name: relm4_icons::icon_name::PLUS,
-                set_tooltip: &t!("flows.header.add"),
+                set_tooltip: &lang::lookup("flow-header-add"),
 
                 #[wrap(Some)]
                 #[name = "menu_popover"]
@@ -99,7 +100,7 @@ impl Component for FlowsHeader {
             },
             gtk::Button {
                 set_icon_name: relm4_icons::icon_name::PLAY,
-                set_tooltip: &t!("flows.header.run"),
+                set_tooltip: &lang::lookup("flow-header-run"),
                 #[watch]
                 set_sensitive: model.flow_open,
                 connect_clicked[sender] => move |_| {
@@ -115,7 +116,7 @@ impl Component for FlowsHeader {
 
             gtk::MenuButton {
                 set_icon_name: relm4_icons::icon_name::MENU,
-                set_tooltip: &t!("flows.header.more"),
+                set_tooltip: &lang::lookup("flow-header-more"),
                 set_direction: gtk::ArrowType::Down,
 
                 #[wrap(Some)]
@@ -128,13 +129,13 @@ impl Component for FlowsHeader {
 
     menu! {
         flows_menu: {
-            &t!("flows.header.new") => FlowsNewAction,
-            &t!("flows.header.open") => FlowsOpenAction,
-            &t!("flows.header.save") => FlowsSaveAction,
-            &t!("flows.header.save-as") => FlowsSaveAsAction,
-            &t!("flows.header.close") => FlowsCloseAction,
+            &lang::lookup("flow-header-new") => FlowsNewAction,
+            &lang::lookup("flow-header-open") => FlowsOpenAction,
+            &lang::lookup("flow-header-save") => FlowsSaveAction,
+            &lang::lookup("flow-header-save-as") => FlowsSaveAsAction,
+            &lang::lookup("flow-header-close") => FlowsCloseAction,
             section! {
-                &t!("header.about") => FlowsAboutAction,
+                &lang::lookup("flow-header-about") => FlowsAboutAction,
             }
         }
     }

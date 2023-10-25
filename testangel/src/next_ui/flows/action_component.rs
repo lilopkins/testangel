@@ -1,4 +1,4 @@
-use std::ffi;
+use std::{ffi, collections::HashMap};
 
 use adw::prelude::*;
 use relm4::{
@@ -8,13 +8,12 @@ use relm4::{
     prelude::{DynamicIndex, FactoryComponent},
     RelmWidgetExt,
 };
-use rust_i18n::t;
 use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
-use crate::next_ui::components::variable_row::{
+use crate::next_ui::{components::variable_row::{
     ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
-};
+}, lang};
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
 pub struct ActionComponentInitialiser {
@@ -90,7 +89,7 @@ impl FactoryComponent for ActionComponent {
             set_spacing: 5,
 
             gtk::Label {
-                set_label: &t!("drag-drop.here"),
+                set_label: &lang::lookup("drag-drop-here"),
                 #[watch]
                 set_visible: self.drop_proposed_above,
             },
@@ -98,7 +97,15 @@ impl FactoryComponent for ActionComponent {
             #[local_ref]
             row -> adw::PreferencesGroup {
                 #[watch]
-                set_title: &t!("flows.action-component.label", step = self.step.current_index() + 1, name = self.action.friendly_name),
+                set_title: &lang::lookup_with_args(
+                    "flow-step-label",
+                    {
+                        let mut map = HashMap::new();
+                        map.insert("step", (self.step.current_index() + 1).into());
+                        map.insert("name", self.action.friendly_name.clone().into());
+                        map
+                    }
+                ),
                 set_description: Some(&self.action.description),
                 #[watch]
                 set_visible: self.visible,
@@ -109,7 +116,7 @@ impl FactoryComponent for ActionComponent {
 
                     gtk::Button::builder().css_classes(["flat"]).build() {
                         set_icon_name: relm4_icons::icon_name::UP,
-                        set_tooltip: &t!("flows.move-up"),
+                        set_tooltip: &lang::lookup("move-up"),
 
                         connect_clicked[sender, index, config] => move |_| {
                             if index.clone().current_index() != 0 {
@@ -120,7 +127,7 @@ impl FactoryComponent for ActionComponent {
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
                         set_icon_name: relm4_icons::icon_name::DOWN,
-                        set_tooltip: &t!("flows.move-down"),
+                        set_tooltip: &lang::lookup("move-down"),
 
                         connect_clicked[sender, index, config] => move |_| {
                             sender.output(ActionComponentOutput::Cut(index.clone()));
@@ -129,7 +136,7 @@ impl FactoryComponent for ActionComponent {
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
                         set_icon_name: relm4_icons::icon_name::X_CIRCULAR,
-                        set_tooltip: &t!("flows.action-component.delete"),
+                        set_tooltip: &lang::lookup("delete-step"),
 
                         connect_clicked[sender, index] => move |_| {
                             sender.output(ActionComponentOutput::Remove(index.clone()));
@@ -210,7 +217,7 @@ impl FactoryComponent for ActionComponent {
             },
 
             gtk::Label {
-                set_label: &t!("drag-drop.here"),
+                set_label: &lang::lookup("drag-drop-here"),
                 #[watch]
                 set_visible: self.drop_proposed_below,
             },
@@ -271,7 +278,7 @@ impl FactoryComponent for ActionComponent {
                     current_value: self.config.parameter_values[&idx].clone(),
                     potential_sources: [
                         vec![(
-                            t!("flows.action-component.source-literal"),
+                            lang::lookup("source-literal"),
                             ActionParameterSource::Literal,
                         )],
                         possible_sources,

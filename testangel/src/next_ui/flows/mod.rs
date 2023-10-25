@@ -1,16 +1,17 @@
-use std::{fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{fs, path::PathBuf, rc::Rc, sync::Arc, collections::HashMap};
 
 use adw::prelude::*;
 use relm4::{
     adw, component::Connector, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component,
     ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
 };
-use rust_i18n::t;
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
     types::{ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
 };
+
+use super::lang;
 
 mod action_component;
 mod execution_dialog;
@@ -27,18 +28,43 @@ pub enum SaveOrOpenFlowError {
 impl ToString for SaveOrOpenFlowError {
     fn to_string(&self) -> String {
         match self {
-            Self::IoError(e) => t!("flows.save-or-open-flow-error.io-error", error = e),
-            Self::ParsingError(e) => t!("flows.save-or-open-flow-error.parsing-error", error = e),
+            Self::IoError(e) => lang::lookup_with_args(
+                "flow-save-open-error-io-error",
+                {
+                    let mut map = HashMap::new();
+                    map.insert("error", e.to_string().into());
+                    map
+                }
+            ),
+            Self::ParsingError(e) => lang::lookup_with_args(
+                "flow-save-open-error-parsing-error",
+                {
+                    let mut map = HashMap::new();
+                    map.insert("error", e.to_string().into());
+                    map
+                }
+            ),
             Self::SerializingError(e) => {
-                t!("flows.save-or-open-flow-error.serializing-error", error = e)
+                lang::lookup_with_args(
+                    "flow-save-open-error-serializing-error",
+                    {
+                        let mut map = HashMap::new();
+                        map.insert("error", e.to_string().into());
+                        map
+                    }
+                )
             }
             Self::FlowNotVersionCompatible => {
-                t!("flows.save-or-open-flow-error.flow-not-version-compatible")
+                lang::lookup("flow-save-open-error-flow-not-version-compatible")
             }
-            Self::MissingAction(step, e) => t!(
-                "flows.save-or-open-flow-error.missing-action",
-                step = step + 1,
-                error = e
+            Self::MissingAction(step, e) => lang::lookup_with_args(
+                "flow-save-open-error-missing-action",
+                {
+                    let mut map = HashMap::new();
+                    map.insert("step", (step + 1).into());
+                    map.insert("error", e.to_string().into());
+                    map
+                }
             ),
         }
     }
@@ -136,7 +162,7 @@ impl FlowsModel {
         S: AsRef<str>,
     {
         let dialog = self.create_message_dialog_skeleton(title, message);
-        dialog.add_response("ok", &t!("ok"));
+        dialog.add_response("ok", &lang::lookup("ok"));
         dialog.set_default_response(Some("ok"));
         dialog.set_close_response("ok");
         dialog
@@ -200,11 +226,11 @@ impl FlowsModel {
     fn prompt_to_save(&self, sender: &relm4::Sender<FlowInputs>, then: FlowInputs) {
         if self.needs_saving {
             let question = self.create_message_dialog_skeleton(
-                t!("flows.save-before"),
-                t!("flows.save-before-message"),
+                lang::lookup("flow-save-before"),
+                lang::lookup("flow-save-before-message"),
             );
-            question.add_response("discard", &t!("discard"));
-            question.add_response("save", &t!("save"));
+            question.add_response("discard", &lang::lookup("discard"));
+            question.add_response("save", &lang::lookup("save"));
             question.set_response_appearance("discard", adw::ResponseAppearance::Destructive);
             question.set_default_response(Some("save"));
             question.set_close_response("discard");
@@ -234,12 +260,12 @@ impl FlowsModel {
         if always_ask_where || self.open_path.is_none() {
             // Ask where
             let filter = gtk::FileFilter::new();
-            filter.set_name(Some(&t!("flows.filetype")));
+            filter.set_name(Some(&lang::lookup("flow-filetype")));
             filter.add_suffix("taflow");
 
             let dialog = gtk::FileDialog::builder()
                 .modal(true)
-                .title(t!("flows.save"))
+                .title(lang::lookup("flow-header-save"))
                 .initial_folder(&gtk::gio::File::for_path(
                     std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
                 ))
@@ -303,8 +329,8 @@ impl Component for FlowsModel {
                     set_margin_all: 5,
 
                     adw::StatusPage {
-                        set_title: &t!("flows.nothing-open"),
-                        set_description: Some(&t!("flows.nothing-open-description")),
+                        set_title: &lang::lookup("nothing-open"),
+                        set_description: Some(&lang::lookup("flow-nothing-open-description")),
                         set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
                         #[watch]
                         set_visible: model.open_flow.is_none(),
@@ -390,12 +416,12 @@ impl Component for FlowsModel {
             }
             FlowInputs::_OpenFlow => {
                 let filter = gtk::FileFilter::new();
-                filter.set_name(Some(&t!("flows.filetype")));
+                filter.set_name(Some(&lang::lookup("flow-filetype")));
                 filter.add_suffix("taflow");
 
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
-                    .title(t!("flows.open"))
+                    .title(lang::lookup("flow-header-open"))
                     .default_filter(&filter)
                     .initial_folder(&gtk::gio::File::for_path(
                         std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
@@ -427,15 +453,22 @@ impl Component for FlowsModel {
                                 .collect::<Vec<_>>()
                                 .join(",");
                             self.create_message_dialog(
-                                t!("flows.action-changed"),
-                                t!("flows.action-changed-message", steps = changed_steps),
+                                lang::lookup("flow-action-changed"),
+                                lang::lookup_with_args(
+                                    "flow-action-changed-message",
+                                    {
+                                        let mut map = HashMap::new();
+                                        map.insert("steps", changed_steps.into());
+                                        map
+                                    }
+                                ),
                             )
                             .set_visible(true);
                         }
                     }
                     Err(e) => {
                         // Show error dialog
-                        self.create_message_dialog(t!("flows.error-opening"), e.to_string())
+                        self.create_message_dialog(lang::lookup("flow-error-opening"), e.to_string())
                             .set_visible(true);
                     }
                 }
@@ -474,12 +507,12 @@ impl Component for FlowsModel {
             FlowInputs::__SaveFlowThen(path, then) => {
                 self.open_path = Some(path);
                 if let Err(e) = self.save_flow() {
-                    self.create_message_dialog(t!("flows.error-saving"), e.to_string())
+                    self.create_message_dialog(lang::lookup("flow-error-saving"), e.to_string())
                         .set_visible(true);
                 } else {
                     widgets
                         .toast_target
-                        .add_toast(adw::Toast::new(&t!("flows.saved")));
+                        .add_toast(adw::Toast::new(&lang::lookup("flow-saved")));
                     sender.input_sender().emit(*then);
                 }
             }
@@ -543,10 +576,14 @@ impl Component for FlowsModel {
                             .enumerate()
                         {
                             possible_outputs.push((
-                                t!(
-                                    "flows.action-component.source-from-step",
-                                    step = step + 1,
-                                    name = name
+                                lang::lookup_with_args(
+                                    "source-from-step",
+                                    {
+                                        let mut map = HashMap::new();
+                                        map.insert("step", (step + 1).into());
+                                        map.insert("name", name.clone().into());
+                                        map
+                                    }
                                 ),
                                 *kind,
                                 ActionParameterSource::FromOutput(step, output_idx),

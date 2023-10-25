@@ -1,0 +1,79 @@
+use std::{fmt::Display, collections::HashMap, sync::Mutex};
+
+use fluent::FluentValue;
+use fluent_templates::{Loader, LanguageIdentifier, loader::langid};
+use once_cell::sync::Lazy;
+
+const FALLBACK: LanguageIdentifier = langid!("en");
+fluent_templates::static_loader! {
+    static LOCALES = {
+        locales: "locales",
+        fallback_language: "en",
+    };
+}
+static USE_LOCALE: Lazy<Mutex<Option<LanguageIdentifier>>> = Lazy::new(|| Mutex::new(None));
+
+/// Initialises i18n and returned the locale identifier
+pub fn initialise_i18n() -> LanguageIdentifier {
+    let mut locale_is_default = true;
+
+    let avail_locales = LOCALES.locales().collect::<Vec<_>>();
+    for locale in sys_locale::get_locales() {
+        log::info!("System offers locale: {locale}");
+
+        if let Ok(lang_id) = locale.parse::<LanguageIdentifier>() {
+            for possible_locale in avail_locales.iter() {
+                if possible_locale == &&lang_id {
+                    log::info!("This locale is available! Using: {locale}");
+                    let mut use_locale = USE_LOCALE.lock().unwrap();
+                    use_locale.replace((*possible_locale).clone());
+                    locale_is_default = false;
+                    break;
+                } else if possible_locale.language == lang_id.language {
+                    log::info!("This language is available! Using: {}", lang_id.language);
+                    let mut use_locale = USE_LOCALE.lock().unwrap();
+                    use_locale.replace((*possible_locale).clone());
+                    locale_is_default = false;
+                    break;
+                }
+            }
+        }
+    }
+    if locale_is_default {
+        log::info!("No suitable locale found, using default.");
+        let mut use_locale = USE_LOCALE.lock().unwrap();
+        use_locale.replace(FALLBACK);
+    }
+
+    let use_locale = USE_LOCALE.lock().unwrap();
+    use_locale.clone().unwrap()
+}
+
+/// Get the current locale identifier
+pub(crate) fn current_locale() -> LanguageIdentifier {
+    let use_locale = USE_LOCALE.lock().unwrap();
+    use_locale.clone().unwrap()
+}
+
+/// Lookup a string
+pub(crate) fn lookup<S>(text_id: S) -> String
+where
+    S: AsRef<str> + Display,
+{
+    LOCALES.lookup(&current_locale(), text_id.as_ref()).unwrap_or_else(|| {
+        log::warn!("Missing translation for {text_id}");
+        text_id.as_ref().to_string()
+    })
+}
+
+/// Lookup a string with args
+pub(crate) fn lookup_with_args<S, K>(text_id: S, args: HashMap<K, FluentValue<'_>>) -> String
+where
+    S: AsRef<str> + Display,
+    K: AsRef<str>,
+{
+    LOCALES.lookup_with_args(&current_locale(), text_id.as_ref(), &args).unwrap_or_else(|| {
+        log::warn!("Missing translation for {text_id}");
+        text_id.as_ref().to_string()
+    })
+}

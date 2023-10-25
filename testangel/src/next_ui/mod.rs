@@ -4,7 +4,6 @@ use gtk::prelude::*;
 use relm4::{
     adw, gtk, Component, ComponentController, ComponentParts, Controller, RelmApp, SimpleComponent,
 };
-use rust_i18n::t;
 use testangel::{
     action_loader::{self, ActionMap},
     ipc::{self, EngineList},
@@ -17,6 +16,7 @@ mod actions;
 mod components;
 mod flows;
 mod header_bar;
+pub(crate) mod lang;
 
 /// Initialise and open the UI.
 pub fn initialise_ui() {
@@ -74,7 +74,7 @@ impl SimpleComponent for AppModel {
 
     view! {
         main_window = adw::Window {
-            set_title: Some(&t!("name")),
+            set_title: Some(&lang::lookup("app-name")),
             set_default_width: 800,
             set_default_height: 600,
             set_icon_name: Some("testangel"),
@@ -132,7 +132,7 @@ impl SimpleComponent for AppModel {
         stack.add_titled_with_icon(
             model.flows.widget(),
             Some("flows"),
-            &t!("header.flows"),
+            &lang::lookup("tab-flows"),
             relm4_icons::icon_name::PAPYRUS_VERTICAL,
         );
         if !std::env::var("TA_HIDE_ACTION_EDITOR")
@@ -142,7 +142,7 @@ impl SimpleComponent for AppModel {
             stack.add_titled_with_icon(
                 model.actions.widget(),
                 Some("actions"),
-                &t!("header.actions"),
+                &lang::lookup("tab-actions"),
                 relm4_icons::icon_name::PUZZLE_PIECE,
             );
         }

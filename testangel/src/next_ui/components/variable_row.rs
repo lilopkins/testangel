@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, collections::HashMap};
 use std::marker::PhantomData;
 
 use adw::prelude::*;
@@ -6,10 +6,9 @@ use relm4::{
     adw, factory::FactoryVecDeque, gtk, prelude::FactoryComponent, Component, ComponentController,
     Controller, FactorySender,
 };
-use rust_i18n::t;
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
-use crate::next_ui::components::literal_input::{LiteralInput, LiteralInputOutput};
+use crate::next_ui::{components::literal_input::{LiteralInput, LiteralInputOutput}, lang};
 
 #[derive(Debug)]
 pub struct VariableRow<PS, I>
@@ -96,23 +95,31 @@ where
             set_title: &self.name,
             #[watch]
             set_subtitle: &if self.source == PS::literal() {
-                t!(
-                    "flows.action-component.subtitle-with-value",
-                    kind = self.kind,
-                    source = self.source,
-                    value = self.value,
+                lang::lookup_with_args(
+                    "variable-row-subtitle-with-value",
+                    {
+                        let mut map = HashMap::new();
+                        map.insert("kind", self.kind.to_string().into());
+                        map.insert("source", self.source.to_string().into());
+                        map.insert("value", self.value.to_string().into());
+                        map
+                    }
                 )
             } else {
-                t!(
-                    "flows.action-component.subtitle",
-                    kind = self.kind,
-                    source = &self.get_nice_name_for(&self.source),
+                lang::lookup_with_args(
+                    "variable-row-subtitle",
+                    {
+                        let mut map = HashMap::new();
+                        map.insert("kind", self.kind.to_string().into());
+                        map.insert("source", self.get_nice_name_for(&self.source).into());
+                        map
+                    }
                 )
             },
 
             add_suffix = &gtk::MenuButton {
                 set_icon_name: relm4_icons::icon_name::EDIT,
-                set_tooltip_text: Some(&t!("flows.action-component.edit-param")),
+                set_tooltip_text: Some(&lang::lookup("variable-row-edit-param")),
                 set_css_classes: &["flat"],
                 set_direction: gtk::ArrowType::Left,
 
