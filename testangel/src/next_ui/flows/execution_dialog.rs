@@ -2,7 +2,6 @@ use std::{collections::HashMap, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{adw, gtk, Component, ComponentParts, RelmWidgetExt};
-use rust_i18n::t;
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
@@ -10,6 +9,8 @@ use testangel::{
     types::{AutomationFlow, FlowError},
 };
 use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterValue};
+
+use crate::next_ui::lang;
 
 #[derive(Debug)]
 pub enum ExecutionDialogCommandOutput {
@@ -73,7 +74,7 @@ impl Component for ExecutionDialog {
                     set_spinning: true,
                 },
                 gtk::Label {
-                    set_label: &t!("flows.execution.running"),
+                    set_label: &lang::lookup("flow-execution-running"),
                 },
             },
         },
@@ -135,14 +136,18 @@ impl Component for ExecutionDialog {
             ExecutionDialogInput::Close => root.destroy(),
             ExecutionDialogInput::FailedToGenerateReport(reason) => {
                 let dialog = self.create_message_dialog(
-                    t!("flows.execution.report-failed"),
-                    t!(
-                        "flows.exection.report-failed-message",
-                        reason = reason.to_string()
+                    lang::lookup("report-failed"),
+                    lang::lookup_with_args(
+                        "report-failed-message",
+                        {
+                            let mut map = HashMap::new();
+                            map.insert("reason", reason.to_string().into());
+                            map
+                        }
                     ),
                 );
                 dialog.set_transient_for(Some(root));
-                dialog.add_response("ok", &t!("ok"));
+                dialog.add_response("ok", &lang::lookup("ok"));
                 dialog.set_default_response(Some("ok"));
                 let sender_c = sender.clone();
                 dialog.connect_response(None, move |dlg, _response| {
@@ -166,14 +171,14 @@ impl Component for ExecutionDialog {
 
                 // Present save dialog
                 let filter = gtk::FileFilter::new();
-                filter.set_name(Some(&t!("flows.execution.pdf-files")));
+                filter.set_name(Some(&lang::lookup("pdf-files")));
                 filter.add_suffix("pdf");
                 filter.add_mime_type("application/pdf");
 
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
-                    .title(t!("flows.execution.save-title"))
-                    .initial_name(t!("flows.execution.report-default-name"))
+                    .title(lang::lookup("report-save-title"))
+                    .initial_name(lang::lookup("report-default-name"))
                     .default_filter(&filter)
                     .build();
 
@@ -201,15 +206,19 @@ impl Component for ExecutionDialog {
             ExecutionDialogCommandOutput::Failed(step, reason) => {
                 log::warn!("Execution failed");
                 let dialog = self.create_message_dialog(
-                    t!("flows.execution.failed"),
-                    t!(
-                        "flows.exection.failed-message",
-                        step = step,
-                        reason = reason.to_string()
+                    lang::lookup("flow-execution-failed"),
+                    lang::lookup_with_args(
+                        "flow-execution-failed-message",
+                        {
+                            let mut map = HashMap::new();
+                            map.insert("step", step.into());
+                            map.insert("reason", reason.to_string().into());
+                            map
+                        }
                     ),
                 );
                 dialog.set_transient_for(Some(root));
-                dialog.add_response("ok", &t!("ok"));
+                dialog.add_response("ok", &lang::lookup("ok"));
                 dialog.set_default_response(Some("ok"));
                 let sender_c = sender.clone();
                 dialog.connect_response(None, move |dlg, _response| {

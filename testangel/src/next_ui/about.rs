@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use relm4::{adw, gtk, SimpleComponent};
-use rust_i18n::t;
 use testangel::{ipc::EngineList, action_loader::ActionMap};
+
+use crate::next_ui::lang;
 
 pub struct AppAbout;
 
@@ -17,7 +18,7 @@ impl SimpleComponent for AppAbout {
         #[name = "about"]
         adw::AboutWindow {
             set_application_icon: "testangel",
-            set_application_name: &t!("name"),
+            set_application_name: &lang::lookup("app-name"),
             set_version: env!("CARGO_PKG_VERSION"),
             set_copyright: "© 2023 Lily Hopkins",
             set_license_type: gtk::License::Gpl30Only,
@@ -25,7 +26,8 @@ impl SimpleComponent for AppAbout {
             set_developer_name: "Lily Hopkins",
             set_debug_info: &log_data,
 
-            add_acknowledgement_section: (Some(&t!("about.testing")), &["John Chander", "Eden Turner"]),
+            add_acknowledgement_section: (Some(&lang::lookup("acknowledgements-testing-title")), &["John Chander", "Eden Turner"]),
+            add_acknowledgement_section: (Some(&lang::lookup("acknowledgements-translations-title")), &["Lily Hopkins"]),
             add_legal_section: ("GTK",               None, gtk::License::Gpl20Only, None),
             add_legal_section: ("Adwaita",           None, gtk::License::Gpl20Only, None),
             add_legal_section: ("clap",              None, gtk::License::MitX11,    None),
@@ -63,8 +65,8 @@ impl SimpleComponent for AppAbout {
             "Debug data generated at: {}\nSoftware version: {}\nLocale: {} (system wanted: {:?})\n\nEngines:\n{:#?}\n\nActions:\n{:#?}",
             chrono::Local::now(),
             env!("CARGO_PKG_VERSION"),
-            rust_i18n::locale(),
-            rust_i18n::available_locales!(),
+            lang::current_locale(),
+            sys_locale::get_locales().collect::<Vec<_>>(),
             engine_list.inner(),
             action_map.get_by_group(),
         );

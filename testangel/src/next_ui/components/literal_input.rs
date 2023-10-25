@@ -1,7 +1,8 @@
 use adw::prelude::*;
 use relm4::{adw, gtk, SimpleComponent};
-use rust_i18n::t;
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
+
+use crate::next_ui::lang;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -45,7 +46,7 @@ impl SimpleComponent for LiteralInput {
             ParameterValue::String(val) => {
                 let entry = gtk::Entry::builder()
                     .text(val)
-                    .placeholder_text(t!("value"))
+                    .placeholder_text(lang::lookup("value"))
                     .build();
                 let sender_c = sender.clone();
                 entry.connect_changed(move |etry| {
@@ -108,7 +109,7 @@ impl SimpleComponent for LiteralInput {
             ParameterValue::Boolean(val) => {
                 let entry = gtk::CheckButton::builder()
                     .active(*val)
-                    .label(t!("value"))
+                    .label(lang::lookup("value"))
                     .build();
                 let sender_c = sender.clone();
                 entry.connect_toggled(move |chk| {

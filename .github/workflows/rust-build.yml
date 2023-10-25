@@ -161,16 +161,6 @@ jobs:
           pipx install gvsbuild
           gvsbuild build gtk4 libadwaita librsvg --ninja-opts -j2
 
-      - name: Implement missing icon workaround
-        run: |
-          $env:PATH="C:\gtk-build\gtk\x64\release\bin;" + $env:PATH
-          $env:LIB="C:\gtk-build\gtk\x64\release\lib;" + $env:LIB
-          $env:INCLUDE="C:\gtk-build\gtk\x64\release\include;C:\gtk-build\gtk\x64\release\include\cairo;C:\gtk-build\gtk\x64\release\include\glib-2.0;C:\gtk-build\gtk\x64\release\include\gobject-introspection-1.0;C:\gtk-build\gtk\x64\release\lib\glib-2.0\include;" + $env:INCLUDE
-          $env:PKG_CONFIG_PATH="C:\gtk-build\gtk\x64\release\lib\pkgconfig;" + $env:PKG_CONFIG_PATH
-
-          xcopy /s /i C:\gtk-build\gtk\x64\release\share\icons\hicolor\scalable\apps C:\gtk-build\gtk\x64\release\share\icons\hicolor\scalable\actions
-          gtk4-update-icon-cache.exe -t -f C:\gtk-build\gtk\x64\release\share\icons\hicolor
-
       - name: Restore git binary
         run: |
           Move-Item "C:\Program Files\Git\usr\notbin" "C:\Program Files\Git\usr\bin"
