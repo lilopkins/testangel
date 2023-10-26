@@ -85,7 +85,7 @@ impl ActionRunning {
                 rfd::MessageDialog::new()
                     .set_level(rfd::MessageLevel::Error)
                     .set_title("Failed to execute")
-                    .set_description(&format!(
+                    .set_description(format!(
                         "Failed to execute action at step {}: {e}",
                         step + 1
                     ))
@@ -247,7 +247,7 @@ impl UiComponent for ActionRunning {
                             Some(iced::Command::perform(
                                 rfd::AsyncMessageDialog::new()
                                     .set_title("Failed")
-                                    .set_description(&format!("Failed to generate report: {e}"))
+                                    .set_description(format!("Failed to generate report: {e}"))
                                     .set_level(rfd::MessageLevel::Error)
                                     .show(),
                                 |_| super::AppMessage::NoOp,

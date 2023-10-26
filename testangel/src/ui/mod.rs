@@ -286,7 +286,7 @@ impl Application for App {
                                 rfd::AsyncMessageDialog::new()
                                     .set_level(rfd::MessageLevel::Error)
                                     .set_title("Failed to open action")
-                                    .set_description(&format!("{e}"))
+                                    .set_description(format!("{e}"))
                                     .set_buttons(rfd::MessageButtons::Ok)
                                     .show(),
                                 |_| AppMessage::NoOp,
@@ -306,7 +306,7 @@ impl Application for App {
                                     .set_level(rfd::MessageLevel::Warning)
                                     .set_title("Action has changed")
                                     .set_buttons(rfd::MessageButtons::Ok)
-                                    .set_description(&format!(
+                                    .set_description(format!(
                                         "The parameters in steps {} have changed so it has been reset.",
                                         changed.iter().map(|step| step.to_string()).collect::<Vec<_>>().join(",")
                                     ))
@@ -318,7 +318,7 @@ impl Application for App {
                                 rfd::AsyncMessageDialog::new()
                                     .set_level(rfd::MessageLevel::Error)
                                     .set_title("Failed to open flow")
-                                    .set_description(&format!("{e}"))
+                                    .set_description(format!("{e}"))
                                     .set_buttons(rfd::MessageButtons::Ok)
                                     .show(),
                                 |_| AppMessage::NoOp,
