@@ -590,7 +590,7 @@ impl Component for FlowsModel {
 
                 // This is needed as sometimes, if a menu item lines up above the delete step button,
                 // they can both be simultaneously triggered.
-                if idx < flow.actions.len() {
+                if idx >= flow.actions.len() {
                     log::warn!("Skipped running RemoveStep as the index was invalid.");
                     return;
                 }
@@ -624,7 +624,7 @@ impl Component for FlowsModel {
 
                 // This is needed as sometimes, if a menu item lines up above a button that triggers this,
                 // they can both be simultaneously triggered.
-                if idx < flow.actions.len() {
+                if idx >= flow.actions.len() {
                     log::warn!("Skipped running CutStep as the index was invalid.");
                     return;
                 }
