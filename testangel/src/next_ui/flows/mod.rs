@@ -458,6 +458,7 @@ impl Component for FlowsModel {
                                     "flow-action-changed-message",
                                     {
                                         let mut map = HashMap::new();
+                                        map.insert("stepCount", changes.len());
                                         map.insert("steps", changed_steps.into());
                                         map
                                     }

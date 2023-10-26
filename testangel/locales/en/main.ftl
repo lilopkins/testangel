@@ -40,7 +40,10 @@ flow-filetype = { app-name } Flow file
 flow-nothing-open-description = Open a flow or add a step to get started
 
 flow-action-changed = Flow Actions Changed
-flow-action-changed-message = The parameters in steps { $steps } have changed so it has been reset.
+flow-action-changed-message = The parameters in { $stepCount ->
+        [one] step
+       *[other] steps
+    } { $steps } have changed so they has been reset.
 
 flow-save-before = Save this Flow?
 flow-save-before-message = This flow has been modified since it was last saved. Would you like to save it before continuing?
