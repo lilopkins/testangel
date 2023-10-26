@@ -20,6 +20,14 @@ pub fn flows() -> FileFilter {
     filter
 }
 
+/// Get a [`FileFilter`] tuned to actions.
+pub fn actions() -> FileFilter {
+    let filter = gtk::FileFilter::new();
+    filter.set_name(Some(&lang::lookup("filetype-action")));
+    filter.add_suffix("taaction");
+    filter
+}
+
 /// Get a [`FileFilter`] tuned to PDFs.
 pub fn pdfs() -> FileFilter {
     let filter = gtk::FileFilter::new();

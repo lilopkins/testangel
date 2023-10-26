@@ -14,12 +14,12 @@ use crate::next_ui::{
 };
 
 #[derive(Debug)]
-pub struct VariableRow<PS, I>
+pub struct VariableRow<PS, T, I>
 where
     PS: Debug + Clone + 'static,
-    I: VariableRowParentInput<PS>,
+    I: VariableRowParentInput<T, PS>,
 {
-    idx: usize,
+    idx: T,
     name: String,
     kind: ParameterKind,
     source: PS,
@@ -31,11 +31,11 @@ where
     _input_marker: PhantomData<I>,
 }
 
-pub struct VariableRowInit<PS>
+pub struct VariableRowInit<T, PS>
 where
     PS: ParameterSourceTrait + Debug + std::fmt::Display + PartialEq<PS> + Clone + 'static,
 {
-    pub index: usize,
+    pub index: T,
     pub name: String,
     pub kind: ParameterKind,
     pub current_source: PS,
@@ -43,19 +43,19 @@ where
     pub potential_sources: Vec<(String, PS)>,
 }
 
-pub trait VariableRowParentInput<PS> {
+pub trait VariableRowParentInput<T, PS> {
     /// Replace the value of the source with the index `idx`
-    fn new_source_for(idx: usize, new_source: PS) -> Self;
+    fn new_source_for(idx: T, new_source: PS) -> Self;
     /// Replace the value of the variable with the index `idx`
-    fn new_value_for(idx: usize, new_value: ParameterValue) -> Self;
+    fn new_value_for(idx: T, new_value: ParameterValue) -> Self;
 }
 
 pub trait ParameterSourceTrait {
     fn literal() -> Self;
 }
 
-impl<PS: PartialEq<PS> + ToString + Clone + Debug, I: VariableRowParentInput<PS>>
-    VariableRow<PS, I>
+impl<PS: PartialEq<PS> + ToString + Clone + Debug, T, I: VariableRowParentInput<T, PS>>
+    VariableRow<PS, T, I>
 {
     fn get_nice_name_for(&self, source: &PS) -> String {
         for (name, src) in &self.potential_sources_raw {
@@ -75,20 +75,21 @@ pub enum VariableRowInput<PS> {
 }
 
 #[derive(Debug)]
-pub enum VariableRowOutput<PS> {
-    NewSourceFor(usize, PS),
-    NewValueFor(usize, ParameterValue),
+pub enum VariableRowOutput<T, PS> {
+    NewSourceFor(T, PS),
+    NewValueFor(T, ParameterValue),
 }
 
 #[relm4::factory(pub)]
-impl<PS, I> FactoryComponent for VariableRow<PS, I>
+impl<PS, I, T> FactoryComponent for VariableRow<PS, T, I>
 where
     PS: ParameterSourceTrait + Debug + std::fmt::Display + PartialEq<PS> + Clone + 'static,
-    I: Debug + VariableRowParentInput<PS> + 'static,
+    I: Debug + VariableRowParentInput<T, PS> + 'static,
+    T: Clone + Debug + 'static,
 {
-    type Init = VariableRowInit<PS>;
+    type Init = VariableRowInit<T, PS>;
     type Input = VariableRowInput<PS>;
-    type Output = VariableRowOutput<PS>;
+    type Output = VariableRowOutput<T, PS>;
     type CommandOutput = ();
     type ParentWidget = adw::PreferencesGroup;
     type ParentInput = I;
@@ -206,11 +207,11 @@ where
         match message {
             VariableRowInput::SourceSelected(new_source) => {
                 self.source = new_source.clone();
-                sender.output(VariableRowOutput::NewSourceFor(self.idx, new_source));
+                sender.output(VariableRowOutput::NewSourceFor(self.idx.clone(), new_source));
             }
             VariableRowInput::ChangeValue(new_value) => {
                 self.value = new_value.clone();
-                sender.output(VariableRowOutput::NewValueFor(self.idx, new_value));
+                sender.output(VariableRowOutput::NewValueFor(self.idx.clone(), new_value));
             }
         }
     }

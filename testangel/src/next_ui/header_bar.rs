@@ -6,7 +6,7 @@ use relm4::{
     RelmIterChildrenExt,
 };
 
-use super::flows::header::FlowsHeader;
+use super::{flows::header::FlowsHeader, actions::header::ActionsHeader};
 
 #[derive(Debug)]
 pub enum HeaderBarInput {
@@ -15,6 +15,7 @@ pub enum HeaderBarInput {
 
 #[derive(Debug)]
 pub struct HeaderBarModel {
+    action_header_rc: Rc<Controller<ActionsHeader>>,
     flow_header_rc: Rc<Controller<FlowsHeader>>,
 }
 
@@ -29,7 +30,7 @@ impl HeaderBarModel {
 
 #[relm4::component(pub)]
 impl Component for HeaderBarModel {
-    type Init = (Rc<Controller<FlowsHeader>>, Rc<adw::ViewStack>);
+    type Init = (Rc<Controller<ActionsHeader>>, Rc<Controller<FlowsHeader>>, Rc<adw::ViewStack>);
     type Input = HeaderBarInput;
     type Output = ();
     type CommandOutput = ();
@@ -58,10 +59,11 @@ impl Component for HeaderBarModel {
         _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = HeaderBarModel {
-            flow_header_rc: init.0,
+            action_header_rc: init.0,
+            flow_header_rc: init.1,
         };
 
-        let stack = &*init.1;
+        let stack = &*init.2;
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
@@ -78,6 +80,10 @@ impl Component for HeaderBarModel {
             HeaderBarInput::ChangedView(new_view) => {
                 if new_view == "flows" {
                     let rc_clone = self.flow_header_rc.clone();
+                    self.swap_content(&widgets.start_box, &rc_clone.widgets().start);
+                    self.swap_content(&widgets.end_box, &rc_clone.widgets().end);
+                } else if new_view == "actions" {
+                    let rc_clone = self.action_header_rc.clone();
                     self.swap_content(&widgets.start_box, &rc_clone.widgets().start);
                     self.swap_content(&widgets.end_box, &rc_clone.widgets().end);
                 } else {

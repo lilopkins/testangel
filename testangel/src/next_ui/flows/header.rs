@@ -9,9 +9,7 @@ use relm4::{
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
-use crate::next_ui::lang;
-
-mod add_step_factory;
+use crate::next_ui::{lang, components::add_step_factory::{AddStepResult, AddStepTrait, AddStepInit}};
 
 #[derive(Debug)]
 pub struct FlowsHeader {
@@ -19,7 +17,7 @@ pub struct FlowsHeader {
     action_map: Arc<ActionMap>,
     add_button: gtk::MenuButton,
     flow_open: bool,
-    search_results: FactoryVecDeque<add_step_factory::StepSearchResult>,
+    search_results: FactoryVecDeque<AddStepResult<FlowsHeaderInput>>,
 }
 
 #[derive(Debug)]
@@ -45,6 +43,12 @@ pub enum FlowsHeaderInput {
     AddTopSearchResult,
     /// Inform the header bar if a flow is open or not.
     ChangeFlowOpen(bool),
+}
+
+impl AddStepTrait for FlowsHeaderInput {
+    fn add_step(value: String) -> Self {
+        Self::AddStep(value)
+    }
 }
 
 #[relm4::component(pub)]
@@ -243,7 +247,7 @@ impl Component for FlowsHeader {
             FlowsHeaderInput::AddTopSearchResult => {
                 if let Some(result) = self.search_results.get(0) {
                     widgets.menu_popover.popdown();
-                    let id = result.action_id();
+                    let id = result.value();
                     // unwrap rationale: the receiver will never be disconnected
                     sender.output(FlowsHeaderOutput::AddStep(id)).unwrap();
                 }
@@ -271,7 +275,10 @@ impl Component for FlowsHeader {
                     // Sort
                     unsorted_results.sort_by(|(a, _a), (b, _b)| a.cmp(b));
                     for (_, a) in unsorted_results {
-                        results.push_back(a);
+                        results.push_back(AddStepInit {
+                            label: format!("{}: {}", a.group, a.friendly_name),
+                            value: a.id,
+                        });
                     }
                 } else {
                     let mut unsorted_results = vec![];
@@ -293,7 +300,10 @@ impl Component for FlowsHeader {
                     // Sort
                     unsorted_results.sort_by(|(a, _a), (b, _b)| a.cmp(b));
                     for (_, a) in unsorted_results {
-                        results.push_back(a);
+                        results.push_back(AddStepInit {
+                            label: format!("{}: {}", a.group, a.friendly_name),
+                            value: a.id,
+                        });
                     }
                 }
             }

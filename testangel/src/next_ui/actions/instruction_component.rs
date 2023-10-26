@@ -8,8 +8,8 @@ use relm4::{
     prelude::{DynamicIndex, FactoryComponent},
     RelmWidgetExt,
 };
-use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
-use testangel_ipc::prelude::{ParameterKind, ParameterValue};
+use testangel::types::{InstructionParameterSource, InstructionConfiguration};
+use testangel_ipc::prelude::{ParameterKind, ParameterValue, Instruction};
 
 use crate::next_ui::{
     components::variable_row::{
@@ -19,21 +19,21 @@ use crate::next_ui::{
 };
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
-pub struct ActionComponentInitialiser {
-    pub possible_outputs: Vec<(String, ParameterKind, ActionParameterSource)>,
-    pub config: ActionConfiguration,
-    pub action: Action,
+pub struct InstructionComponentInitialiser {
+    pub possible_outputs: Vec<(String, ParameterKind, InstructionParameterSource)>,
+    pub config: InstructionConfiguration,
+    pub instruction: Instruction,
 }
 
 #[derive(Debug)]
-pub struct ActionComponent {
+pub struct InstructionComponent {
     step: DynamicIndex,
-    config: ActionConfiguration,
-    action: Action,
+    config: InstructionConfiguration,
+    instruction: Instruction,
     visible: bool,
 
-    possible_outputs: Vec<(String, ParameterKind, ActionParameterSource)>,
-    variable_rows: FactoryVecDeque<VariableRow<ActionParameterSource, usize, ActionComponentInput>>,
+    possible_outputs: Vec<(String, ParameterKind, InstructionParameterSource)>,
+    variable_rows: FactoryVecDeque<VariableRow<InstructionParameterSource, String, InstructionComponentInput>>,
 
     /// True when a drag-and-drop operation is proposed to add a component above this one
     drop_proposed_above: bool,
@@ -42,47 +42,47 @@ pub struct ActionComponent {
 }
 
 #[derive(Debug)]
-pub enum ActionComponentInput {
+pub enum InstructionComponentInput {
     SetVisible(bool),
-    NewSourceFor(usize, ActionParameterSource),
-    NewValueFor(usize, ParameterValue),
+    NewSourceFor(String, InstructionParameterSource),
+    NewValueFor(String, ParameterValue),
     ProposedDrop { above: bool, below: bool },
 }
 
-impl VariableRowParentInput<usize, ActionParameterSource> for ActionComponentInput {
-    fn new_source_for(idx: usize, new_source: ActionParameterSource) -> Self {
+impl VariableRowParentInput<String, InstructionParameterSource> for InstructionComponentInput {
+    fn new_source_for(idx: String, new_source: InstructionParameterSource) -> Self {
         Self::NewSourceFor(idx, new_source)
     }
 
-    fn new_value_for(idx: usize, new_value: ParameterValue) -> Self {
+    fn new_value_for(idx: String, new_value: ParameterValue) -> Self {
         Self::NewValueFor(idx, new_value)
     }
 }
 
-impl ParameterSourceTrait for ActionParameterSource {
+impl ParameterSourceTrait for InstructionParameterSource {
     fn literal() -> Self {
         Self::Literal
     }
 }
 
 #[derive(Debug)]
-pub enum ActionComponentOutput {
+pub enum InstructionComponentOutput {
     /// (Base index, Offset)
     Cut(DynamicIndex),
-    Paste(usize, ActionConfiguration),
+    Paste(usize, InstructionConfiguration),
     Remove(DynamicIndex),
-    ConfigUpdate(DynamicIndex, ActionConfiguration),
+    ConfigUpdate(DynamicIndex, InstructionConfiguration),
     /// (from, to, offset)
     MoveStep(DynamicIndex, DynamicIndex, isize),
 }
 
 #[relm4::factory(pub)]
-impl FactoryComponent for ActionComponent {
-    type Init = ActionComponentInitialiser;
-    type Input = ActionComponentInput;
-    type Output = ActionComponentOutput;
+impl FactoryComponent for InstructionComponent {
+    type Init = InstructionComponentInitialiser;
+    type Input = InstructionComponentInput;
+    type Output = InstructionComponentOutput;
     type CommandOutput = ();
-    type ParentInput = super::FlowInputs;
+    type ParentInput = super::ActionInputs;
     type ParentWidget = gtk::Box;
 
     view! {
@@ -101,15 +101,15 @@ impl FactoryComponent for ActionComponent {
             row -> adw::PreferencesGroup {
                 #[watch]
                 set_title: &lang::lookup_with_args(
-                    "flow-step-label",
+                    "action-step-label",
                     {
                         let mut map = HashMap::new();
                         map.insert("step", (self.step.current_index() + 1).into());
-                        map.insert("name", self.action.friendly_name.clone().into());
+                        map.insert("name", self.instruction.friendly_name().clone().into());
                         map
                     }
                 ),
-                set_description: Some(&self.action.description),
+                set_description: Some(&self.instruction.description()),
                 #[watch]
                 set_visible: self.visible,
 
@@ -123,8 +123,8 @@ impl FactoryComponent for ActionComponent {
 
                         connect_clicked[sender, index, config] => move |_| {
                             if index.clone().current_index() != 0 {
-                                sender.output(ActionComponentOutput::Cut(index.clone()));
-                                sender.output(ActionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone()));
+                                sender.output(InstructionComponentOutput::Cut(index.clone()));
+                                sender.output(InstructionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone()));
                             }
                         },
                     },
@@ -133,8 +133,8 @@ impl FactoryComponent for ActionComponent {
                         set_tooltip: &lang::lookup("move-down"),
 
                         connect_clicked[sender, index, config] => move |_| {
-                            sender.output(ActionComponentOutput::Cut(index.clone()));
-                            sender.output(ActionComponentOutput::Paste(index.clone().current_index() + 1, config.clone()));
+                            sender.output(InstructionComponentOutput::Cut(index.clone()));
+                            sender.output(InstructionComponentOutput::Paste(index.clone().current_index() + 1, config.clone()));
                         },
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
@@ -142,7 +142,7 @@ impl FactoryComponent for ActionComponent {
                         set_tooltip: &lang::lookup("delete-step"),
 
                         connect_clicked[sender, index] => move |_| {
-                            sender.output(ActionComponentOutput::Remove(index.clone()));
+                            sender.output(InstructionComponentOutput::Remove(index.clone()));
                         },
                     },
                 },
@@ -156,12 +156,12 @@ impl FactoryComponent for ActionComponent {
                     },
 
                     connect_drag_begin[sender] => move |_src, _drag| {
-                        sender.input(ActionComponentInput::SetVisible(false))
+                        sender.input(InstructionComponentInput::SetVisible(false))
                     },
 
                     connect_drag_end[sender] => move |_src, _drag, delete| {
                         if !delete {
-                            sender.input(ActionComponentInput::SetVisible(true))
+                            sender.input(InstructionComponentInput::SetVisible(true))
                         }
                     },
                 },
@@ -184,8 +184,8 @@ impl FactoryComponent for ActionComponent {
                             } else {
                                 1
                             };
-                            sender.output(ActionComponentOutput::MoveStep(*from, to, offset));
-                            sender.input(ActionComponentInput::ProposedDrop { above: false, below: false, });
+                            sender.output(InstructionComponentOutput::MoveStep(*from, to, offset));
+                            sender.input(InstructionComponentInput::ProposedDrop { above: false, below: false, });
                             return true;
                         }
                         false
@@ -195,10 +195,10 @@ impl FactoryComponent for ActionComponent {
                         let half = drop.widget().height() as f64 / 2.0;
                         if y < half {
                             // top half
-                            sender.input(ActionComponentInput::ProposedDrop { above: true, below: false, });
+                            sender.input(InstructionComponentInput::ProposedDrop { above: true, below: false, });
                         } else {
                             // bottom half
-                            sender.input(ActionComponentInput::ProposedDrop { above: false, below: true, });
+                            sender.input(InstructionComponentInput::ProposedDrop { above: false, below: true, });
                         }
                         gtk::gdk::DragAction::MOVE
                     },
@@ -207,15 +207,15 @@ impl FactoryComponent for ActionComponent {
                         let half = drop.widget().height() as f64 / 2.0;
                         if y < half {
                             // top half
-                            sender.input(ActionComponentInput::ProposedDrop { above: true, below: false, });
+                            sender.input(InstructionComponentInput::ProposedDrop { above: true, below: false, });
                         } else {
                             // bottom half
-                            sender.input(ActionComponentInput::ProposedDrop { above: false, below: true, });
+                            sender.input(InstructionComponentInput::ProposedDrop { above: false, below: true, });
                         }
                         gtk::gdk::DragAction::MOVE
                     },
 
-                    connect_leave => ActionComponentInput::ProposedDrop { above: false, below: false, },
+                    connect_leave => InstructionComponentInput::ProposedDrop { above: false, below: false, },
                 },
             },
 
@@ -232,9 +232,9 @@ impl FactoryComponent for ActionComponent {
         index: &Self::Index,
         sender: relm4::FactorySender<Self>,
     ) -> Self {
-        let ActionComponentInitialiser {
+        let InstructionComponentInitialiser {
             possible_outputs,
-            action,
+            instruction,
             config,
         } = init;
 
@@ -242,7 +242,7 @@ impl FactoryComponent for ActionComponent {
             step: index.clone(),
             possible_outputs,
             config,
-            action,
+            instruction,
             visible: true,
             variable_rows: FactoryVecDeque::new(
                 adw::PreferencesGroup::default(),
@@ -265,7 +265,7 @@ impl FactoryComponent for ActionComponent {
         {
             // initialise rows
             let mut variable_rows = self.variable_rows.guard();
-            for (idx, (name, kind)) in self.action.parameters.iter().enumerate() {
+            for (id, (name, kind)) in self.instruction.parameters().iter() {
                 let possible_sources = self
                     .possible_outputs
                     .iter()
@@ -274,15 +274,15 @@ impl FactoryComponent for ActionComponent {
                     .collect();
 
                 variable_rows.push_back(VariableRowInit {
-                    index: idx,
+                    index: id.clone(),
                     name: name.clone(),
                     kind: *kind,
-                    current_source: self.config.parameter_sources[&idx].clone(),
-                    current_value: self.config.parameter_values[&idx].clone(),
+                    current_source: self.config.parameter_sources[id].clone(),
+                    current_value: self.config.parameter_values[id].clone(),
                     potential_sources: [
                         vec![(
                             lang::lookup("source-literal"),
-                            ActionParameterSource::Literal,
+                            InstructionParameterSource::Literal,
                         )],
                         possible_sources,
                     ]
@@ -299,22 +299,22 @@ impl FactoryComponent for ActionComponent {
 
     fn update(&mut self, message: Self::Input, sender: relm4::FactorySender<Self>) {
         match message {
-            ActionComponentInput::SetVisible(to) => self.visible = to,
-            ActionComponentInput::NewSourceFor(idx, source) => {
+            InstructionComponentInput::SetVisible(to) => self.visible = to,
+            InstructionComponentInput::NewSourceFor(idx, source) => {
                 self.config.parameter_sources.insert(idx, source);
-                sender.output(ActionComponentOutput::ConfigUpdate(
+                sender.output(InstructionComponentOutput::ConfigUpdate(
                     self.step.clone(),
                     self.config.clone(),
                 ));
             }
-            ActionComponentInput::NewValueFor(idx, source) => {
+            InstructionComponentInput::NewValueFor(idx, source) => {
                 self.config.parameter_values.insert(idx, source);
-                sender.output(ActionComponentOutput::ConfigUpdate(
+                sender.output(InstructionComponentOutput::ConfigUpdate(
                     self.step.clone(),
                     self.config.clone(),
                 ));
             }
-            ActionComponentInput::ProposedDrop { above, below } => {
+            InstructionComponentInput::ProposedDrop { above, below } => {
                 self.drop_proposed_above = above;
                 self.drop_proposed_below = below;
             }
@@ -323,16 +323,16 @@ impl FactoryComponent for ActionComponent {
 
     fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
         match output {
-            ActionComponentOutput::Remove(idx) => Some(super::FlowInputs::RemoveStep(idx)),
-            ActionComponentOutput::Cut(idx) => Some(super::FlowInputs::CutStep(idx)),
-            ActionComponentOutput::Paste(idx, step) => {
-                Some(super::FlowInputs::PasteStep(idx, step))
+            InstructionComponentOutput::Remove(idx) => Some(super::ActionInputs::RemoveStep(idx)),
+            InstructionComponentOutput::Cut(idx) => Some(super::ActionInputs::CutStep(idx)),
+            InstructionComponentOutput::Paste(idx, step) => {
+                Some(super::ActionInputs::PasteStep(idx, step))
             }
-            ActionComponentOutput::ConfigUpdate(step, config) => {
-                Some(super::FlowInputs::ConfigUpdate(step, config))
+            InstructionComponentOutput::ConfigUpdate(step, config) => {
+                Some(super::ActionInputs::ConfigUpdate(step, config))
             }
-            ActionComponentOutput::MoveStep(from, to, offset) => {
-                Some(super::FlowInputs::MoveStep(from, to, offset))
+            InstructionComponentOutput::MoveStep(from, to, offset) => {
+                Some(super::ActionInputs::MoveStep(from, to, offset))
             }
         }
     }

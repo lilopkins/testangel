@@ -8,50 +8,50 @@ use relm4::{
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
-    types::{ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
+    types::{VersionedFile, InstructionConfiguration, Action, InstructionParameterSource},
 };
 
 use super::{file_filters, lang};
 
-mod action_component;
+mod instruction_component;
 mod execution_dialog;
 pub mod header;
 
-pub enum SaveOrOpenFlowError {
+pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
     ParsingError(ron::error::SpannedError),
     SerializingError(ron::Error),
-    FlowNotVersionCompatible,
-    MissingAction(usize, String),
+    ActionNotVersionCompatible,
+    MissingInstruction(usize, String),
 }
 
-impl ToString for SaveOrOpenFlowError {
+impl ToString for SaveOrOpenActionError {
     fn to_string(&self) -> String {
         match self {
-            Self::IoError(e) => lang::lookup_with_args("flow-save-open-error-io-error", {
+            Self::IoError(e) => lang::lookup_with_args("action-save-open-error-io-error", {
                 let mut map = HashMap::new();
                 map.insert("error", e.to_string().into());
                 map
             }),
             Self::ParsingError(e) => {
-                lang::lookup_with_args("flow-save-open-error-parsing-error", {
+                lang::lookup_with_args("action-save-open-error-parsing-error", {
                     let mut map = HashMap::new();
                     map.insert("error", e.to_string().into());
                     map
                 })
             }
             Self::SerializingError(e) => {
-                lang::lookup_with_args("flow-save-open-error-serializing-error", {
+                lang::lookup_with_args("action-save-open-error-serializing-error", {
                     let mut map = HashMap::new();
                     map.insert("error", e.to_string().into());
                     map
                 })
             }
-            Self::FlowNotVersionCompatible => {
-                lang::lookup("flow-save-open-error-flow-not-version-compatible")
+            Self::ActionNotVersionCompatible => {
+                lang::lookup("action-save-open-error-action-not-version-compatible")
             }
-            Self::MissingAction(step, e) => {
-                lang::lookup_with_args("flow-save-open-error-missing-action", {
+            Self::MissingInstruction(step, e) => {
+                lang::lookup_with_args("action-save-open-error-missing-instruction", {
                     let mut map = HashMap::new();
                     map.insert("step", (step + 1).into());
                     map.insert("error", e.to_string().into());
@@ -63,72 +63,77 @@ impl ToString for SaveOrOpenFlowError {
 }
 
 #[derive(Clone, Debug)]
-pub enum FlowInputs {
+pub enum ActionInputs {
     /// Do nothing
     NoOp,
     /// The map of actions has changed and should be updated
     ActionsMapChanged(Arc<ActionMap>),
-    /// Create a new flow
-    NewFlow,
-    /// Actually create the new flow
-    _NewFlow,
-    /// Prompt the user to open a flow. This will ask to save first if needed.
-    OpenFlow,
+    /// Create a new action
+    NewAction,
+    /// Actually create the new action
+    _NewAction,
+    /// Prompt the user to open an action. This will ask to save first if needed.
+    OpenAction,
     /// Actually show the user the open file dialog
-    _OpenFlow,
-    /// Actually open a flow after the user has finished selecting
-    __OpenFlow(PathBuf),
-    /// Save the flow, prompting if needed to set file path
-    SaveFlow,
-    /// Save the flow as a new file, always prompting for a file path
-    SaveAsFlow,
+    _OpenAction,
+    /// Actually open an action after the user has finished selecting
+    __OpenAction(PathBuf),
+    /// Save the action, prompting if needed to set file path
+    SaveAction,
+    /// Save the action as a new file, always prompting for a file path
+    SaveAsAction,
     /// Ask where to save if needed, then save
-    _SaveFlowThen(Box<FlowInputs>),
-    /// Actually write the flow to disk, then emit then input
-    __SaveFlowThen(PathBuf, Box<FlowInputs>),
-    /// Close the flow, prompting if needing to save first
-    CloseFlow,
-    /// Actually close the flow
-    _CloseFlow,
+    _SaveActionThen(Box<ActionInputs>),
+    /// Actually write the action to disk, then emit then input
+    __SaveActionThen(PathBuf, Box<ActionInputs>),
+    /// Close the action, prompting if needing to save first
+    CloseAction,
+    /// Actually close the action
+    _CloseAction,
     /// Add the step with the ID provided
     AddStep(String),
-    /// Update the UI steps from the open flow. This will clear first and overwrite any changes!
+    /// Update the UI steps from the open action. This will clear first and overwrite any changes!
     UpdateStepsFromModel,
     /// Remove the step with the provided index, resetting all references to it.
     RemoveStep(DynamicIndex),
     /// Remove the step with the provided index, but change references to it to a temporary value (`usize::MAX`)
-    /// that can be set again with [`FlowInputs::PasteStep`].
+    /// that can be set again with [`ActionInputs::PasteStep`].
     /// This doesn't refresh the UI until Paste is called.
     CutStep(DynamicIndex),
     /// Insert a step at the specified index and set references back to the correct step.
     /// This refreshes the UI.
-    PasteStep(usize, ActionConfiguration),
+    PasteStep(usize, InstructionConfiguration),
     /// Move a step from the index to a position offset (param 3) from a new index (param 2).
     MoveStep(DynamicIndex, DynamicIndex, isize),
-    /// Start the flow exection
-    RunFlow,
-    /// The [`ActionConfiguration`] has changed for the step indicated by the [`DynamicIndex`].
+    /// Show the action test dialog
+    RunAction,
+    /// The [`InstructionConfiguration`] has changed for the step indicated by the [`DynamicIndex`].
     /// This does not refresh the UI.
-    ConfigUpdate(DynamicIndex, ActionConfiguration),
+    ConfigUpdate(DynamicIndex, InstructionConfiguration),
+}
+#[derive(Clone, Debug)]
+pub enum ActionOutputs {
+    /// Inform other parts that actions may have changed, reload them!
+    ReloadActions,
 }
 
 #[derive(Debug)]
-pub struct FlowsModel {
+pub struct ActionsModel {
     action_map: Arc<ActionMap>,
     engine_list: Arc<EngineList>,
 
-    open_flow: Option<AutomationFlow>,
+    open_action: Option<Action>,
     open_path: Option<PathBuf>,
     needs_saving: bool,
-    header: Rc<Controller<header::FlowsHeader>>,
-    live_actions_list: FactoryVecDeque<action_component::ActionComponent>,
+    header: Rc<Controller<header::ActionsHeader>>,
+    live_instructions_list: FactoryVecDeque<instruction_component::InstructionComponent>,
 
     execution_dialog: Option<Connector<execution_dialog::ExecutionDialog>>,
 }
 
-impl FlowsModel {
+impl ActionsModel {
     /// Get an [`Rc`] clone of the header controller
-    pub fn header_controller_rc(&self) -> Rc<Controller<header::FlowsHeader>> {
+    pub fn header_controller_rc(&self) -> Rc<Controller<header::ActionsHeader>> {
         self.header.clone()
     }
 
@@ -139,7 +144,7 @@ impl FlowsModel {
     {
         adw::MessageDialog::builder()
             .transient_for(&self.header.widget().toplevel_window().expect(
-                "FlowsModel::create_message_dialog cannot be called until the header is attached",
+                "ActionsModel::create_message_dialog cannot be called until the header is attached",
             ))
             .title(title.as_ref())
             .heading(title.as_ref())
@@ -160,66 +165,57 @@ impl FlowsModel {
         dialog
     }
 
-    /// Just open a brand new flow
-    fn new_flow(&mut self) {
+    /// Just open a brand new action
+    fn new_action(&mut self) {
         self.open_path = None;
         self.needs_saving = true;
-        self.open_flow = Some(AutomationFlow::default());
-        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
-            self.open_flow.is_some(),
+        self.open_action = Some(Action::default());
+        self.header.emit(header::ActionsHeaderInput::ChangeActionOpen(
+            self.open_action.is_some(),
         ));
     }
 
-    /// Open a flow. This does not ask to save first.
-    fn open_flow(&mut self, file: PathBuf) -> Result<Vec<usize>, SaveOrOpenFlowError> {
-        let data = &fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?;
+    /// Open an action. This does not ask to save first.
+    fn open_action(&mut self, file: PathBuf) -> Result<(), SaveOrOpenActionError> {
+        let data = &fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?;
 
         let versioned_file: VersionedFile =
-            ron::from_str(data).map_err(SaveOrOpenFlowError::ParsingError)?;
+            ron::from_str(data).map_err(SaveOrOpenActionError::ParsingError)?;
         if versioned_file.version() != 1 {
-            return Err(SaveOrOpenFlowError::FlowNotVersionCompatible);
+            return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }
 
-        let mut flow: AutomationFlow =
-            ron::from_str(data).map_err(SaveOrOpenFlowError::ParsingError)?;
-        if flow.version() != 1 {
-            return Err(SaveOrOpenFlowError::FlowNotVersionCompatible);
+        let mut action: Action =
+            ron::from_str(data).map_err(SaveOrOpenActionError::ParsingError)?;
+        if action.version() != 1 {
+            return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }
-        let mut steps_reset = vec![];
-        for (step, ac) in flow.actions.iter_mut().enumerate() {
-            match self.action_map.get_action_by_id(&ac.action_id) {
-                None => {
-                    return Err(SaveOrOpenFlowError::MissingAction(
-                        step,
-                        ac.action_id.clone(),
-                    ))
-                }
-                Some(action) => {
-                    // Check that action parameters haven't changed. If they have, reset values.
-                    if ac.update(action) {
-                        steps_reset.push(step + 1);
-                    }
-                }
+        for (step, ic) in action.instructions.iter_mut().enumerate() {
+            if self.engine_list.get_engine_by_instruction_id(&ic.instruction_id).is_none() {
+                return Err(SaveOrOpenActionError::MissingInstruction(
+                    step,
+                    ic.instruction_id.clone(),
+                ))
             }
         }
-        self.open_flow = Some(flow);
-        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
-            self.open_flow.is_some(),
+        self.open_action = Some(action);
+        self.header.emit(header::ActionsHeaderInput::ChangeActionOpen(
+            self.open_action.is_some(),
         ));
         self.open_path = Some(file);
         self.needs_saving = false;
-        log::debug!("New flow open.");
-        log::debug!("Flow: {:?}", self.open_flow);
-        Ok(steps_reset)
+        log::debug!("New action open.");
+        log::debug!("Action: {:?}", self.open_action);
+        Ok(())
     }
 
     /// Ask the user if they want to save this file. If they response yes, this will also trigger the save function.
     /// This function will only ask the user if needed, otherwise it will emit immediately.
-    fn prompt_to_save(&self, sender: &relm4::Sender<FlowInputs>, then: FlowInputs) {
+    fn prompt_to_save(&self, sender: &relm4::Sender<ActionInputs>, then: ActionInputs) {
         if self.needs_saving {
             let question = self.create_message_dialog_skeleton(
-                lang::lookup("flow-save-before"),
-                lang::lookup("flow-save-before-message"),
+                lang::lookup("action-save-before"),
+                lang::lookup("action-save-before-message"),
             );
             question.add_response("discard", &lang::lookup("discard"));
             question.add_response("save", &lang::lookup("save"));
@@ -229,7 +225,7 @@ impl FlowsModel {
             let sender_c = sender.clone();
             let then_c = then.clone();
             question.connect_response(Some("save"), move |_, _| {
-                sender_c.emit(FlowInputs::_SaveFlowThen(Box::new(then_c.clone())));
+                sender_c.emit(ActionInputs::_SaveActionThen(Box::new(then_c.clone())));
             });
             let sender_c = sender.clone();
             question.connect_response(Some("discard"), move |_, _| {
@@ -244,21 +240,21 @@ impl FlowsModel {
     /// Ask the user where to save the flow, or just save if that's good enough
     fn ask_where_to_save(
         &mut self,
-        sender: &relm4::Sender<FlowInputs>,
+        sender: &relm4::Sender<ActionInputs>,
         transient_for: &impl IsA<gtk::Window>,
         always_ask_where: bool,
-        then: FlowInputs,
+        then: ActionInputs,
     ) {
         if always_ask_where || self.open_path.is_none() {
             // Ask where
             let dialog = gtk::FileDialog::builder()
                 .modal(true)
-                .title(lang::lookup("flow-header-save"))
+                .title(lang::lookup("action-header-save"))
                 .initial_folder(&gtk::gio::File::for_path(
-                    std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
+                    std::env::var("TA_ACTION_DIR").unwrap_or("./actions".to_string()),
                 ))
                 .filters(&file_filters::filter_list(vec![
-                    file_filters::flows(),
+                    file_filters::actions(),
                     file_filters::all(),
                 ]))
                 .build();
@@ -270,45 +266,45 @@ impl FlowsModel {
                 move |res| {
                     if let Ok(file) = res {
                         let path = file.path().unwrap();
-                        sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
+                        sender_c.emit(ActionInputs::__SaveActionThen(path, Box::new(then.clone())));
                     }
                 },
             );
         } else {
-            sender.emit(FlowInputs::__SaveFlowThen(
+            sender.emit(ActionInputs::__SaveActionThen(
                 self.open_path.clone().unwrap(),
                 Box::new(then),
             ));
         }
     }
 
-    /// Just save the flow to disk with the current `open_path` as the destination
-    fn save_flow(&mut self) -> Result<(), SaveOrOpenFlowError> {
+    /// Just save the action to disk with the current `open_path` as the destination
+    fn save_action(&mut self) -> Result<(), SaveOrOpenActionError> {
         let save_path = self.open_path.as_ref().unwrap();
-        let data = ron::to_string(self.open_flow.as_ref().unwrap())
-            .map_err(SaveOrOpenFlowError::SerializingError)?;
-        fs::write(save_path, data).map_err(SaveOrOpenFlowError::IoError)?;
+        let data = ron::to_string(self.open_action.as_ref().unwrap())
+            .map_err(SaveOrOpenActionError::SerializingError)?;
+        fs::write(save_path, data).map_err(SaveOrOpenActionError::IoError)?;
         self.needs_saving = false;
         Ok(())
     }
 
-    /// Close this flow without checking first
-    fn close_flow(&mut self) {
-        self.open_flow = None;
+    /// Close this action without checking first
+    fn close_action(&mut self) {
+        self.open_action = None;
         self.open_path = None;
         self.needs_saving = false;
-        self.live_actions_list.guard().clear();
-        self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
-            self.open_flow.is_some(),
+        self.live_instructions_list.guard().clear();
+        self.header.emit(header::ActionsHeaderInput::ChangeActionOpen(
+            self.open_action.is_some(),
         ));
     }
 }
 
 #[relm4::component(pub)]
-impl Component for FlowsModel {
+impl Component for ActionsModel {
     type Init = (Arc<ActionMap>, Arc<EngineList>);
-    type Input = FlowInputs;
-    type Output = ();
+    type Input = ActionInputs;
+    type Output = ActionOutputs;
     type CommandOutput = ();
 
     view! {
@@ -324,15 +320,15 @@ impl Component for FlowsModel {
 
                     adw::StatusPage {
                         set_title: &lang::lookup("nothing-open"),
-                        set_description: Some(&lang::lookup("flow-nothing-open-description")),
+                        set_description: Some(&lang::lookup("action-nothing-open-description")),
                         set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
                         #[watch]
-                        set_visible: model.open_flow.is_none(),
+                        set_visible: model.open_action.is_none(),
                         set_vexpand: true,
                     },
 
                     #[local_ref]
-                    live_actions_list -> gtk::Box {
+                    live_instructions_list -> gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 5,
                     },
@@ -347,34 +343,34 @@ impl Component for FlowsModel {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let header = Rc::new(
-            header::FlowsHeader::builder()
+            header::ActionsHeader::builder()
                 .launch((init.1.clone(), init.0.clone()))
                 .forward(sender.input_sender(), |msg| match msg {
-                    header::FlowsHeaderOutput::NewFlow => FlowInputs::NewFlow,
-                    header::FlowsHeaderOutput::OpenFlow => FlowInputs::OpenFlow,
-                    header::FlowsHeaderOutput::SaveFlow => FlowInputs::SaveFlow,
-                    header::FlowsHeaderOutput::SaveAsFlow => FlowInputs::SaveAsFlow,
-                    header::FlowsHeaderOutput::CloseFlow => FlowInputs::CloseFlow,
-                    header::FlowsHeaderOutput::RunFlow => FlowInputs::RunFlow,
-                    header::FlowsHeaderOutput::AddStep(step) => FlowInputs::AddStep(step),
+                    header::ActionsHeaderOutput::NewAction => ActionInputs::NewAction,
+                    header::ActionsHeaderOutput::OpenAction => ActionInputs::OpenAction,
+                    header::ActionsHeaderOutput::SaveAction => ActionInputs::SaveAction,
+                    header::ActionsHeaderOutput::SaveAsAction => ActionInputs::SaveAsAction,
+                    header::ActionsHeaderOutput::CloseAction => ActionInputs::CloseAction,
+                    header::ActionsHeaderOutput::RunAction => ActionInputs::RunAction,
+                    header::ActionsHeaderOutput::AddStep(step) => ActionInputs::AddStep(step),
                 }),
         );
 
-        let model = FlowsModel {
+        let model = ActionsModel {
             action_map: init.0,
             engine_list: init.1,
-            open_flow: None,
+            open_action: None,
             open_path: None,
             needs_saving: false,
             execution_dialog: None,
             header,
-            live_actions_list: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
+            live_instructions_list: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
         };
 
         // Trigger update actions from model
-        sender.input(FlowInputs::UpdateStepsFromModel);
+        sender.input(ActionInputs::UpdateStepsFromModel);
 
-        let live_actions_list = model.live_actions_list.widget();
+        let live_instructions_list = model.live_instructions_list.widget();
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
@@ -388,36 +384,35 @@ impl Component for FlowsModel {
         root: &Self::Root,
     ) {
         match message {
-            FlowInputs::NoOp => (),
-            FlowInputs::ActionsMapChanged(new_map) => {
+            ActionInputs::NoOp => (),
+            ActionInputs::ActionsMapChanged(new_map) => {
                 self.action_map = new_map.clone();
-                self.header
-                    .emit(header::FlowsHeaderInput::ActionsMapChanged(new_map));
+                self.header.emit(header::ActionsHeaderInput::ActionsMapChanged(new_map));
             }
-            FlowInputs::ConfigUpdate(step, new_config) => {
+            ActionInputs::ConfigUpdate(step, new_config) => {
                 // unwrap rationale: config updates can't happen if nothing is open
-                let flow = self.open_flow.as_mut().unwrap();
-                flow.actions[step.current_index()] = new_config;
+                let action = self.open_action.as_mut().unwrap();
+                action.instructions[step.current_index()] = new_config;
             }
-            FlowInputs::NewFlow => {
-                self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
+            ActionInputs::NewAction => {
+                self.prompt_to_save(sender.input_sender(), ActionInputs::_NewAction);
             }
-            FlowInputs::_NewFlow => {
-                self.new_flow();
+            ActionInputs::_NewAction => {
+                self.new_action();
             }
-            FlowInputs::OpenFlow => {
-                self.prompt_to_save(sender.input_sender(), FlowInputs::_OpenFlow);
+            ActionInputs::OpenAction => {
+                self.prompt_to_save(sender.input_sender(), ActionInputs::_OpenAction);
             }
-            FlowInputs::_OpenFlow => {
+            ActionInputs::_OpenAction => {
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
-                    .title(lang::lookup("flow-header-open"))
+                    .title(lang::lookup("action-header-open"))
                     .filters(&file_filters::filter_list(vec![
-                        file_filters::flows(),
+                        file_filters::actions(),
                         file_filters::all(),
                     ]))
                     .initial_folder(&gtk::gio::File::for_path(
-                        std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
+                        std::env::var("TA_ACTION_DIR").unwrap_or("./actions".to_string()),
                     ))
                     .build();
 
@@ -428,68 +423,50 @@ impl Component for FlowsModel {
                     move |res| {
                         if let Ok(file) = res {
                             let path = file.path().unwrap();
-                            sender_c.input(FlowInputs::__OpenFlow(path));
+                            sender_c.input(ActionInputs::__OpenAction(path));
                         }
                     },
                 );
             }
-            FlowInputs::__OpenFlow(path) => {
-                match self.open_flow(path) {
-                    Ok(changes) => {
+            ActionInputs::__OpenAction(path) => {
+                match self.open_action(path) {
+                    Ok(_) => {
                         // Reload UI
-                        sender.input(FlowInputs::UpdateStepsFromModel);
-
-                        if !changes.is_empty() {
-                            let changed_steps = changes
-                                .iter()
-                                .map(|step| step.to_string())
-                                .collect::<Vec<_>>()
-                                .join(",");
-                            self.create_message_dialog(
-                                lang::lookup("flow-action-changed"),
-                                lang::lookup_with_args("flow-action-changed-message", {
-                                    let mut map = HashMap::new();
-                                    map.insert("stepCount", changes.len().into());
-                                    map.insert("steps", changed_steps.into());
-                                    map
-                                }),
-                            )
-                            .set_visible(true);
-                        }
+                        sender.input(ActionInputs::UpdateStepsFromModel);
                     }
                     Err(e) => {
                         // Show error dialog
                         self.create_message_dialog(
-                            lang::lookup("flow-error-opening"),
+                            lang::lookup("action-error-opening"),
                             e.to_string(),
                         )
                         .set_visible(true);
                     }
                 }
             }
-            FlowInputs::SaveFlow => {
-                if self.open_flow.is_some() {
+            ActionInputs::SaveAction => {
+                if self.open_action.is_some() {
                     // unwrap rationale: this cannot be triggered if not attached to a window
                     self.ask_where_to_save(
                         sender.input_sender(),
                         &root.toplevel_window().unwrap(),
                         false,
-                        FlowInputs::NoOp,
+                        ActionInputs::NoOp,
                     );
                 }
             }
-            FlowInputs::SaveAsFlow => {
-                if self.open_flow.is_some() {
+            ActionInputs::SaveAsAction => {
+                if self.open_action.is_some() {
                     // unwrap rationale: this cannot be triggered if not attached to a window
                     self.ask_where_to_save(
                         sender.input_sender(),
                         &root.toplevel_window().unwrap(),
                         true,
-                        FlowInputs::NoOp,
+                        ActionInputs::NoOp,
                     );
                 }
             }
-            FlowInputs::_SaveFlowThen(then) => {
+            ActionInputs::_SaveActionThen(then) => {
                 // unwrap rationale: this cannot be triggered if not attached to a window
                 self.ask_where_to_save(
                     sender.input_sender(),
@@ -498,31 +475,32 @@ impl Component for FlowsModel {
                     *then,
                 );
             }
-            FlowInputs::__SaveFlowThen(path, then) => {
+            ActionInputs::__SaveActionThen(path, then) => {
                 self.open_path = Some(path);
-                if let Err(e) = self.save_flow() {
-                    self.create_message_dialog(lang::lookup("flow-error-saving"), e.to_string())
+                if let Err(e) = self.save_action() {
+                    self.create_message_dialog(lang::lookup("action-error-saving"), e.to_string())
                         .set_visible(true);
                 } else {
                     widgets
                         .toast_target
-                        .add_toast(adw::Toast::new(&lang::lookup("flow-saved")));
+                        .add_toast(adw::Toast::new(&lang::lookup("action-saved")));
                     sender.input_sender().emit(*then);
                 }
+                let _ = sender.output(ActionOutputs::ReloadActions);
             }
-            FlowInputs::CloseFlow => {
-                self.prompt_to_save(sender.input_sender(), FlowInputs::_CloseFlow);
+            ActionInputs::CloseAction => {
+                self.prompt_to_save(sender.input_sender(), ActionInputs::_CloseAction);
             }
-            FlowInputs::_CloseFlow => {
-                self.close_flow();
+            ActionInputs::_CloseAction => {
+                self.close_action();
             }
 
-            FlowInputs::RunFlow => {
-                if let Some(flow) = &self.open_flow {
+            ActionInputs::RunAction => {
+                if let Some(action) = &self.open_action {
                     let e_dialog = execution_dialog::ExecutionDialog::builder()
                         .transient_for(root)
                         .launch(execution_dialog::ExecutionDialogInit {
-                            flow: flow.clone(),
+                            action: action.clone(),
                             engine_list: self.engine_list.clone(),
                             action_map: self.action_map.clone(),
                         });
@@ -533,41 +511,40 @@ impl Component for FlowsModel {
                 }
             }
 
-            FlowInputs::AddStep(step_id) => {
-                if self.open_flow.is_none() {
-                    self.new_flow();
+            ActionInputs::AddStep(step_id) => {
+                if self.open_action.is_none() {
+                    self.new_action();
                 }
 
                 // unwrap rationale: we've just guaranteed a flow is open
-                let flow = self.open_flow.as_mut().unwrap();
+                let action = self.open_action.as_mut().unwrap();
                 // unwrap rationale: the header can't ask to add an action that doesn't exist
-                flow.actions.push(ActionConfiguration::from(
-                    self.action_map.get_action_by_id(&step_id).unwrap(),
+                action.instructions.push(InstructionConfiguration::from(
+                    self.engine_list.get_instruction_by_id(&step_id).unwrap(),
                 ));
                 // Trigger UI steps refresh
-                sender.input(FlowInputs::UpdateStepsFromModel);
+                sender.input(ActionInputs::UpdateStepsFromModel);
             }
 
-            FlowInputs::UpdateStepsFromModel => {
-                let mut live_list = self.live_actions_list.guard();
+            ActionInputs::UpdateStepsFromModel => {
+                let mut live_list = self.live_instructions_list.guard();
                 live_list.clear();
-                if let Some(flow) = &self.open_flow {
+                if let Some(action) = &self.open_action {
                     let mut possible_outputs = vec![];
-                    for (step, config) in flow.actions.iter().enumerate() {
-                        live_list.push_back(action_component::ActionComponentInitialiser {
+                    for (step, config) in action.instructions.iter().enumerate() {
+                        live_list.push_back(instruction_component::InstructionComponentInitialiser {
                             possible_outputs: possible_outputs.clone(),
                             config: config.clone(),
-                            action: self.action_map.get_action_by_id(&config.action_id).unwrap(), // rationale: we have already checked the actions are here when the file is opened
+                            instruction: self.engine_list.get_instruction_by_id(&config.instruction_id).unwrap(), // rationale: we have already checked the actions are here when the file is opened
                         });
                         // add possible outputs to list AFTER processing this step
                         // unwrap rationale: actions are check to exist prior to opening.
-                        for (output_idx, (name, kind, _)) in self
-                            .action_map
-                            .get_action_by_id(&config.action_id)
+                        for (output_id, (name, kind)) in self
+                            .engine_list
+                            .get_instruction_by_id(&config.instruction_id)
                             .unwrap()
-                            .outputs
+                            .outputs()
                             .iter()
-                            .enumerate()
                         {
                             possible_outputs.push((
                                 lang::lookup_with_args("source-from-step", {
@@ -577,35 +554,35 @@ impl Component for FlowsModel {
                                     map
                                 }),
                                 *kind,
-                                ActionParameterSource::FromOutput(step, output_idx),
+                                InstructionParameterSource::FromOutput(step, output_id.clone()),
                             ));
                         }
                     }
                 }
             }
 
-            FlowInputs::RemoveStep(step_idx) => {
+            ActionInputs::RemoveStep(step_idx) => {
                 let idx = step_idx.current_index();
-                let flow = self.open_flow.as_mut().unwrap();
+                let action = self.open_action.as_mut().unwrap();
 
                 // This is needed as sometimes, if a menu item lines up above the delete step button,
                 // they can both be simultaneously triggered.
-                if idx >= flow.actions.len() {
+                if idx >= action.instructions.len() {
                     log::warn!("Skipped running RemoveStep as the index was invalid.");
                     return;
                 }
 
                 log::info!("Deleting step {}", idx + 1);
 
-                flow.actions.remove(idx);
+                action.instructions.remove(idx);
 
                 // Remove references to step and renumber references above step to one less than they were
-                for step in flow.actions.iter_mut() {
+                for step in action.instructions.iter_mut() {
                     for (_step_idx, source) in step.parameter_sources.iter_mut() {
-                        if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
+                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) = source {
                             match (*from_step).cmp(&idx) {
                                 std::cmp::Ordering::Equal => {
-                                    *source = ActionParameterSource::Literal
+                                    *source = InstructionParameterSource::Literal
                                 }
                                 std::cmp::Ordering::Greater => *from_step -= 1,
                                 _ => (),
@@ -615,26 +592,26 @@ impl Component for FlowsModel {
                 }
 
                 // Trigger UI steps refresh
-                sender.input(FlowInputs::UpdateStepsFromModel);
+                sender.input(ActionInputs::UpdateStepsFromModel);
             }
-            FlowInputs::CutStep(step_idx) => {
+            ActionInputs::CutStep(step_idx) => {
                 let idx = step_idx.current_index();
-                let flow = self.open_flow.as_mut().unwrap();
+                let action = self.open_action.as_mut().unwrap();
                 log::info!("Cut step {}", idx + 1);
 
                 // This is needed as sometimes, if a menu item lines up above a button that triggers this,
                 // they can both be simultaneously triggered.
-                if idx >= flow.actions.len() {
+                if idx >= action.instructions.len() {
                     log::warn!("Skipped running CutStep as the index was invalid.");
                     return;
                 }
 
-                flow.actions.remove(idx);
+                action.instructions.remove(idx);
 
                 // Remove references to step and renumber references above step to one less than they were
-                for step in flow.actions.iter_mut() {
+                for step in action.instructions.iter_mut() {
                     for (_step_idx, source) in step.parameter_sources.iter_mut() {
-                        if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
+                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) = source {
                             match (*from_step).cmp(&idx) {
                                 std::cmp::Ordering::Equal => *from_step = usize::MAX,
                                 std::cmp::Ordering::Greater => *from_step -= 1,
@@ -644,20 +621,20 @@ impl Component for FlowsModel {
                     }
                 }
             }
-            FlowInputs::PasteStep(idx, config) => {
-                let flow = self.open_flow.as_mut().unwrap();
-                let idx = idx.max(0).min(flow.actions.len());
+            ActionInputs::PasteStep(idx, config) => {
+                let action = self.open_action.as_mut().unwrap();
+                let idx = idx.max(0).min(action.instructions.len());
                 log::info!("Pasting step to {}", idx + 1);
-                flow.actions.insert(idx, config);
+                action.instructions.insert(idx, config);
 
                 // Remove references to step and renumber references above step to one less than they were
-                for (step_idx, step) in flow.actions.iter_mut().enumerate() {
+                for (step_idx, step) in action.instructions.iter_mut().enumerate() {
                     for (_param_idx, source) in step.parameter_sources.iter_mut() {
-                        if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
+                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) = source {
                             if *from_step == usize::MAX {
                                 if step_idx < idx {
                                     // can't refer to it anymore
-                                    *source = ActionParameterSource::Literal;
+                                    *source = InstructionParameterSource::Literal;
                                 } else {
                                     *from_step = idx;
                                 }
@@ -669,17 +646,17 @@ impl Component for FlowsModel {
                 }
 
                 // Trigger UI steps refresh
-                sender.input(FlowInputs::UpdateStepsFromModel);
+                sender.input(ActionInputs::UpdateStepsFromModel);
             }
-            FlowInputs::MoveStep(from, to, offset) => {
+            ActionInputs::MoveStep(from, to, offset) => {
                 let current_from = from.current_index();
-                let step = self.open_flow.as_ref().unwrap().actions[current_from].clone();
-                sender.input(FlowInputs::CutStep(from));
+                let step = self.open_action.as_ref().unwrap().instructions[current_from].clone();
+                sender.input(ActionInputs::CutStep(from));
                 let mut to = (to.current_index() as isize + offset).max(0) as usize;
                 if to > current_from && to > 0 {
                     to -= 1;
                 }
-                sender.input(FlowInputs::PasteStep(to, step));
+                sender.input(ActionInputs::PasteStep(to, step));
             }
         }
         self.update_view(widgets, sender);

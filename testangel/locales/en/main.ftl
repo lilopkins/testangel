@@ -29,6 +29,7 @@ source-from-step = From Step { $step }: { $name }
 
 filetype-all = All files
 filetype-flow = { app-name } Flow file
+filetype-action = { app-name } Action file
 filetype-pdf = PDF files
 
 # Flows
@@ -52,9 +53,9 @@ flow-action-changed-message = The parameters in { $stepCount ->
 
 flow-save-before = Save this Flow?
 flow-save-before-message = This flow has been modified since it was last saved. Would you like to save it before continuing?
-flow-saved = Flow saved.
+flow-saved = Flow saved
 flow-error-saving = Error saving flow
-flow-error-opening = Error Opening Flow
+flow-error-opening = Error opening flow
 
 flow-save-open-error-io-error = I/O error: { $error }
 flow-save-open-error-parsing-error = The flow file is corrupted: { $error }
@@ -67,6 +68,33 @@ flow-execution-failed = Flow failed.
 flow-execution-failed-message = Flow failed at step { $step }: { $reason }
 
 flow-step-label = Step { $step }: { $name }
+
+# Actions
+
+action-header-add = Add step
+action-header-run = Test action
+action-header-more = More...
+action-header-new = New action
+action-header-open = Open action...
+action-header-save = Save action
+action-header-save-as = Save action as...
+action-header-close = Close action
+action-header-about = About { app-name }
+action-nothing-open-description = Open an action or add a step to get started
+
+action-save-before = Save this action?
+action-save-before-message = This action has been modified since it was last saved. Would you like to save it before continuing?
+action-saved = Action saved
+action-error-saving = Error saving action
+action-error-opening = Error opening action
+
+action-save-open-error-io-error = I/O error: { $error }
+action-save-open-error-parsing-error = The action file is corrupted: { $error }
+action-save-open-error-serializing-error = The action could not be saved due to an internal serialisation error: { $error }
+action-save-open-error-action-not-version-compatible = The action you tried to load is not compatible with this version of { app-name }.
+action-save-open-error-missing-instruction = The instruction for step { $step } (with internal ID: { $error }) in this action is missing.
+
+action-step-label = Step { $step }: { $name }
 
 # Execution
 

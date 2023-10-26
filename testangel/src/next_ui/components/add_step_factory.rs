@@ -1,33 +1,45 @@
+use std::fmt::Debug;
+use std::marker::PhantomData;
+
 use gtk::prelude::*;
 use relm4::gtk;
 use relm4::prelude::*;
-use testangel::types::Action;
 
-#[derive(Debug)]
-pub struct StepSearchResult {
-    name: String,
-    action_id: String,
+pub trait AddStepTrait {
+    fn add_step(value: String) -> Self;
 }
 
-impl StepSearchResult {
-    /// Get the action ID this result references
-    pub fn action_id(&self) -> String {
-        self.action_id.clone()
+pub struct AddStepInit {
+    pub label: String,
+    pub value: String,
+}
+
+#[derive(Debug)]
+pub struct AddStepResult<PI: AddStepTrait + Debug + 'static> {
+    _pi: PhantomData<PI>,
+    label: String,
+    value: String,
+}
+
+impl<PI: AddStepTrait + Debug + 'static> AddStepResult<PI> {
+    /// Get the instruction ID this result references
+    pub fn value(&self) -> String {
+        self.value.clone()
     }
 }
 
 #[relm4::factory(pub)]
-impl FactoryComponent for StepSearchResult {
-    type Init = Action;
+impl<PI: AddStepTrait + Debug + 'static> FactoryComponent for AddStepResult<PI> {
+    type Init = AddStepInit;
     type Input = ();
     type Output = String;
     type CommandOutput = ();
     type ParentWidget = gtk::Box;
-    type ParentInput = super::FlowsHeaderInput;
+    type ParentInput = PI;
 
     view! {
         root = gtk::Button::builder().css_classes(["flat"]).build() {
-            set_label: &self.name,
+            set_label: &self.label,
 
             connect_clicked[sender, id] => move |_| {
                 sender.output(id.clone())
@@ -37,8 +49,9 @@ impl FactoryComponent for StepSearchResult {
 
     fn init_model(init: Self::Init, _index: &Self::Index, _sender: FactorySender<Self>) -> Self {
         Self {
-            name: format!("{}: {}", init.group, init.friendly_name),
-            action_id: init.id,
+            _pi: PhantomData,
+            label: init.label,
+            value: init.value,
         }
     }
 
@@ -49,12 +62,12 @@ impl FactoryComponent for StepSearchResult {
         _returned_widget: &<Self::ParentWidget as relm4::factory::FactoryView>::ReturnedWidget,
         sender: FactorySender<Self>,
     ) -> Self::Widgets {
-        let id = self.action_id.clone();
+        let id = self.value.clone();
         let widgets = view_output!();
         widgets
     }
 
     fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        Some(super::FlowsHeaderInput::AddStep(output))
+        Some(PI::add_step(output))
     }
 }
