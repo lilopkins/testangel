@@ -4736,7 +4736,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "base64 0.21.5",
  "chrono",
@@ -4770,7 +4770,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-arithmetic"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -4778,7 +4778,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-compare"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -4786,7 +4786,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-convert"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -4794,7 +4794,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-date"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "chrono",
  "lazy_static",
@@ -4803,7 +4803,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "testangel-engine-macros",
  "testangel-ipc",
@@ -4811,11 +4811,11 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine-macros"
-version = "0.18.7"
+version = "0.18.8"
 
 [[package]]
 name = "testangel-evidence"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -4823,7 +4823,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "schemars",
  "serde",
@@ -4832,7 +4832,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-rand"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "lazy_static",
  "rand",
@@ -4843,7 +4843,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-regex"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "lazy_static",
  "regex",
@@ -4853,7 +4853,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-user-interaction"
-version = "0.18.7"
+version = "0.18.8"
 dependencies = [
  "lazy_static",
  "rfd",

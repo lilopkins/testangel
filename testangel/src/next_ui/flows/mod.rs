@@ -11,7 +11,7 @@ use testangel::{
     types::{ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
 };
 
-use super::lang;
+use super::{lang, file_filters};
 
 mod action_component;
 mod execution_dialog;
@@ -259,17 +259,13 @@ impl FlowsModel {
     ) {
         if always_ask_where || self.open_path.is_none() {
             // Ask where
-            let filter = gtk::FileFilter::new();
-            filter.set_name(Some(&lang::lookup("flow-filetype")));
-            filter.add_suffix("taflow");
-
             let dialog = gtk::FileDialog::builder()
                 .modal(true)
                 .title(lang::lookup("flow-header-save"))
                 .initial_folder(&gtk::gio::File::for_path(
                     std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
                 ))
-                .default_filter(&filter)
+                .filters(&file_filters::filter_list(vec![ file_filters::flows(), file_filters::all() ]))
                 .build();
 
             let sender_c = sender.clone();
@@ -415,14 +411,10 @@ impl Component for FlowsModel {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_OpenFlow);
             }
             FlowInputs::_OpenFlow => {
-                let filter = gtk::FileFilter::new();
-                filter.set_name(Some(&lang::lookup("flow-filetype")));
-                filter.add_suffix("taflow");
-
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
                     .title(lang::lookup("flow-header-open"))
-                    .default_filter(&filter)
+                    .filters(&file_filters::filter_list(vec![ file_filters::flows(), file_filters::all() ]))
                     .initial_folder(&gtk::gio::File::for_path(
                         std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
                     ))
@@ -458,6 +450,7 @@ impl Component for FlowsModel {
                                     "flow-action-changed-message",
                                     {
                                         let mut map = HashMap::new();
+                                        map.insert("stepCount", changes.len().into());
                                         map.insert("steps", changed_steps.into());
                                         map
                                     }
@@ -596,6 +589,14 @@ impl Component for FlowsModel {
             FlowInputs::RemoveStep(step_idx) => {
                 let idx = step_idx.current_index();
                 let flow = self.open_flow.as_mut().unwrap();
+
+                // This is needed as sometimes, if a menu item lines up above the delete step button,
+                // they can both be simultaneously triggered.
+                if idx < flow.actions.len() {
+                    log::warn!("Skipped running RemoveStep as the index was invalid.");
+                    return;
+                }
+
                 log::info!("Deleting step {}", idx + 1);
 
                 flow.actions.remove(idx);
@@ -622,6 +623,13 @@ impl Component for FlowsModel {
                 let idx = step_idx.current_index();
                 let flow = self.open_flow.as_mut().unwrap();
                 log::info!("Cut step {}", idx + 1);
+
+                // This is needed as sometimes, if a menu item lines up above a button that triggers this,
+                // they can both be simultaneously triggered.
+                if idx < flow.actions.len() {
+                    log::warn!("Skipped running CutStep as the index was invalid.");
+                    return;
+                }
 
                 flow.actions.remove(idx);
 

@@ -25,6 +25,11 @@ delete-step = Ta bort steg
 source-literal = Direktvärde
 source-from-step = Från steg { $step }: { $name }
 
+# File types
+filetype-all = Alla filer
+filetype-flow = { app-name } flödefil
+filetype-pdf = PDF-filer
+
 # Flows
 
 flow-header-add = Lägg till steg
@@ -36,7 +41,6 @@ flow-header-save = Spara flöde
 flow-header-save-as = Spara flöde som...
 flow-header-close = Stäng flöde
 flow-header-about = Om { app-name }
-flow-filetype = { app-name } flödefil
 flow-nothing-open-description = Öppna en flöde eller lägg till ett steg för att komma igång
 
 flow-action-changed = Åtgärder i flödet har ändrats
@@ -66,4 +70,3 @@ report-failed = Det gick inte att generera rapport
 report-failed-message = Det gick inte att generera rapporten: { $reason }
 report-save-title = Spara rapport...
 report-default-name = rapport.pdf
-pdf-files = PDF-filer
