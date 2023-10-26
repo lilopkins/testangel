@@ -10,7 +10,7 @@ use testangel::{
 };
 use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterValue};
 
-use crate::next_ui::{lang, file_filters};
+use crate::next_ui::{file_filters, lang};
 
 #[derive(Debug)]
 pub enum ExecutionDialogCommandOutput {
@@ -137,14 +137,11 @@ impl Component for ExecutionDialog {
             ExecutionDialogInput::FailedToGenerateReport(reason) => {
                 let dialog = self.create_message_dialog(
                     lang::lookup("report-failed"),
-                    lang::lookup_with_args(
-                        "report-failed-message",
-                        {
-                            let mut map = HashMap::new();
-                            map.insert("reason", reason.to_string().into());
-                            map
-                        }
-                    ),
+                    lang::lookup_with_args("report-failed-message", {
+                        let mut map = HashMap::new();
+                        map.insert("reason", reason.to_string().into());
+                        map
+                    }),
                 );
                 dialog.set_transient_for(Some(root));
                 dialog.add_response("ok", &lang::lookup("ok"));
@@ -174,7 +171,10 @@ impl Component for ExecutionDialog {
                     .modal(true)
                     .title(lang::lookup("report-save-title"))
                     .initial_name(lang::lookup("report-default-name"))
-                    .filters(&file_filters::filter_list(vec![ file_filters::pdfs(), file_filters::all() ]))
+                    .filters(&file_filters::filter_list(vec![
+                        file_filters::pdfs(),
+                        file_filters::all(),
+                    ]))
                     .build();
 
                 let sender_c = sender.clone();
@@ -204,15 +204,12 @@ impl Component for ExecutionDialog {
                 log::warn!("Execution failed");
                 let dialog = self.create_message_dialog(
                     lang::lookup("flow-execution-failed"),
-                    lang::lookup_with_args(
-                        "flow-execution-failed-message",
-                        {
-                            let mut map = HashMap::new();
-                            map.insert("step", step.into());
-                            map.insert("reason", reason.to_string().into());
-                            map
-                        }
-                    ),
+                    lang::lookup_with_args("flow-execution-failed-message", {
+                        let mut map = HashMap::new();
+                        map.insert("step", step.into());
+                        map.insert("reason", reason.to_string().into());
+                        map
+                    }),
                 );
                 dialog.set_transient_for(Some(root));
                 dialog.add_response("ok", &lang::lookup("ok"));

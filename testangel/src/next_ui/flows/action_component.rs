@@ -1,4 +1,4 @@
-use std::{ffi, collections::HashMap};
+use std::{collections::HashMap, ffi};
 
 use adw::prelude::*;
 use relm4::{
@@ -11,9 +11,12 @@ use relm4::{
 use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
-use crate::next_ui::{components::variable_row::{
-    ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
-}, lang};
+use crate::next_ui::{
+    components::variable_row::{
+        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
+    },
+    lang,
+};
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
 pub struct ActionComponentInitialiser {

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use relm4::{adw, gtk, SimpleComponent};
-use testangel::{ipc::EngineList, action_loader::ActionMap};
+use testangel::{action_loader::ActionMap, ipc::EngineList};
 
 use crate::next_ui::lang;
 

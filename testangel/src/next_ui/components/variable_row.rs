@@ -1,5 +1,5 @@
-use std::{fmt::Debug, collections::HashMap};
 use std::marker::PhantomData;
+use std::{collections::HashMap, fmt::Debug};
 
 use adw::prelude::*;
 use relm4::{
@@ -8,7 +8,10 @@ use relm4::{
 };
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
-use crate::next_ui::{components::literal_input::{LiteralInput, LiteralInputOutput}, lang};
+use crate::next_ui::{
+    components::literal_input::{LiteralInput, LiteralInputOutput},
+    lang,
+};
 
 #[derive(Debug)]
 pub struct VariableRow<PS, I>

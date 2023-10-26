@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf, rc::Rc, sync::Arc, collections::HashMap};
+use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
@@ -11,7 +11,7 @@ use testangel::{
     types::{ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
 };
 
-use super::{lang, file_filters};
+use super::{file_filters, lang};
 
 mod action_component;
 mod execution_dialog;
@@ -28,44 +28,36 @@ pub enum SaveOrOpenFlowError {
 impl ToString for SaveOrOpenFlowError {
     fn to_string(&self) -> String {
         match self {
-            Self::IoError(e) => lang::lookup_with_args(
-                "flow-save-open-error-io-error",
-                {
+            Self::IoError(e) => lang::lookup_with_args("flow-save-open-error-io-error", {
+                let mut map = HashMap::new();
+                map.insert("error", e.to_string().into());
+                map
+            }),
+            Self::ParsingError(e) => {
+                lang::lookup_with_args("flow-save-open-error-parsing-error", {
                     let mut map = HashMap::new();
                     map.insert("error", e.to_string().into());
                     map
-                }
-            ),
-            Self::ParsingError(e) => lang::lookup_with_args(
-                "flow-save-open-error-parsing-error",
-                {
-                    let mut map = HashMap::new();
-                    map.insert("error", e.to_string().into());
-                    map
-                }
-            ),
+                })
+            }
             Self::SerializingError(e) => {
-                lang::lookup_with_args(
-                    "flow-save-open-error-serializing-error",
-                    {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    }
-                )
+                lang::lookup_with_args("flow-save-open-error-serializing-error", {
+                    let mut map = HashMap::new();
+                    map.insert("error", e.to_string().into());
+                    map
+                })
             }
             Self::FlowNotVersionCompatible => {
                 lang::lookup("flow-save-open-error-flow-not-version-compatible")
             }
-            Self::MissingAction(step, e) => lang::lookup_with_args(
-                "flow-save-open-error-missing-action",
-                {
+            Self::MissingAction(step, e) => {
+                lang::lookup_with_args("flow-save-open-error-missing-action", {
                     let mut map = HashMap::new();
                     map.insert("step", (step + 1).into());
                     map.insert("error", e.to_string().into());
                     map
-                }
-            ),
+                })
+            }
         }
     }
 }
@@ -265,7 +257,10 @@ impl FlowsModel {
                 .initial_folder(&gtk::gio::File::for_path(
                     std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
                 ))
-                .filters(&file_filters::filter_list(vec![ file_filters::flows(), file_filters::all() ]))
+                .filters(&file_filters::filter_list(vec![
+                    file_filters::flows(),
+                    file_filters::all(),
+                ]))
                 .build();
 
             let sender_c = sender.clone();
@@ -280,7 +275,10 @@ impl FlowsModel {
                 },
             );
         } else {
-            sender.emit(FlowInputs::__SaveFlowThen(self.open_path.clone().unwrap(), Box::new(then)));
+            sender.emit(FlowInputs::__SaveFlowThen(
+                self.open_path.clone().unwrap(),
+                Box::new(then),
+            ));
         }
     }
 
@@ -414,7 +412,10 @@ impl Component for FlowsModel {
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
                     .title(lang::lookup("flow-header-open"))
-                    .filters(&file_filters::filter_list(vec![ file_filters::flows(), file_filters::all() ]))
+                    .filters(&file_filters::filter_list(vec![
+                        file_filters::flows(),
+                        file_filters::all(),
+                    ]))
                     .initial_folder(&gtk::gio::File::for_path(
                         std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
                     ))
@@ -446,23 +447,23 @@ impl Component for FlowsModel {
                                 .join(",");
                             self.create_message_dialog(
                                 lang::lookup("flow-action-changed"),
-                                lang::lookup_with_args(
-                                    "flow-action-changed-message",
-                                    {
-                                        let mut map = HashMap::new();
-                                        map.insert("stepCount", changes.len().into());
-                                        map.insert("steps", changed_steps.into());
-                                        map
-                                    }
-                                ),
+                                lang::lookup_with_args("flow-action-changed-message", {
+                                    let mut map = HashMap::new();
+                                    map.insert("stepCount", changes.len().into());
+                                    map.insert("steps", changed_steps.into());
+                                    map
+                                }),
                             )
                             .set_visible(true);
                         }
                     }
                     Err(e) => {
                         // Show error dialog
-                        self.create_message_dialog(lang::lookup("flow-error-opening"), e.to_string())
-                            .set_visible(true);
+                        self.create_message_dialog(
+                            lang::lookup("flow-error-opening"),
+                            e.to_string(),
+                        )
+                        .set_visible(true);
                     }
                 }
             }
@@ -569,15 +570,12 @@ impl Component for FlowsModel {
                             .enumerate()
                         {
                             possible_outputs.push((
-                                lang::lookup_with_args(
-                                    "source-from-step",
-                                    {
-                                        let mut map = HashMap::new();
-                                        map.insert("step", (step + 1).into());
-                                        map.insert("name", name.clone().into());
-                                        map
-                                    }
-                                ),
+                                lang::lookup_with_args("source-from-step", {
+                                    let mut map = HashMap::new();
+                                    map.insert("step", (step + 1).into());
+                                    map.insert("name", name.clone().into());
+                                    map
+                                }),
                                 *kind,
                                 ActionParameterSource::FromOutput(step, output_idx),
                             ));

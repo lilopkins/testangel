@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use relm4::gtk::{self, FileFilter, glib, gio, subclass::prelude::*, prelude::*};
+use relm4::gtk::{self, gio, glib, prelude::*, subclass::prelude::*, FileFilter};
 
 use super::lang;
 

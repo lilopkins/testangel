@@ -1,7 +1,7 @@
-use std::{fmt::Display, collections::HashMap, sync::Mutex};
+use std::{collections::HashMap, fmt::Display, sync::Mutex};
 
 use fluent::FluentValue;
-use fluent_templates::{Loader, LanguageIdentifier, loader::langid};
+use fluent_templates::{loader::langid, LanguageIdentifier, Loader};
 use once_cell::sync::Lazy;
 
 const FALLBACK: LanguageIdentifier = langid!("en");
@@ -60,10 +60,12 @@ pub(crate) fn lookup<S>(text_id: S) -> String
 where
     S: AsRef<str> + Display,
 {
-    LOCALES.lookup(&current_locale(), text_id.as_ref()).unwrap_or_else(|| {
-        log::warn!("Missing translation for {text_id}");
-        text_id.as_ref().to_string()
-    })
+    LOCALES
+        .lookup(&current_locale(), text_id.as_ref())
+        .unwrap_or_else(|| {
+            log::warn!("Missing translation for {text_id}");
+            text_id.as_ref().to_string()
+        })
 }
 
 /// Lookup a string with args
@@ -72,8 +74,10 @@ where
     S: AsRef<str> + Display,
     K: AsRef<str>,
 {
-    LOCALES.lookup_with_args(&current_locale(), text_id.as_ref(), &args).unwrap_or_else(|| {
-        log::warn!("Missing translation for {text_id}");
-        text_id.as_ref().to_string()
-    })
+    LOCALES
+        .lookup_with_args(&current_locale(), text_id.as_ref(), &args)
+        .unwrap_or_else(|| {
+            log::warn!("Missing translation for {text_id}");
+            text_id.as_ref().to_string()
+        })
 }
