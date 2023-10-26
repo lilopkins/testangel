@@ -25,7 +25,6 @@ pub fn pdfs() -> FileFilter {
     let filter = gtk::FileFilter::new();
     filter.set_name(Some(&lang::lookup("filetype-pdf")));
     filter.add_suffix("pdf");
-    filter.add_mime_type("application/pdf");
     filter
 }
 
