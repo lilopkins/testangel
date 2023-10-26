@@ -120,35 +120,35 @@ where
                 )
             },
 
-            add_suffix = &gtk::MenuButton {
-                set_icon_name: relm4_icons::icon_name::EDIT,
-                set_tooltip_text: Some(&lang::lookup("variable-row-edit-param")),
-                set_css_classes: &["flat"],
-                set_direction: gtk::ArrowType::Left,
+            add_suffix = &gtk::Box {
+                set_spacing: 15,
+                set_orientation: gtk::Orientation::Horizontal,
 
-                #[wrap(Some)]
-                set_popover = &gtk::Popover {
-                    gtk::ScrolledWindow {
-                        set_hscrollbar_policy: gtk::PolicyType::Never,
-                        set_min_content_height: 150,
+                adw::Bin {
+                    #[watch]
+                    set_visible: self.source == PS::literal(),
+                    self.literal_input.widget(),
+                },
 
-                        gtk::Box {
-                            set_spacing: 5,
-                            set_orientation: gtk::Orientation::Vertical,
+                gtk::MenuButton {
+                    set_icon_name: relm4_icons::icon_name::EDIT,
+                    set_tooltip_text: Some(&lang::lookup("variable-row-edit-param")),
+                    set_css_classes: &["flat"],
+                    set_direction: gtk::ArrowType::Left,
 
-                            adw::Bin {
-                                #[watch]
-                                set_visible: self.source == PS::literal(),
-                                self.literal_input.widget(),
-                            },
+                    #[wrap(Some)]
+                    set_popover = &gtk::Popover {
+                        gtk::ScrolledWindow {
+                            set_hscrollbar_policy: gtk::PolicyType::Never,
+                            set_min_content_height: 150,
 
                             #[local_ref]
                             potential_sources -> gtk::Box {
                                 set_spacing: 5,
                                 set_orientation: gtk::Orientation::Vertical,
                             },
-                        },
-                    }
+                        }
+                    },
                 },
             },
         }
