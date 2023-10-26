@@ -10,7 +10,7 @@ use testangel::{
 };
 use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterValue};
 
-use crate::next_ui::lang;
+use crate::next_ui::{lang, file_filters};
 
 #[derive(Debug)]
 pub enum ExecutionDialogCommandOutput {
@@ -170,16 +170,11 @@ impl Component for ExecutionDialog {
                 log::info!("Execution complete.");
 
                 // Present save dialog
-                let filter = gtk::FileFilter::new();
-                filter.set_name(Some(&lang::lookup("pdf-files")));
-                filter.add_suffix("pdf");
-                filter.add_mime_type("application/pdf");
-
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
                     .title(lang::lookup("report-save-title"))
                     .initial_name(lang::lookup("report-default-name"))
-                    .default_filter(&filter)
+                    .filters(&file_filters::filter_list(vec![ file_filters::pdfs(), file_filters::all() ]))
                     .build();
 
                 let sender_c = sender.clone();

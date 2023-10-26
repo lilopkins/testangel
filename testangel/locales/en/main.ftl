@@ -25,6 +25,12 @@ delete-step = Delete step
 source-literal = Literal value
 source-from-step = From Step { $step }: { $name }
 
+# File types
+
+filetype-all = All files
+filetype-flow = { app-name } Flow file
+filetype-pdf = PDF files
+
 # Flows
 
 flow-header-add = Add step
@@ -36,7 +42,6 @@ flow-header-save = Save flow
 flow-header-save-as = Save flow as...
 flow-header-close = Close flow
 flow-header-about = About { app-name }
-flow-filetype = { app-name } Flow file
 flow-nothing-open-description = Open a flow or add a step to get started
 
 flow-action-changed = Flow Actions Changed
@@ -69,4 +74,3 @@ report-failed = Failed to produce report
 report-failed-message = Failed to produce: { $reason }
 report-save-title = Save evidence...
 report-default-name = report.pdf
-pdf-files = PDF files

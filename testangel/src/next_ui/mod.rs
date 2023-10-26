@@ -15,6 +15,7 @@ mod about;
 mod actions;
 mod components;
 mod flows;
+mod file_filters;
 mod header_bar;
 pub(crate) mod lang;
 
