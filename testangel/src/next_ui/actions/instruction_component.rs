@@ -87,7 +87,6 @@ impl FactoryComponent for InstructionComponent {
 
     view! {
         root = gtk::Box {
-            set_margin_all: 5,
             set_orientation: gtk::Orientation::Vertical,
             set_spacing: 5,
 

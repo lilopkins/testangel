@@ -105,8 +105,10 @@ impl Component for ActionsHeader {
             gtk::Button {
                 set_icon_name: relm4_icons::icon_name::PLAY,
                 set_tooltip: &lang::lookup("action-header-run"),
-                #[watch]
-                set_sensitive: model.action_open,
+                // TODO uncomment when execution dialog ready
+                //#[watch]
+                //set_sensitive: model.action_open,
+                set_sensitive: false,
                 connect_clicked[sender] => move |_| {
                     // unwrap rationale: receivers will never be dropped
                     sender.output(ActionsHeaderOutput::RunAction).unwrap();

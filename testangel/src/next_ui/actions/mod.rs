@@ -16,6 +16,7 @@ use super::{file_filters, lang};
 mod instruction_component;
 mod execution_dialog;
 pub mod header;
+mod metadata_component;
 
 pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
@@ -110,6 +111,8 @@ pub enum ActionInputs {
     /// The [`InstructionConfiguration`] has changed for the step indicated by the [`DynamicIndex`].
     /// This does not refresh the UI.
     ConfigUpdate(DynamicIndex, InstructionConfiguration),
+    /// The metadata has been updated and the action should be updated to reflect that
+    MetadataUpdated(metadata_component::MetadataOutput),
 }
 #[derive(Clone, Debug)]
 pub enum ActionOutputs {
@@ -126,6 +129,7 @@ pub struct ActionsModel {
     open_path: Option<PathBuf>,
     needs_saving: bool,
     header: Rc<Controller<header::ActionsHeader>>,
+    metadata: Controller<metadata_component::Metadata>,
     live_instructions_list: FactoryVecDeque<instruction_component::InstructionComponent>,
 
     execution_dialog: Option<Connector<execution_dialog::ExecutionDialog>>,
@@ -198,10 +202,12 @@ impl ActionsModel {
                 ))
             }
         }
-        self.open_action = Some(action);
+
+        self.open_action = Some(action.clone());
         self.header.emit(header::ActionsHeaderInput::ChangeActionOpen(
             self.open_action.is_some(),
         ));
+        self.metadata.emit(metadata_component::MetadataInput::ChangeAction(action));
         self.open_path = Some(file);
         self.needs_saving = false;
         log::debug!("New action open.");
@@ -314,25 +320,32 @@ impl Component for ActionsModel {
                 set_vexpand: true,
                 set_hscrollbar_policy: gtk::PolicyType::Never,
 
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_margin_all: 5,
-
+                if model.open_action.is_none() {
                     adw::StatusPage {
                         set_title: &lang::lookup("nothing-open"),
                         set_description: Some(&lang::lookup("action-nothing-open-description")),
                         set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
-                        #[watch]
-                        set_visible: model.open_action.is_none(),
                         set_vexpand: true,
-                    },
-
-                    #[local_ref]
-                    live_instructions_list -> gtk::Box {
+                    }
+                } else {
+                    gtk::Box {
                         set_orientation: gtk::Orientation::Vertical,
-                        set_spacing: 5,
-                    },
-                },
+                        set_margin_all: 10,
+                        set_spacing: 10,
+
+                        model.metadata.widget(),
+
+                        gtk::Separator {
+                            set_orientation: gtk::Orientation::Horizontal,
+                        },
+
+                        #[local_ref]
+                        live_instructions_list -> gtk::Box {
+                            set_orientation: gtk::Orientation::Vertical,
+                            set_spacing: 5,
+                        },
+                    }
+                }
             },
         },
     }
@@ -365,6 +378,7 @@ impl Component for ActionsModel {
             execution_dialog: None,
             header,
             live_instructions_list: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
+            metadata: metadata_component::Metadata::builder().launch(()).forward(sender.input_sender(), |msg| ActionInputs::MetadataUpdated(msg)),
         };
 
         // Trigger update actions from model
@@ -385,6 +399,27 @@ impl Component for ActionsModel {
     ) {
         match message {
             ActionInputs::NoOp => (),
+
+            ActionInputs::MetadataUpdated(meta) => {
+                if let Some(action) = self.open_action.as_mut() {
+                    if let Some(new_name) = meta.new_name {
+                        action.friendly_name = new_name;
+                    }
+                    if let Some(new_group) = meta.new_group {
+                        action.group = new_group;
+                    }
+                    if let Some(new_author) = meta.new_author {
+                        action.author = new_author;
+                    }
+                    if let Some(new_description) = meta.new_description {
+                        action.description = new_description;
+                    }
+                    if let Some(new_visible) = meta.new_visible {
+                        action.visible = new_visible;
+                    }
+                }
+            }
+
             ActionInputs::ActionsMapChanged(new_map) => {
                 self.action_map = new_map.clone();
                 self.header.emit(header::ActionsHeaderInput::ActionsMapChanged(new_map));
