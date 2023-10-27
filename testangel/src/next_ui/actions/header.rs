@@ -9,7 +9,10 @@ use relm4::{
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
-use crate::next_ui::{lang, components::add_step_factory::{AddStepResult, AddStepTrait, AddStepInit}};
+use crate::next_ui::{
+    components::add_step_factory::{AddStepInit, AddStepResult, AddStepTrait},
+    lang,
+};
 
 #[derive(Debug)]
 pub struct ActionsHeader {
@@ -187,10 +190,11 @@ impl Component for ActionsHeader {
         relm4::main_application().set_accelerators_for_action::<ActionsSaveAction>(&["<primary>S"]);
 
         let sender_c = sender.clone();
-        let save_as_action: RelmAction<ActionsSaveAsAction> = RelmAction::new_stateless(move |_| {
-            // unwrap rationale: receiver will never be disconnected
-            sender_c.output(ActionsHeaderOutput::SaveAsAction).unwrap();
-        });
+        let save_as_action: RelmAction<ActionsSaveAsAction> =
+            RelmAction::new_stateless(move |_| {
+                // unwrap rationale: receiver will never be disconnected
+                sender_c.output(ActionsHeaderOutput::SaveAsAction).unwrap();
+            });
         relm4::main_application()
             .set_accelerators_for_action::<ActionsSaveAsAction>(&["<primary><shift>S"]);
 
@@ -199,13 +203,15 @@ impl Component for ActionsHeader {
             // unwrap rationale: receiver will never be disconnected
             sender_c.output(ActionsHeaderOutput::CloseAction).unwrap();
         });
-        relm4::main_application().set_accelerators_for_action::<ActionsCloseAction>(&["<primary>W"]);
+        relm4::main_application()
+            .set_accelerators_for_action::<ActionsCloseAction>(&["<primary>W"]);
 
         let sender_c = sender.clone();
         let about_action: RelmAction<ActionsAboutAction> = RelmAction::new_stateless(move |_| {
             sender_c.input(ActionsHeaderInput::OpenAboutDialog);
         });
-        relm4::main_application().set_accelerators_for_action::<ActionsAboutAction>(&["<primary>A"]);
+        relm4::main_application()
+            .set_accelerators_for_action::<ActionsAboutAction>(&["<primary>A"]);
 
         let mut group = RelmActionGroup::<ActionsActionGroup>::new();
         group.add_action(new_action);
@@ -244,7 +250,9 @@ impl Component for ActionsHeader {
                 // close popover
                 self.add_button.popdown();
                 // unwrap rationale: the receiver will never be disconnected
-                sender.output(ActionsHeaderOutput::AddStep(step_id)).unwrap();
+                sender
+                    .output(ActionsHeaderOutput::AddStep(step_id))
+                    .unwrap();
             }
             ActionsHeaderInput::AddTopSearchResult => {
                 if let Some(result) = self.search_results.get(0) {
@@ -264,8 +272,11 @@ impl Component for ActionsHeader {
                     let mut unsorted_results = vec![];
                     for engine in self.engine_list.inner() {
                         for instruction in &engine.instructions {
-                            unsorted_results
-                                .push((format!("{}: {}", engine.name, instruction.friendly_name()), engine.name.clone(), instruction.clone()));
+                            unsorted_results.push((
+                                format!("{}: {}", engine.name, instruction.friendly_name()),
+                                engine.name.clone(),
+                                instruction.clone(),
+                            ));
                         }
                     }
 
@@ -287,8 +298,11 @@ impl Component for ActionsHeader {
                                 &format!("{}: {}", engine.name, instruction.friendly_name()),
                                 &query,
                             ) {
-                                unsorted_results
-                                    .push((score, engine.name.clone(), instruction.clone()));
+                                unsorted_results.push((
+                                    score,
+                                    engine.name.clone(),
+                                    instruction.clone(),
+                                ));
                             }
                         }
                     }

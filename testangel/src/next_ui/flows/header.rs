@@ -9,7 +9,10 @@ use relm4::{
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
-use crate::next_ui::{lang, components::add_step_factory::{AddStepResult, AddStepTrait, AddStepInit}};
+use crate::next_ui::{
+    components::add_step_factory::{AddStepInit, AddStepResult, AddStepTrait},
+    lang,
+};
 
 #[derive(Debug)]
 pub struct FlowsHeader {

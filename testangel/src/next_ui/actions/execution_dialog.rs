@@ -6,7 +6,7 @@ use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
     report_generation::{self, ReportGenerationError},
-    types::{FlowError, Action},
+    types::{Action, FlowError},
 };
 use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterValue};
 

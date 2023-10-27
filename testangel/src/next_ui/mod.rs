@@ -114,7 +114,11 @@ impl SimpleComponent for AppModel {
 
         // Initialise the headerbar
         let header = header_bar::HeaderBarModel::builder()
-            .launch((actions.model().header_controller_rc(), flows.model().header_controller_rc(), stack.clone()))
+            .launch((
+                actions.model().header_controller_rc(),
+                flows.model().header_controller_rc(),
+                stack.clone(),
+            ))
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
 
         // Build model

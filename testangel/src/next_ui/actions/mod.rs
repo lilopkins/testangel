@@ -8,14 +8,14 @@ use relm4::{
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
-    types::{VersionedFile, InstructionConfiguration, Action, InstructionParameterSource},
+    types::{Action, InstructionConfiguration, InstructionParameterSource, VersionedFile},
 };
 
 use super::{file_filters, lang};
 
-mod instruction_component;
 mod execution_dialog;
 pub mod header;
+mod instruction_component;
 mod metadata_component;
 
 pub enum SaveOrOpenActionError {
@@ -174,9 +174,14 @@ impl ActionsModel {
         self.open_path = None;
         self.needs_saving = true;
         self.open_action = Some(Action::default());
-        self.header.emit(header::ActionsHeaderInput::ChangeActionOpen(
-            self.open_action.is_some(),
-        ));
+        self.header
+            .emit(header::ActionsHeaderInput::ChangeActionOpen(
+                self.open_action.is_some(),
+            ));
+        self.metadata
+            .emit(metadata_component::MetadataInput::ChangeAction(
+                Action::default(),
+            ));
     }
 
     /// Open an action. This does not ask to save first.
@@ -195,19 +200,25 @@ impl ActionsModel {
             return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }
         for (step, ic) in action.instructions.iter_mut().enumerate() {
-            if self.engine_list.get_engine_by_instruction_id(&ic.instruction_id).is_none() {
+            if self
+                .engine_list
+                .get_engine_by_instruction_id(&ic.instruction_id)
+                .is_none()
+            {
                 return Err(SaveOrOpenActionError::MissingInstruction(
                     step,
                     ic.instruction_id.clone(),
-                ))
+                ));
             }
         }
 
         self.open_action = Some(action.clone());
-        self.header.emit(header::ActionsHeaderInput::ChangeActionOpen(
-            self.open_action.is_some(),
-        ));
-        self.metadata.emit(metadata_component::MetadataInput::ChangeAction(action));
+        self.header
+            .emit(header::ActionsHeaderInput::ChangeActionOpen(
+                self.open_action.is_some(),
+            ));
+        self.metadata
+            .emit(metadata_component::MetadataInput::ChangeAction(action));
         self.open_path = Some(file);
         self.needs_saving = false;
         log::debug!("New action open.");
@@ -300,9 +311,10 @@ impl ActionsModel {
         self.open_path = None;
         self.needs_saving = false;
         self.live_instructions_list.guard().clear();
-        self.header.emit(header::ActionsHeaderInput::ChangeActionOpen(
-            self.open_action.is_some(),
-        ));
+        self.header
+            .emit(header::ActionsHeaderInput::ChangeActionOpen(
+                self.open_action.is_some(),
+            ));
     }
 }
 
@@ -377,8 +389,15 @@ impl Component for ActionsModel {
             needs_saving: false,
             execution_dialog: None,
             header,
-            live_instructions_list: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
-            metadata: metadata_component::Metadata::builder().launch(()).forward(sender.input_sender(), |msg| ActionInputs::MetadataUpdated(msg)),
+            live_instructions_list: FactoryVecDeque::new(
+                gtk::Box::default(),
+                sender.input_sender(),
+            ),
+            metadata: metadata_component::Metadata::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| {
+                    ActionInputs::MetadataUpdated(msg)
+                }),
         };
 
         // Trigger update actions from model
@@ -422,7 +441,8 @@ impl Component for ActionsModel {
 
             ActionInputs::ActionsMapChanged(new_map) => {
                 self.action_map = new_map.clone();
-                self.header.emit(header::ActionsHeaderInput::ActionsMapChanged(new_map));
+                self.header
+                    .emit(header::ActionsHeaderInput::ActionsMapChanged(new_map));
             }
             ActionInputs::ConfigUpdate(step, new_config) => {
                 // unwrap rationale: config updates can't happen if nothing is open
@@ -567,11 +587,16 @@ impl Component for ActionsModel {
                 if let Some(action) = &self.open_action {
                     let mut possible_outputs = vec![];
                     for (step, config) in action.instructions.iter().enumerate() {
-                        live_list.push_back(instruction_component::InstructionComponentInitialiser {
-                            possible_outputs: possible_outputs.clone(),
-                            config: config.clone(),
-                            instruction: self.engine_list.get_instruction_by_id(&config.instruction_id).unwrap(), // rationale: we have already checked the actions are here when the file is opened
-                        });
+                        live_list.push_back(
+                            instruction_component::InstructionComponentInitialiser {
+                                possible_outputs: possible_outputs.clone(),
+                                config: config.clone(),
+                                instruction: self
+                                    .engine_list
+                                    .get_instruction_by_id(&config.instruction_id)
+                                    .unwrap(), // rationale: we have already checked the actions are here when the file is opened
+                            },
+                        );
                         // add possible outputs to list AFTER processing this step
                         // unwrap rationale: actions are check to exist prior to opening.
                         for (output_id, (name, kind)) in self
@@ -614,7 +639,9 @@ impl Component for ActionsModel {
                 // Remove references to step and renumber references above step to one less than they were
                 for step in action.instructions.iter_mut() {
                     for (_step_idx, source) in step.parameter_sources.iter_mut() {
-                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) = source {
+                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
+                            source
+                        {
                             match (*from_step).cmp(&idx) {
                                 std::cmp::Ordering::Equal => {
                                     *source = InstructionParameterSource::Literal
@@ -646,7 +673,9 @@ impl Component for ActionsModel {
                 // Remove references to step and renumber references above step to one less than they were
                 for step in action.instructions.iter_mut() {
                     for (_step_idx, source) in step.parameter_sources.iter_mut() {
-                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) = source {
+                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
+                            source
+                        {
                             match (*from_step).cmp(&idx) {
                                 std::cmp::Ordering::Equal => *from_step = usize::MAX,
                                 std::cmp::Ordering::Greater => *from_step -= 1,
@@ -665,7 +694,9 @@ impl Component for ActionsModel {
                 // Remove references to step and renumber references above step to one less than they were
                 for (step_idx, step) in action.instructions.iter_mut().enumerate() {
                     for (_param_idx, source) in step.parameter_sources.iter_mut() {
-                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) = source {
+                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
+                            source
+                        {
                             if *from_step == usize::MAX {
                                 if step_idx < idx {
                                     // can't refer to it anymore

@@ -207,7 +207,10 @@ where
         match message {
             VariableRowInput::SourceSelected(new_source) => {
                 self.source = new_source.clone();
-                sender.output(VariableRowOutput::NewSourceFor(self.idx.clone(), new_source));
+                sender.output(VariableRowOutput::NewSourceFor(
+                    self.idx.clone(),
+                    new_source,
+                ));
             }
             VariableRowInput::ChangeValue(new_value) => {
                 self.value = new_value.clone();

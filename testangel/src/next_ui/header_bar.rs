@@ -6,7 +6,7 @@ use relm4::{
     RelmIterChildrenExt,
 };
 
-use super::{flows::header::FlowsHeader, actions::header::ActionsHeader};
+use super::{actions::header::ActionsHeader, flows::header::FlowsHeader};
 
 #[derive(Debug)]
 pub enum HeaderBarInput {
@@ -30,7 +30,11 @@ impl HeaderBarModel {
 
 #[relm4::component(pub)]
 impl Component for HeaderBarModel {
-    type Init = (Rc<Controller<ActionsHeader>>, Rc<Controller<FlowsHeader>>, Rc<adw::ViewStack>);
+    type Init = (
+        Rc<Controller<ActionsHeader>>,
+        Rc<Controller<FlowsHeader>>,
+        Rc<adw::ViewStack>,
+    );
     type Input = HeaderBarInput;
     type Output = ();
     type CommandOutput = ();

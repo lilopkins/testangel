@@ -1,5 +1,5 @@
-use relm4::{adw, gtk, Component};
 use adw::prelude::*;
+use relm4::{adw, gtk, Component};
 use testangel::types::Action;
 
 use crate::next_ui::lang;

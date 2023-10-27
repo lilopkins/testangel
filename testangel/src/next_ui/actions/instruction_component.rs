@@ -8,8 +8,8 @@ use relm4::{
     prelude::{DynamicIndex, FactoryComponent},
     RelmWidgetExt,
 };
-use testangel::types::{InstructionParameterSource, InstructionConfiguration};
-use testangel_ipc::prelude::{ParameterKind, ParameterValue, Instruction};
+use testangel::types::{InstructionConfiguration, InstructionParameterSource};
+use testangel_ipc::prelude::{Instruction, ParameterKind, ParameterValue};
 
 use crate::next_ui::{
     components::variable_row::{
@@ -33,7 +33,8 @@ pub struct InstructionComponent {
     visible: bool,
 
     possible_outputs: Vec<(String, ParameterKind, InstructionParameterSource)>,
-    variable_rows: FactoryVecDeque<VariableRow<InstructionParameterSource, String, InstructionComponentInput>>,
+    variable_rows:
+        FactoryVecDeque<VariableRow<InstructionParameterSource, String, InstructionComponentInput>>,
 
     /// True when a drag-and-drop operation is proposed to add a component above this one
     drop_proposed_above: bool,
@@ -108,7 +109,7 @@ impl FactoryComponent for InstructionComponent {
                         map
                     }
                 ),
-                set_description: Some(&self.instruction.description()),
+                set_description: Some(self.instruction.description()),
                 #[watch]
                 set_visible: self.visible,
 
