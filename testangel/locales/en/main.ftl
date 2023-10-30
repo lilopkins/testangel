@@ -6,6 +6,7 @@ save = Save
 discard = Discard
 value = Value
 nothing-open = Nothing is Open
+delete = Delete
 
 acknowledgements-testing-title = Software Testing
 acknowledgements-translations-title = Translations
@@ -100,6 +101,9 @@ action-metadata-group = Action Group
 action-metadata-author = Author
 action-metadata-description = Description
 action-metadata-visible = Visible in Flow Editor
+
+action-params-new = New Input Parameter
+
 action-step-label = Step { $step }: { $name }
 
 # Execution

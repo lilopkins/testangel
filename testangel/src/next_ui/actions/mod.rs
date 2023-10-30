@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc, cmp::Ordering};
 
 use adw::prelude::*;
 use relm4::{
@@ -10,6 +10,7 @@ use testangel::{
     ipc::EngineList,
     types::{Action, InstructionConfiguration, InstructionParameterSource, VersionedFile},
 };
+use testangel_ipc::prelude::ParameterKind;
 
 use super::{file_filters, lang};
 
@@ -17,6 +18,7 @@ mod execution_dialog;
 pub mod header;
 mod instruction_component;
 mod metadata_component;
+mod params;
 
 pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
@@ -113,6 +115,12 @@ pub enum ActionInputs {
     ConfigUpdate(DynamicIndex, InstructionConfiguration),
     /// The metadata has been updated and the action should be updated to reflect that
     MetadataUpdated(metadata_component::MetadataOutput),
+    /// Set parameters
+    SetParameters(Vec<(String, ParameterKind)>),
+    /// Remove references to the provided index, or reduce any higher than.
+    ParamIndexRemoved(usize),
+    /// Swap references to the indexes provided
+    ParamIndexesSwapped(usize, usize),
 }
 #[derive(Clone, Debug)]
 pub enum ActionOutputs {
@@ -130,6 +138,7 @@ pub struct ActionsModel {
     needs_saving: bool,
     header: Rc<Controller<header::ActionsHeader>>,
     metadata: Controller<metadata_component::Metadata>,
+    parameters: Controller<params::ActionParams>,
     live_instructions_list: FactoryVecDeque<instruction_component::InstructionComponent>,
 
     execution_dialog: Option<Connector<execution_dialog::ExecutionDialog>>,
@@ -182,6 +191,8 @@ impl ActionsModel {
             .emit(metadata_component::MetadataInput::ChangeAction(
                 Action::default(),
             ));
+        self.parameters
+            .emit(params::ActionParamsInput::ChangeAction(Action::default()));
     }
 
     /// Open an action. This does not ask to save first.
@@ -218,7 +229,11 @@ impl ActionsModel {
                 self.open_action.is_some(),
             ));
         self.metadata
-            .emit(metadata_component::MetadataInput::ChangeAction(action));
+            .emit(metadata_component::MetadataInput::ChangeAction(
+                action.clone(),
+            ));
+        self.parameters
+            .emit(params::ActionParamsInput::ChangeAction(action));
         self.open_path = Some(file);
         self.needs_saving = false;
         log::debug!("New action open.");
@@ -351,6 +366,12 @@ impl Component for ActionsModel {
                             set_orientation: gtk::Orientation::Horizontal,
                         },
 
+                        model.parameters.widget(),
+
+                        gtk::Separator {
+                            set_orientation: gtk::Orientation::Horizontal,
+                        },
+
                         #[local_ref]
                         live_instructions_list -> gtk::Box {
                             set_orientation: gtk::Orientation::Vertical,
@@ -398,6 +419,13 @@ impl Component for ActionsModel {
                 .forward(sender.input_sender(), |msg| {
                     ActionInputs::MetadataUpdated(msg)
                 }),
+            parameters: params::ActionParams::builder()
+                .launch(())
+                .forward(sender.input_sender(), |msg| match msg {
+                    params::ActionParamsOutput::IndexRemoved(idx) => ActionInputs::ParamIndexRemoved(idx),
+                    params::ActionParamsOutput::IndexesSwapped(a, b) => ActionInputs::ParamIndexesSwapped(a, b),
+                    params::ActionParamsOutput::SetParameters(new_params) => ActionInputs::SetParameters(new_params),
+                }),
         };
 
         // Trigger update actions from model
@@ -435,6 +463,48 @@ impl Component for ActionsModel {
                     }
                     if let Some(new_visible) = meta.new_visible {
                         action.visible = new_visible;
+                    }
+                }
+            }
+
+            ActionInputs::SetParameters(new_params) => {
+                if let Some(action) = self.open_action.as_mut() {
+                    action.parameters = new_params;
+                }
+            }
+            ActionInputs::ParamIndexRemoved(idx) => {
+                if let Some(action) = self.open_action.as_mut() {
+                    for ic in action.instructions.iter_mut() {
+                        for (_, src) in ic.parameter_sources.iter_mut() {
+                            match src {
+                                InstructionParameterSource::FromParameter(n) => {
+                                    match idx.cmp(n) {
+                                        Ordering::Equal => *src = InstructionParameterSource::Literal,
+                                        Ordering::Less => *n -= 1,
+                                        _ => (),
+                                    }
+                                },
+                                _ => (),
+                            }
+                        }
+                    }
+                }
+            }
+            ActionInputs::ParamIndexesSwapped(a, b) => {
+                if let Some(action) = self.open_action.as_mut() {
+                    for ic in action.instructions.iter_mut() {
+                        for (_, src) in ic.parameter_sources.iter_mut() {
+                            match src {
+                                InstructionParameterSource::FromParameter(n) => {
+                                    if *n == a {
+                                        *n = b;
+                                    } else if *n == b {
+                                        *n = a;
+                                    }
+                                },
+                                _ => (),
+                            }
+                        }
                     }
                 }
             }
