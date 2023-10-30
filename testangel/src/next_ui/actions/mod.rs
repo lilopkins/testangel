@@ -477,6 +477,7 @@ impl Component for ActionsModel {
             ActionInputs::SetParameters(new_params) => {
                 if let Some(action) = self.open_action.as_mut() {
                     action.parameters = new_params;
+                    sender.input(ActionInputs::UpdateStepsFromModel);
                 }
             }
             ActionInputs::ParamIndexRemoved(idx) => {
@@ -492,6 +493,7 @@ impl Component for ActionsModel {
                             }
                         }
                     }
+                    sender.input(ActionInputs::UpdateStepsFromModel);
                 }
             }
             ActionInputs::ParamIndexesSwapped(a, b) => {
@@ -507,6 +509,7 @@ impl Component for ActionsModel {
                             }
                         }
                     }
+                    sender.input(ActionInputs::UpdateStepsFromModel);
                 }
             }
 
@@ -657,6 +660,19 @@ impl Component for ActionsModel {
                 live_list.clear();
                 if let Some(action) = &self.open_action {
                     let mut possible_outputs = vec![];
+                    // Populate possible outputs with parameters
+                    for (idx, (name, kind)) in action.parameters.iter().enumerate() {
+                        possible_outputs.push((
+                            lang::lookup_with_args("source-from-param", {
+                                let mut map = HashMap::new();
+                                map.insert("param", name.clone().into());
+                                map
+                            }),
+                            *kind,
+                            InstructionParameterSource::FromParameter(idx),
+                        ));
+                    }
+
                     for (step, config) in action.instructions.iter().enumerate() {
                         live_list.push_back(
                             instruction_component::InstructionComponentInitialiser {

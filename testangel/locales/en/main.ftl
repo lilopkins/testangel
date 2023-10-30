@@ -25,6 +25,7 @@ delete-step = Delete step
 
 source-literal = Literal value
 source-from-step = From Step { $step }: { $name }
+source-from-param = From Parameter: { $param }
 
 # File types
 
