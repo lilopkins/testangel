@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc, cmp::Ordering};
+use std::{cmp::Ordering, collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
@@ -419,13 +419,20 @@ impl Component for ActionsModel {
                 .forward(sender.input_sender(), |msg| {
                     ActionInputs::MetadataUpdated(msg)
                 }),
-            parameters: params::ActionParams::builder()
-                .launch(())
-                .forward(sender.input_sender(), |msg| match msg {
-                    params::ActionParamsOutput::IndexRemoved(idx) => ActionInputs::ParamIndexRemoved(idx),
-                    params::ActionParamsOutput::IndexesSwapped(a, b) => ActionInputs::ParamIndexesSwapped(a, b),
-                    params::ActionParamsOutput::SetParameters(new_params) => ActionInputs::SetParameters(new_params),
-                }),
+            parameters: params::ActionParams::builder().launch(()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    params::ActionParamsOutput::IndexRemoved(idx) => {
+                        ActionInputs::ParamIndexRemoved(idx)
+                    }
+                    params::ActionParamsOutput::IndexesSwapped(a, b) => {
+                        ActionInputs::ParamIndexesSwapped(a, b)
+                    }
+                    params::ActionParamsOutput::SetParameters(new_params) => {
+                        ActionInputs::SetParameters(new_params)
+                    }
+                },
+            ),
         };
 
         // Trigger update actions from model
@@ -476,15 +483,12 @@ impl Component for ActionsModel {
                 if let Some(action) = self.open_action.as_mut() {
                     for ic in action.instructions.iter_mut() {
                         for (_, src) in ic.parameter_sources.iter_mut() {
-                            match src {
-                                InstructionParameterSource::FromParameter(n) => {
-                                    match idx.cmp(n) {
-                                        Ordering::Equal => *src = InstructionParameterSource::Literal,
-                                        Ordering::Less => *n -= 1,
-                                        _ => (),
-                                    }
-                                },
-                                _ => (),
+                            if let InstructionParameterSource::FromParameter(n) = src {
+                                match idx.cmp(n) {
+                                    Ordering::Equal => *src = InstructionParameterSource::Literal,
+                                    Ordering::Less => *n -= 1,
+                                    _ => (),
+                                }
                             }
                         }
                     }
@@ -494,15 +498,12 @@ impl Component for ActionsModel {
                 if let Some(action) = self.open_action.as_mut() {
                     for ic in action.instructions.iter_mut() {
                         for (_, src) in ic.parameter_sources.iter_mut() {
-                            match src {
-                                InstructionParameterSource::FromParameter(n) => {
-                                    if *n == a {
-                                        *n = b;
-                                    } else if *n == b {
-                                        *n = a;
-                                    }
-                                },
-                                _ => (),
+                            if let InstructionParameterSource::FromParameter(n) = src {
+                                if *n == a {
+                                    *n = b;
+                                } else if *n == b {
+                                    *n = a;
+                                }
                             }
                         }
                     }
