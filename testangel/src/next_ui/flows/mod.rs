@@ -393,6 +393,7 @@ impl Component for FlowsModel {
                 self.action_map = new_map.clone();
                 self.header
                     .emit(header::FlowsHeaderInput::ActionsMapChanged(new_map));
+                // TODO This may have changed action parameters. This should be checked again if needed.
             }
             FlowInputs::ConfigUpdate(step, new_config) => {
                 // unwrap rationale: config updates can't happen if nothing is open

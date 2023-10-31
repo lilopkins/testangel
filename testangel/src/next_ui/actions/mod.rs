@@ -2,7 +2,7 @@ use std::{cmp::Ordering, collections::HashMap, fs, path::PathBuf, rc::Rc, sync::
 
 use adw::prelude::*;
 use relm4::{
-    adw, component::Connector, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component,
+    adw, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component,
     ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
 };
 use testangel::{
@@ -14,7 +14,6 @@ use testangel_ipc::prelude::ParameterKind;
 
 use super::{file_filters, lang};
 
-mod execution_dialog;
 pub mod header;
 mod instruction_component;
 mod metadata_component;
@@ -108,8 +107,6 @@ pub enum ActionInputs {
     PasteStep(usize, InstructionConfiguration),
     /// Move a step from the index to a position offset (param 3) from a new index (param 2).
     MoveStep(DynamicIndex, DynamicIndex, isize),
-    /// Show the action test dialog
-    RunAction,
     /// The [`InstructionConfiguration`] has changed for the step indicated by the [`DynamicIndex`].
     /// This does not refresh the UI.
     ConfigUpdate(DynamicIndex, InstructionConfiguration),
@@ -142,8 +139,6 @@ pub struct ActionsModel {
     metadata: Controller<metadata_component::Metadata>,
     parameters: Controller<params::ActionParams>,
     live_instructions_list: FactoryVecDeque<instruction_component::InstructionComponent>,
-
-    execution_dialog: Option<Connector<execution_dialog::ExecutionDialog>>,
 }
 
 impl ActionsModel {
@@ -399,7 +394,6 @@ impl Component for ActionsModel {
                     header::ActionsHeaderOutput::SaveAction => ActionInputs::SaveAction,
                     header::ActionsHeaderOutput::SaveAsAction => ActionInputs::SaveAsAction,
                     header::ActionsHeaderOutput::CloseAction => ActionInputs::CloseAction,
-                    header::ActionsHeaderOutput::RunAction => ActionInputs::RunAction,
                     header::ActionsHeaderOutput::AddStep(step) => ActionInputs::AddStep(step),
                 }),
         );
@@ -410,7 +404,6 @@ impl Component for ActionsModel {
             open_action: None,
             open_path: None,
             needs_saving: false,
-            execution_dialog: None,
             header,
             live_instructions_list: FactoryVecDeque::new(
                 gtk::Box::default(),
@@ -630,22 +623,6 @@ impl Component for ActionsModel {
             }
             ActionInputs::_CloseAction => {
                 self.close_action();
-            }
-
-            ActionInputs::RunAction => {
-                if let Some(action) = &self.open_action {
-                    let e_dialog = execution_dialog::ExecutionDialog::builder()
-                        .transient_for(root)
-                        .launch(execution_dialog::ExecutionDialogInit {
-                            action: action.clone(),
-                            engine_list: self.engine_list.clone(),
-                            action_map: self.action_map.clone(),
-                        });
-                    let dialog = e_dialog.widget();
-                    dialog.set_modal(true);
-                    dialog.set_visible(true);
-                    self.execution_dialog = Some(e_dialog);
-                }
             }
 
             ActionInputs::AddStep(step_id) => {
