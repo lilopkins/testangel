@@ -33,6 +33,8 @@ pub struct InstructionComponent {
     visible: bool,
 
     possible_outputs: Vec<(String, ParameterKind, InstructionParameterSource)>,
+    possible_run_conditions: Vec<(String, InstructionParameterSource)>,
+    run_condition_index: u32,
     variable_rows:
         FactoryVecDeque<VariableRow<InstructionParameterSource, String, InstructionComponentInput>>,
 
@@ -48,6 +50,7 @@ pub enum InstructionComponentInput {
     NewSourceFor(String, InstructionParameterSource),
     NewValueFor(String, ParameterValue),
     ProposedDrop { above: bool, below: bool },
+    ChangeRunCondition(u32),
 }
 
 impl VariableRowParentInput<String, InstructionParameterSource> for InstructionComponentInput {
@@ -75,6 +78,7 @@ pub enum InstructionComponentOutput {
     ConfigUpdate(DynamicIndex, InstructionConfiguration),
     /// (from, to, offset)
     MoveStep(DynamicIndex, DynamicIndex, isize),
+    ChangeRunCondition(DynamicIndex, InstructionParameterSource),
 }
 
 #[relm4::factory(pub)]
@@ -117,6 +121,19 @@ impl FactoryComponent for InstructionComponent {
                 set_header_suffix = &gtk::Box {
                     set_spacing: 5,
 
+                    gtk::DropDown {
+                        set_model: Some(
+                            &gtk::StringList::new(self.possible_run_conditions.iter()
+                                .map(|(label, _)| label.as_str())
+                                .collect::<Vec<_>>()
+                                .as_slice())),
+                        set_selected: self.run_condition_index,
+
+                        connect_selected_notify[sender] => move |dropdown| {
+                            let idx = dropdown.selected();
+                            sender.input(InstructionComponentInput::ChangeRunCondition(idx));
+                        },
+                    },
                     gtk::Button::builder().css_classes(["flat"]).build() {
                         set_icon_name: relm4_icons::icon_name::UP,
                         set_tooltip: &lang::lookup("move-up"),
@@ -238,9 +255,45 @@ impl FactoryComponent for InstructionComponent {
             config,
         } = init;
 
+        let possible_run_conditions = [
+            vec![(
+                lang::lookup("action-condition-run-always"),
+                InstructionParameterSource::Literal,
+            )],
+            possible_outputs
+                .iter()
+                .filter(|(_, kind, _)| *kind == ParameterKind::Boolean)
+                .map(|(label, _, src)| (lang::lookup_with_args("action-condition-run-condition", {
+                    let mut map = HashMap::new();
+                    map.insert("cond", label.clone().into());
+                    map
+                }), src.clone()))
+                .collect::<Vec<_>>(),
+        ]
+        .concat();
+        let sender_c = sender.clone();
+        let run_condition_index = possible_run_conditions
+            .iter()
+            .enumerate()
+            .find(|(_, (_, src))| *src == config.run_if)
+            .map(|(idx, _)| idx)
+            .unwrap_or_else(|| {
+                // fix a potentially very broken situation
+                sender_c.output(InstructionComponentOutput::ChangeRunCondition(
+                    index.clone(),
+                    InstructionParameterSource::Literal,
+                ));
+                log::warn!(
+                    "Fixed bad pointing run condition! This fix should never have been called!"
+                );
+                0
+            }) as u32;
+
         Self {
             step: index.clone(),
-            possible_outputs,
+            possible_outputs: possible_outputs,
+            possible_run_conditions,
+            run_condition_index,
             config,
             instruction,
             visible: true,
@@ -318,6 +371,13 @@ impl FactoryComponent for InstructionComponent {
                 self.drop_proposed_above = above;
                 self.drop_proposed_below = below;
             }
+            InstructionComponentInput::ChangeRunCondition(idx) => {
+                let (_, src) = &self.possible_run_conditions[idx as usize];
+                sender.output(InstructionComponentOutput::ChangeRunCondition(
+                    self.step.clone(),
+                    src.clone(),
+                ));
+            }
         }
     }
 
@@ -333,6 +393,9 @@ impl FactoryComponent for InstructionComponent {
             }
             InstructionComponentOutput::MoveStep(from, to, offset) => {
                 Some(super::ActionInputs::MoveStep(from, to, offset))
+            }
+            InstructionComponentOutput::ChangeRunCondition(step, new_condition) => {
+                Some(super::ActionInputs::ChangeRunCondition(step, new_condition))
             }
         }
     }

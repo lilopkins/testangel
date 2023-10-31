@@ -121,6 +121,8 @@ pub enum ActionInputs {
     ParamIndexRemoved(usize),
     /// Swap references to the indexes provided
     ParamIndexesSwapped(usize, usize),
+    /// Change the run condition of a step
+    ChangeRunCondition(DynamicIndex, InstructionParameterSource),
 }
 #[derive(Clone, Debug)]
 pub enum ActionOutputs {
@@ -471,6 +473,12 @@ impl Component for ActionsModel {
                     if let Some(new_visible) = meta.new_visible {
                         action.visible = new_visible;
                     }
+                }
+            }
+
+            ActionInputs::ChangeRunCondition(step, new_condition) => {
+                if let Some(action) = self.open_action.as_mut() {
+                    action.instructions[step.current_index()].run_if = new_condition;
                 }
             }
 
