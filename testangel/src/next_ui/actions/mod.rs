@@ -606,7 +606,7 @@ impl Component for ActionsModel {
                 );
             }
             ActionInputs::__SaveActionThen(path, then) => {
-                self.open_path = Some(path);
+                self.open_path = Some(path.with_extension("taaction"));
                 if let Err(e) = self.save_action() {
                     self.create_message_dialog(lang::lookup("action-error-saving"), e.to_string())
                         .set_visible(true);
