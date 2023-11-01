@@ -74,7 +74,6 @@ flow-step-label = Step { $step }: { $name }
 # Actions
 
 action-header-add = Add step
-action-header-run = Test action
 action-header-more = More...
 action-header-new = New action
 action-header-open = Open action...
