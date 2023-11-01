@@ -282,11 +282,16 @@ impl FactoryComponent for InstructionComponent {
             possible_outputs
                 .iter()
                 .filter(|(_, kind, _)| *kind == ParameterKind::Boolean)
-                .map(|(label, _, src)| (lang::lookup_with_args("action-condition-run-condition", {
-                    let mut map = HashMap::new();
-                    map.insert("cond", label.clone().into());
-                    map
-                }), src.clone()))
+                .map(|(label, _, src)| {
+                    (
+                        lang::lookup_with_args("action-condition-run-condition", {
+                            let mut map = HashMap::new();
+                            map.insert("cond", label.clone().into());
+                            map
+                        }),
+                        src.clone(),
+                    )
+                })
                 .collect::<Vec<_>>(),
         ]
         .concat();
@@ -310,7 +315,7 @@ impl FactoryComponent for InstructionComponent {
 
         Self {
             step: index.clone(),
-            possible_outputs: possible_outputs,
+            possible_outputs,
             possible_run_conditions,
             run_condition_index,
             config,

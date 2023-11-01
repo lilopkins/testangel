@@ -2,8 +2,8 @@ use std::{cmp::Ordering, collections::HashMap, fs, path::PathBuf, rc::Rc, sync::
 
 use adw::prelude::*;
 use relm4::{
-    adw, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component,
-    ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
+    adw, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component, ComponentController,
+    ComponentParts, ComponentSender, Controller, RelmWidgetExt,
 };
 use testangel::{
     action_loader::ActionMap,
@@ -17,8 +17,8 @@ use super::{file_filters, lang};
 pub mod header;
 mod instruction_component;
 mod metadata_component;
-mod params;
 mod outputs;
+mod params;
 
 pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
@@ -733,7 +733,10 @@ impl Component for ActionsModel {
                         }
                     }
 
-                    self.outputs.emit(outputs::ActionOutputsInput::SetPossibleSources(possible_outputs));
+                    self.outputs
+                        .emit(outputs::ActionOutputsInput::SetPossibleSources(
+                            possible_outputs,
+                        ));
                 }
             }
 

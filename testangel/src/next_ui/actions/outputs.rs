@@ -92,7 +92,8 @@ impl Component for ActionOutputs {
         match message {
             ActionOutputsInput::SetPossibleSources(new_sources) => {
                 self.possible_sources = new_sources.clone();
-                self.outputs.broadcast(OutputRowInput::SetPossibleSources(new_sources));
+                self.outputs
+                    .broadcast(OutputRowInput::SetPossibleSources(new_sources));
             }
 
             ActionOutputsInput::ChangeAction(action) => {
@@ -190,7 +191,10 @@ pub enum OutputRowOutput {
 
 #[relm4::factory]
 impl FactoryComponent for OutputRow {
-    type Init = (Option<(String, InstructionParameterSource)>, Vec<(String, ParameterKind, InstructionParameterSource)>);
+    type Init = (
+        Option<(String, InstructionParameterSource)>,
+        Vec<(String, ParameterKind, InstructionParameterSource)>,
+    );
     type Input = OutputRowInput;
     type Output = OutputRowOutput;
     type CommandOutput = ();
@@ -221,7 +225,7 @@ impl FactoryComponent for OutputRow {
 
                 connect_selected_notify[sender, index] => move |dropdown| {
                     let idx = dropdown.selected();
-                    sender.input(OutputRowInput::_SetSource(index.clone(), idx.clone()));
+                    sender.input(OutputRowInput::_SetSource(index.clone(), idx));
                 },
             },
 
@@ -267,7 +271,12 @@ impl FactoryComponent for OutputRow {
                 }
             }
 
-            Self { name, src_index, possible_sources, inhibit_next_selection: 0 }
+            Self {
+                name,
+                src_index,
+                possible_sources,
+                inhibit_next_selection: 0,
+            }
         } else {
             Self {
                 name: String::new(),
@@ -300,7 +309,13 @@ impl FactoryComponent for OutputRow {
                 self.possible_sources = new_sources;
                 self.src_index = src_index;
                 self.inhibit_next_selection = 2;
-                widgets.dropdown.set_model(Some(&gtk::StringList::new(self.possible_sources.iter().map(|(label, _, _)| label.as_str()).collect::<Vec<_>>().as_slice())));
+                widgets.dropdown.set_model(Some(&gtk::StringList::new(
+                    self.possible_sources
+                        .iter()
+                        .map(|(label, _, _)| label.as_str())
+                        .collect::<Vec<_>>()
+                        .as_slice(),
+                )));
                 widgets.dropdown.set_selected(self.src_index);
             }
             OutputRowInput::_SetSource(index, dropdown_idx) => {
