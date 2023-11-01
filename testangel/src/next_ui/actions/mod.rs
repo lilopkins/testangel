@@ -18,6 +18,7 @@ pub mod header;
 mod instruction_component;
 mod metadata_component;
 mod params;
+mod outputs;
 
 pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
@@ -120,6 +121,8 @@ pub enum ActionInputs {
     ParamIndexesSwapped(usize, usize),
     /// Change the run condition of a step
     ChangeRunCondition(DynamicIndex, InstructionParameterSource),
+    /// Set the outputs of an action
+    SetOutputs(Vec<(String, ParameterKind, InstructionParameterSource)>),
 }
 #[derive(Clone, Debug)]
 pub enum ActionOutputs {
@@ -138,6 +141,7 @@ pub struct ActionsModel {
     header: Rc<Controller<header::ActionsHeader>>,
     metadata: Controller<metadata_component::Metadata>,
     parameters: Controller<params::ActionParams>,
+    outputs: Controller<outputs::ActionOutputs>,
     live_instructions_list: FactoryVecDeque<instruction_component::InstructionComponent>,
 }
 
@@ -190,6 +194,8 @@ impl ActionsModel {
             ));
         self.parameters
             .emit(params::ActionParamsInput::ChangeAction(Action::default()));
+        self.outputs
+            .emit(outputs::ActionOutputsInput::ChangeAction(Action::default()));
     }
 
     /// Open an action. This does not ask to save first.
@@ -230,7 +236,9 @@ impl ActionsModel {
                 action.clone(),
             ));
         self.parameters
-            .emit(params::ActionParamsInput::ChangeAction(action));
+            .emit(params::ActionParamsInput::ChangeAction(action.clone()));
+        self.outputs
+            .emit(outputs::ActionOutputsInput::ChangeAction(action));
         self.open_path = Some(file);
         self.needs_saving = false;
         log::debug!("New action open.");
@@ -374,6 +382,12 @@ impl Component for ActionsModel {
                             set_orientation: gtk::Orientation::Vertical,
                             set_spacing: 5,
                         },
+
+                        gtk::Separator {
+                            set_orientation: gtk::Orientation::Horizontal,
+                        },
+
+                        model.outputs.widget(),
                     }
                 }
             },
@@ -428,6 +442,20 @@ impl Component for ActionsModel {
                     }
                 },
             ),
+            outputs: outputs::ActionOutputs::builder().launch(()).forward(
+                sender.input_sender(),
+                |msg| match msg {
+                    outputs::ActionOutputsOutput::IndexRemoved(idx) => {
+                        ActionInputs::ParamIndexRemoved(idx)
+                    }
+                    outputs::ActionOutputsOutput::IndexesSwapped(a, b) => {
+                        ActionInputs::ParamIndexesSwapped(a, b)
+                    }
+                    outputs::ActionOutputsOutput::SetOutputs(new_outputs) => {
+                        ActionInputs::SetOutputs(new_outputs)
+                    }
+                },
+            ),
         };
 
         // Trigger update actions from model
@@ -478,6 +506,12 @@ impl Component for ActionsModel {
             ActionInputs::SetParameters(new_params) => {
                 if let Some(action) = self.open_action.as_mut() {
                     action.parameters = new_params;
+                    sender.input(ActionInputs::UpdateStepsFromModel);
+                }
+            }
+            ActionInputs::SetOutputs(new_outputs) => {
+                if let Some(action) = self.open_action.as_mut() {
+                    action.outputs = new_outputs;
                     sender.input(ActionInputs::UpdateStepsFromModel);
                 }
             }
@@ -690,6 +724,8 @@ impl Component for ActionsModel {
                             ));
                         }
                     }
+
+                    self.outputs.emit(outputs::ActionOutputsInput::SetPossibleSources(possible_outputs));
                 }
             }
 
