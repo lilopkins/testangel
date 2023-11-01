@@ -46,6 +46,7 @@ pub struct InstructionComponent {
 
 #[derive(Debug)]
 pub enum InstructionComponentInput {
+    SetComment(String),
     SetVisible(bool),
     NewSourceFor(String, InstructionParameterSource),
     NewValueFor(String, ParameterValue),
@@ -79,6 +80,7 @@ pub enum InstructionComponentOutput {
     /// (from, to, offset)
     MoveStep(DynamicIndex, DynamicIndex, isize),
     ChangeRunCondition(DynamicIndex, InstructionParameterSource),
+    SetComment(DynamicIndex, String),
 }
 
 #[relm4::factory(pub)]
@@ -113,7 +115,8 @@ impl FactoryComponent for InstructionComponent {
                         map
                     }
                 ),
-                set_description: Some(self.instruction.description()),
+                #[watch]
+                set_description: Some(&format!("{}\n{}", self.instruction.description(), self.config.comment)),
                 #[watch]
                 set_visible: self.visible,
 
@@ -132,6 +135,22 @@ impl FactoryComponent for InstructionComponent {
                         connect_selected_notify[sender] => move |dropdown| {
                             let idx = dropdown.selected();
                             sender.input(InstructionComponentInput::ChangeRunCondition(idx));
+                        },
+                    },
+                    gtk::MenuButton::builder().css_classes(["flat"]).build() {
+                        set_icon_name: relm4_icons::icon_name::TAG,
+                        set_tooltip: &lang::lookup("action-step-set-comment"),
+
+                        #[wrap(Some)]
+                        set_popover = &gtk::Popover {
+                            gtk::Entry {
+                                set_text: &self.config.comment,
+
+                                connect_changed[sender, index] => move |entry| {
+                                    sender.input(InstructionComponentInput::SetComment(entry.text().to_string()));
+                                    sender.output(InstructionComponentOutput::SetComment(index.clone(), entry.text().to_string()));
+                                },
+                            }
                         },
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
@@ -353,6 +372,9 @@ impl FactoryComponent for InstructionComponent {
     fn update(&mut self, message: Self::Input, sender: relm4::FactorySender<Self>) {
         match message {
             InstructionComponentInput::SetVisible(to) => self.visible = to,
+            InstructionComponentInput::SetComment(comment) => {
+                self.config.comment = comment;
+            }
             InstructionComponentInput::NewSourceFor(idx, source) => {
                 self.config.parameter_sources.insert(idx, source);
                 sender.output(InstructionComponentOutput::ConfigUpdate(
@@ -396,6 +418,9 @@ impl FactoryComponent for InstructionComponent {
             }
             InstructionComponentOutput::ChangeRunCondition(step, new_condition) => {
                 Some(super::ActionInputs::ChangeRunCondition(step, new_condition))
+            }
+            InstructionComponentOutput::SetComment(idx, comment) => {
+                Some(super::ActionInputs::SetComment(idx, comment))
             }
         }
     }

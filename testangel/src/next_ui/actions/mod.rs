@@ -123,6 +123,8 @@ pub enum ActionInputs {
     ChangeRunCondition(DynamicIndex, InstructionParameterSource),
     /// Set the outputs of an action
     SetOutputs(Vec<(String, ParameterKind, InstructionParameterSource)>),
+    /// Set the commend on a step
+    SetComment(DynamicIndex, String),
 }
 #[derive(Clone, Debug)]
 pub enum ActionOutputs {
@@ -494,6 +496,12 @@ impl Component for ActionsModel {
                     if let Some(new_visible) = meta.new_visible {
                         action.visible = new_visible;
                     }
+                }
+            }
+
+            ActionInputs::SetComment(step, new_comment) => {
+                if let Some(action) = self.open_action.as_mut() {
+                    action.instructions[step.current_index()].comment = new_comment;
                 }
             }
 

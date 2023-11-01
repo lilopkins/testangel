@@ -39,7 +39,7 @@ rfd = { version = "0.12.0", optional = true, default-features = false, features 
 octocrab = "0.31.2"
 semver = "1.0.19"
 relm4 = { version = "0.6", optional = true, features = [ "libadwaita", "gnome_44" ] }
-relm4-icons = { version = "0.6", optional = true, features = [ "paper", "play", "menu", "lightbulb", "papyrus-vertical", "puzzle-piece", "question-round", "edit", "plus", "x-circular", "up", "down" ] }
+relm4-icons = { version = "0.6", optional = true, features = [ "paper", "play", "menu", "lightbulb", "papyrus-vertical", "puzzle-piece", "question-round", "edit", "plus", "x-circular", "up", "down", "tag" ] }
 fluent = { version = "0.16.0", optional = true }
 fluent-templates = { version = "0.8.0", optional = true }
 fuzzy-matcher = { version = "0.3.7", optional = true }

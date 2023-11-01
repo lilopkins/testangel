@@ -106,6 +106,7 @@ action-metadata-visible = Visible in Flow Editor
 action-params-new = New Input Parameter
 action-outputs-new = New Output
 
+action-step-set-comment = Set step comment
 action-step-label = Step { $step }: { $name }
 action-condition-run-always = Always runs
 action-condition-run-condition = Runs if: { $cond }
