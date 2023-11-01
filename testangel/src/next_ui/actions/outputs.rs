@@ -206,6 +206,7 @@ impl FactoryComponent for OutputRow {
             gtk::Entry {
                 set_hexpand: true,
                 set_text: &self.name,
+                set_placeholder_text: Some(&lang::lookup("action-outputs-name-placeholder")),
 
                 connect_changed[sender, index] => move |entry| {
                     sender.output(OutputRowOutput::SetOutputName(index.clone(), entry.text().to_string()));

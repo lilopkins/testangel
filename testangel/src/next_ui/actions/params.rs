@@ -195,6 +195,7 @@ impl FactoryComponent for ParamRow {
             gtk::Entry {
                 set_hexpand: true,
                 set_text: &self.name,
+                set_placeholder_text: Some(&lang::lookup("action-params-name-placeholder")),
 
                 connect_changed[sender, index] => move |entry| {
                     sender.output(ParamRowOutput::SetParamName(index.clone(), entry.text().to_string()));

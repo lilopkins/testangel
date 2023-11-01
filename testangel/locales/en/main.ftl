@@ -104,7 +104,9 @@ action-metadata-description = Description
 action-metadata-visible = Visible in Flow Editor
 
 action-params-new = New Input Parameter
+action-params-name-placeholder = Parameter name
 action-outputs-new = New Output
+action-outputs-name-placeholder = Output name
 
 action-step-set-comment = Set step comment
 action-step-label = Step { $step }: { $name }
