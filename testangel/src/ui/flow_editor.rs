@@ -296,7 +296,7 @@ impl FlowEditor {
             return iced::Command::perform(
                 rfd::AsyncMessageDialog::new()
                     .set_title("Failed to save")
-                    .set_description(&format!("Failed to save file: {e}"))
+                    .set_description(format!("Failed to save file: {e}"))
                     .show(),
                 |_| super::AppMessage::NoOp,
             );
@@ -606,7 +606,7 @@ impl UiComponent for FlowEditor {
                         Some(iced::Command::perform(
                             rfd::AsyncMessageDialog::new()
                                 .set_title("Failed to save")
-                                .set_description(&format!("Failed to save file: {e}"))
+                                .set_description(format!("Failed to save file: {e}"))
                                 .show(),
                             |_| super::AppMessage::NoOp,
                         )),

@@ -3,8 +3,6 @@
     windows_subsystem = "windows"
 )]
 
-use testangel::version;
-
 #[cfg(feature = "next-ui")]
 mod next_ui;
 #[cfg(feature = "ui")]
@@ -31,6 +29,7 @@ fn main() {
     #[cfg(feature = "next-ui")]
     {
         use relm4::tokio::runtime;
+        use testangel::version;
 
         log::info!("Using locale: {}", next_ui::lang::initialise_i18n());
 

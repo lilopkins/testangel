@@ -1,4 +1,4 @@
-use std::{ffi, collections::HashMap};
+use std::{collections::HashMap, ffi};
 
 use adw::prelude::*;
 use relm4::{
@@ -11,9 +11,12 @@ use relm4::{
 use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
-use crate::next_ui::{components::variable_row::{
-    ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
-}, lang};
+use crate::next_ui::{
+    components::variable_row::{
+        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
+    },
+    lang,
+};
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
 pub struct ActionComponentInitialiser {
@@ -30,7 +33,7 @@ pub struct ActionComponent {
     visible: bool,
 
     possible_outputs: Vec<(String, ParameterKind, ActionParameterSource)>,
-    variable_rows: FactoryVecDeque<VariableRow<ActionParameterSource, ActionComponentInput>>,
+    variable_rows: FactoryVecDeque<VariableRow<ActionParameterSource, usize, ActionComponentInput>>,
 
     /// True when a drag-and-drop operation is proposed to add a component above this one
     drop_proposed_above: bool,
@@ -46,7 +49,7 @@ pub enum ActionComponentInput {
     ProposedDrop { above: bool, below: bool },
 }
 
-impl VariableRowParentInput<ActionParameterSource> for ActionComponentInput {
+impl VariableRowParentInput<usize, ActionParameterSource> for ActionComponentInput {
     fn new_source_for(idx: usize, new_source: ActionParameterSource) -> Self {
         Self::NewSourceFor(idx, new_source)
     }

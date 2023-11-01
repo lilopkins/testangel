@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use relm4::gtk::{self, FileFilter, glib, gio, subclass::prelude::*, prelude::*};
+use relm4::gtk::{self, gio, glib, prelude::*, subclass::prelude::*, FileFilter};
 
 use super::lang;
 
@@ -20,12 +20,19 @@ pub fn flows() -> FileFilter {
     filter
 }
 
+/// Get a [`FileFilter`] tuned to actions.
+pub fn actions() -> FileFilter {
+    let filter = gtk::FileFilter::new();
+    filter.set_name(Some(&lang::lookup("filetype-action")));
+    filter.add_suffix("taaction");
+    filter
+}
+
 /// Get a [`FileFilter`] tuned to PDFs.
 pub fn pdfs() -> FileFilter {
     let filter = gtk::FileFilter::new();
     filter.set_name(Some(&lang::lookup("filetype-pdf")));
     filter.add_suffix("pdf");
-    filter.add_mime_type("application/pdf");
     filter
 }
 

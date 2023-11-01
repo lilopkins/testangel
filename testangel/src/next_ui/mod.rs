@@ -14,8 +14,8 @@ use self::header_bar::HeaderBarInput;
 mod about;
 mod actions;
 mod components;
-mod flows;
 mod file_filters;
+mod flows;
 mod header_bar;
 pub(crate) mod lang;
 
@@ -51,7 +51,6 @@ enum AppInput {
     /// The view has changed and should be read from visible_child_name, then components updated as needed.
     ChangedView(Option<String>),
     /// The actions might have changed and should be reloaded
-    #[allow(dead_code)] // TODO Allowed until actions are implemented
     ReloadActionsMap,
 }
 
@@ -106,14 +105,20 @@ impl SimpleComponent for AppModel {
             .launch((init.actions.clone(), init.engines.clone()))
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
         let actions = actions::ActionsModel::builder()
-            .launch(())
-            .forward(sender.input_sender(), |_msg| AppInput::NoOp);
+            .launch((init.actions.clone(), init.engines.clone()))
+            .forward(sender.input_sender(), |msg| match msg {
+                actions::ActionOutputs::ReloadActions => AppInput::ReloadActionsMap,
+            });
 
         let stack = Rc::new(adw::ViewStack::new());
 
         // Initialise the headerbar
         let header = header_bar::HeaderBarModel::builder()
-            .launch((flows.model().header_controller_rc(), stack.clone()))
+            .launch((
+                actions.model().header_controller_rc(),
+                flows.model().header_controller_rc(),
+                stack.clone(),
+            ))
             .forward(sender.input_sender(), |_msg| AppInput::NoOp);
 
         // Build model
@@ -170,7 +175,10 @@ impl SimpleComponent for AppModel {
                 self.actions_map = Arc::new(action_loader::get_actions(self.engines_list.clone()));
                 self.flows.emit(flows::FlowInputs::ActionsMapChanged(
                     self.actions_map.clone(),
-                ))
+                ));
+                self.actions.emit(actions::ActionInputs::ActionsMapChanged(
+                    self.actions_map.clone(),
+                ));
             }
         }
     }

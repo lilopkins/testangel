@@ -141,7 +141,7 @@ impl UiComponent for FlowRunning {
                             Some(iced::Command::perform(
                                 rfd::AsyncMessageDialog::new()
                                     .set_title("Failed")
-                                    .set_description(&format!("Failed to generate report: {e}"))
+                                    .set_description(format!("Failed to generate report: {e}"))
                                     .set_level(rfd::MessageLevel::Error)
                                     .show(),
                                 |_| super::AppMessage::NoOp,
