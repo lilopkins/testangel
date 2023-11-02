@@ -321,7 +321,7 @@ impl FactoryComponent for OutputRow {
 
                 self.possible_sources = new_sources;
                 self.src_index = src_index;
-                self.inhibit_next_selection = 2;
+                self.inhibit_next_selection += 2;
                 widgets.dropdown.set_model(Some(&gtk::StringList::new(
                     self.possible_sources
                         .iter()
