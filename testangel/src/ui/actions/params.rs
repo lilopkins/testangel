@@ -167,13 +167,13 @@ pub enum ParamRowOutput {
     Delete(DynamicIndex),
 }
 
-static PARAM_KINDS: once_cell::sync::Lazy<Vec<(&'static str, ParameterKind)>> =
+static PARAM_KINDS: once_cell::sync::Lazy<Vec<(String, ParameterKind)>> =
     once_cell::sync::Lazy::new(|| {
         vec![
-            ("String", ParameterKind::String),
-            ("Integer", ParameterKind::Integer),
-            ("Decimal", ParameterKind::Decimal),
-            ("Boolean", ParameterKind::Boolean),
+            (lang::lookup("kind-string"), ParameterKind::String),
+            (lang::lookup("kind-integer"), ParameterKind::Integer),
+            (lang::lookup("kind-decimal"), ParameterKind::Decimal),
+            (lang::lookup("kind-boolean"), ParameterKind::Boolean),
         ]
     });
 
@@ -204,7 +204,7 @@ impl FactoryComponent for ParamRow {
 
             // kind
             gtk::DropDown {
-                set_model: Some(&gtk::StringList::new(PARAM_KINDS.iter().map(|(label, _)| *label).collect::<Vec<_>>().as_slice())),
+                set_model: Some(&gtk::StringList::new(PARAM_KINDS.iter().map(|(label, _)| label.as_str()).collect::<Vec<_>>().as_slice())),
                 set_selected: self.kind_index,
 
                 connect_selected_notify[sender, index] => move |dropdown| {
