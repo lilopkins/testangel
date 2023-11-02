@@ -284,7 +284,6 @@ jobs:
           # Prepare output dir
           mkdir -p build || exit 1
           cp target/release/testangel build/
-          cp target/release/testangel-new-ui build/
           cp target/release/testangel-executor build/
           # Prepare engines
           mkdir -p build/engines || exit 1
