@@ -8,6 +8,12 @@ value = Värde
 nothing-open = Inget är öppet
 delete = Ta bort
 
+header-more = Mer...
+header-new = Ny
+header-open = Öppna...
+header-save = Spara
+header-save-as = Spara som...
+header-close = Stäng
 header-about = Om { app-name }
 acknowledgements-testing-title = Programtestning
 acknowledgements-translations-title = Översättningar
@@ -26,7 +32,7 @@ delete-step = Ta bort steg
 
 source-literal = Direktvärde
 source-from-step = Från steg { $step }: { $name }
-source-from-param = From Parameter: { $param }
+source-from-param = Från parameter: { $param }
 
 # File types
 
@@ -39,12 +45,6 @@ filetype-pdf = PDF-filer
 
 flow-header-add = Lägg till steg
 flow-header-run = Kör flöde
-flow-header-more = Mer...
-flow-header-new = Nytt flöde
-flow-header-open = Öppna flöde...
-flow-header-save = Spara flöde
-flow-header-save-as = Spara flöde som...
-flow-header-close = Stäng flöde
 flow-nothing-open-description = Öppna en flöde eller lägg till ett steg för att komma igång
 
 flow-action-changed = Åtgärder i flödet har ändrats
@@ -71,12 +71,6 @@ flow-step-label = Steg { $step }: { $name }
 # Actions
 
 action-header-add = Lägg till steg
-action-header-more = Mer...
-action-header-new = Ny åtgärd
-action-header-open = Öppna åtgärd...
-action-header-save = Spara åtgärd
-action-header-save-as = Spara åtgärd som...
-action-header-close = Stäng åtgärd
 action-nothing-open-description = Öppna en åtgärd eller lägg till ett steg för att komma igång
 
 action-save-before = Spara denna åtgärden?
@@ -96,7 +90,7 @@ action-metadata-name = Åtgördsnamn
 action-metadata-group = Åtgärdsgrupp
 action-metadata-author = Skapare
 action-metadata-description = Beskrivning
-action-metadata-visible = Visible in Flow Editor
+action-metadata-visible = Synlig i flödesredigeraren
 
 action-params-new = Ny ingångsparameter
 action-params-name-placeholder = Parametersnamn

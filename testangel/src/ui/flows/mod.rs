@@ -113,6 +113,9 @@ pub enum FlowInputs {
 }
 
 #[derive(Debug)]
+pub enum FlowOutputs {}
+
+#[derive(Debug)]
 pub struct FlowsModel {
     action_map: Arc<ActionMap>,
     engine_list: Arc<EngineList>,
@@ -253,7 +256,7 @@ impl FlowsModel {
             // Ask where
             let dialog = gtk::FileDialog::builder()
                 .modal(true)
-                .title(lang::lookup("flow-header-save"))
+                .title(lang::lookup("header-save"))
                 .initial_folder(&gtk::gio::File::for_path(
                     std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
                 ))
@@ -308,7 +311,7 @@ impl FlowsModel {
 impl Component for FlowsModel {
     type Init = (Arc<ActionMap>, Arc<EngineList>);
     type Input = FlowInputs;
-    type Output = ();
+    type Output = FlowOutputs;
     type CommandOutput = ();
 
     view! {
@@ -393,7 +396,48 @@ impl Component for FlowsModel {
                 self.action_map = new_map.clone();
                 self.header
                     .emit(header::FlowsHeaderInput::ActionsMapChanged(new_map));
-                // TODO This may have changed action parameters. This should be checked again if needed.
+
+                // This may have changed action parameters, so check again.
+                let mut close_flow = false;
+                let mut steps_reset = vec![];
+                if let Some(flow) = &mut self.open_flow {
+                    for (step, ac) in flow.actions.iter_mut().enumerate() {
+                        match self.action_map.get_action_by_id(&ac.action_id) {
+                            None => {
+                                close_flow = true;
+                            }
+                            Some(action) => {
+                                // Check that action parameters haven't changed. If they have, reset values.
+                                if ac.update(action) {
+                                    steps_reset.push(step);
+                                }
+                            }
+                        }
+                    }
+                    sender.input(FlowInputs::UpdateStepsFromModel);
+                }
+                if !steps_reset.is_empty() {
+                    let toast =
+                        adw::Toast::new(&lang::lookup_with_args("flow-action-changed-message", {
+                            let mut map = HashMap::new();
+                            map.insert("stepCount", steps_reset.len().into());
+                            map.insert(
+                                "steps",
+                                steps_reset
+                                    .iter()
+                                    .map(|i| (i + 1).to_string())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                                    .into(),
+                            );
+                            map
+                        }));
+                    toast.set_timeout(0); // indefinte so it can be seen when switching back
+                    widgets.toast_target.add_toast(toast);
+                }
+                if close_flow {
+                    self.close_flow();
+                }
             }
             FlowInputs::ConfigUpdate(step, new_config) => {
                 // unwrap rationale: config updates can't happen if nothing is open
@@ -406,6 +450,7 @@ impl Component for FlowsModel {
             }
             FlowInputs::_NewFlow => {
                 self.new_flow();
+                sender.input(FlowInputs::UpdateStepsFromModel);
             }
             FlowInputs::OpenFlow => {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_OpenFlow);
@@ -413,7 +458,7 @@ impl Component for FlowsModel {
             FlowInputs::_OpenFlow => {
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
-                    .title(lang::lookup("flow-header-open"))
+                    .title(lang::lookup("header-open"))
                     .filters(&file_filters::filter_list(vec![
                         file_filters::flows(),
                         file_filters::all(),

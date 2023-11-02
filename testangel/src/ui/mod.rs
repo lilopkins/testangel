@@ -48,13 +48,14 @@ pub struct AppInit {
 
 #[derive(Debug)]
 enum AppInput {
-    NoOp,
     /// The view has changed and should be read from visible_child_name, then components updated as needed.
     ChangedView(Option<String>),
     /// The actions might have changed and should be reloaded
     ReloadActionsMap,
     /// Attach the action group to the window
     AttachGeneralActionGroup(RelmActionGroup<header_bar::GeneralActionGroup>),
+    /// Attach the action group to the window
+    AttachFileActionGroup(RelmActionGroup<header_bar::FileActionGroup>),
 }
 
 #[derive(Debug)]
@@ -107,7 +108,7 @@ impl Component for AppModel {
         // Initialise the sub-components (pages)
         let flows = flows::FlowsModel::builder()
             .launch((init.actions.clone(), init.engines.clone()))
-            .forward(sender.input_sender(), |_msg| AppInput::NoOp);
+            .forward(sender.input_sender(), |msg| match msg {});
         let actions = actions::ActionsModel::builder()
             .launch((init.actions.clone(), init.engines.clone()))
             .forward(sender.input_sender(), |msg| match msg {
@@ -127,8 +128,11 @@ impl Component for AppModel {
                 init.actions.clone(),
             ))
             .forward(sender.input_sender(), |msg| match msg {
-                header_bar::HeaderBarOutput::AttachActionGroup(group) => {
+                header_bar::HeaderBarOutput::AttachGeneralActionGroup(group) => {
                     AppInput::AttachGeneralActionGroup(group)
+                }
+                header_bar::HeaderBarOutput::AttachFileActionGroup(group) => {
+                    AppInput::AttachFileActionGroup(group)
                 }
             });
 
@@ -182,8 +186,10 @@ impl Component for AppModel {
         root: &Self::Root,
     ) {
         match message {
-            AppInput::NoOp => (),
             AppInput::AttachGeneralActionGroup(group) => {
+                group.register_for_widget(root);
+            }
+            AppInput::AttachFileActionGroup(group) => {
                 group.register_for_widget(root);
             }
             AppInput::ChangedView(new_view) => {

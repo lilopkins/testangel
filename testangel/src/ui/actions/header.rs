@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use adw::prelude::*;
 use relm4::{
-    actions::{AccelsPlus, RelmAction, RelmActionGroup},
-    adw,
-    factory::FactoryVecDeque,
-    gtk, Component, ComponentParts, ComponentSender, RelmWidgetExt,
+    adw, factory::FactoryVecDeque, gtk, Component, ComponentParts, ComponentSender, RelmWidgetExt,
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
@@ -44,6 +41,8 @@ pub enum ActionsHeaderInput {
     AddTopSearchResult,
     /// Inform the header bar if a action is open or not.
     ChangeActionOpen(bool),
+    /// Ask this to output the provided event
+    PleaseOutput(ActionsHeaderOutput),
 }
 
 impl AddStepTrait for ActionsHeaderInput {
@@ -104,35 +103,6 @@ impl Component for ActionsHeader {
                 },
             },
         },
-
-        #[name = "end"]
-        gtk::Box {
-            set_spacing: 5,
-
-            gtk::MenuButton {
-                set_icon_name: relm4_icons::icon_name::MENU,
-                set_tooltip: &lang::lookup("action-header-more"),
-                set_direction: gtk::ArrowType::Down,
-
-                #[wrap(Some)]
-                set_popover = &gtk::PopoverMenu::from_model(Some(&actions_menu)) {
-                    set_position: gtk::PositionType::Bottom,
-                },
-            },
-        },
-    }
-
-    menu! {
-        actions_menu: {
-            &lang::lookup("action-header-new") => ActionsNewAction,
-            &lang::lookup("action-header-open") => ActionsOpenAction,
-            &lang::lookup("action-header-save") => ActionsSaveAction,
-            &lang::lookup("action-header-save-as") => ActionsSaveAsAction,
-            &lang::lookup("action-header-close") => ActionsCloseAction,
-            section! {
-                &lang::lookup("header-about") => crate::ui::header_bar::GeneralAboutAction,
-            }
-        }
     }
 
     fn init(
@@ -154,52 +124,6 @@ impl Component for ActionsHeader {
         let add_button = &model.add_button;
         let widgets = view_output!();
 
-        let sender_c = sender.clone();
-        let new_action: RelmAction<ActionsNewAction> = RelmAction::new_stateless(move |_| {
-            // unwrap rationale: receiver will never be disconnected
-            sender_c.output(ActionsHeaderOutput::NewAction).unwrap();
-        });
-        relm4::main_application().set_accelerators_for_action::<ActionsNewAction>(&["<primary>N"]);
-
-        let sender_c = sender.clone();
-        let open_action: RelmAction<ActionsOpenAction> = RelmAction::new_stateless(move |_| {
-            // unwrap rationale: receiver will never be disconnected
-            sender_c.output(ActionsHeaderOutput::OpenAction).unwrap();
-        });
-        relm4::main_application().set_accelerators_for_action::<ActionsOpenAction>(&["<primary>O"]);
-
-        let sender_c = sender.clone();
-        let save_action: RelmAction<ActionsSaveAction> = RelmAction::new_stateless(move |_| {
-            // unwrap rationale: receiver will never be disconnected
-            sender_c.output(ActionsHeaderOutput::SaveAction).unwrap();
-        });
-        relm4::main_application().set_accelerators_for_action::<ActionsSaveAction>(&["<primary>S"]);
-
-        let sender_c = sender.clone();
-        let save_as_action: RelmAction<ActionsSaveAsAction> =
-            RelmAction::new_stateless(move |_| {
-                // unwrap rationale: receiver will never be disconnected
-                sender_c.output(ActionsHeaderOutput::SaveAsAction).unwrap();
-            });
-        relm4::main_application()
-            .set_accelerators_for_action::<ActionsSaveAsAction>(&["<primary><shift>S"]);
-
-        let sender_c = sender.clone();
-        let close_action: RelmAction<ActionsCloseAction> = RelmAction::new_stateless(move |_| {
-            // unwrap rationale: receiver will never be disconnected
-            sender_c.output(ActionsHeaderOutput::CloseAction).unwrap();
-        });
-        relm4::main_application()
-            .set_accelerators_for_action::<ActionsCloseAction>(&["<primary>W"]);
-
-        let mut group = RelmActionGroup::<ActionsActionGroup>::new();
-        group.add_action(new_action);
-        group.add_action(open_action);
-        group.add_action(save_action);
-        group.add_action(save_as_action);
-        group.add_action(close_action);
-        group.register_for_widget(&widgets.end);
-
         ComponentParts { model, widgets }
     }
 
@@ -211,6 +135,9 @@ impl Component for ActionsHeader {
         _root: &Self::Root,
     ) {
         match message {
+            ActionsHeaderInput::PleaseOutput(output) => {
+                let _ = sender.output(output);
+            }
             ActionsHeaderInput::ChangeActionOpen(now) => {
                 self.action_open = now;
             }
@@ -292,10 +219,3 @@ impl Component for ActionsHeader {
         self.update_view(widgets, sender);
     }
 }
-
-relm4::new_action_group!(ActionsActionGroup, "actions");
-relm4::new_stateless_action!(ActionsNewAction, ActionsActionGroup, "new");
-relm4::new_stateless_action!(ActionsOpenAction, ActionsActionGroup, "open");
-relm4::new_stateless_action!(ActionsSaveAction, ActionsActionGroup, "save");
-relm4::new_stateless_action!(ActionsSaveAsAction, ActionsActionGroup, "save-as");
-relm4::new_stateless_action!(ActionsCloseAction, ActionsActionGroup, "close");

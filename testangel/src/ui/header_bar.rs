@@ -4,36 +4,49 @@ use gtk::prelude::*;
 use relm4::{
     actions::{AccelsPlus, RelmAction, RelmActionGroup},
     adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
-    RelmIterChildrenExt,
+    RelmIterChildrenExt, RelmWidgetExt,
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
-use super::{actions::header::ActionsHeader, flows::header::FlowsHeader};
+use crate::ui::lang;
+
+use super::{
+    actions::header::{ActionsHeader, ActionsHeaderInput},
+    flows::header::{FlowsHeader, FlowsHeaderInput},
+};
 
 #[derive(Debug)]
 pub enum HeaderBarInput {
     ChangedView(String),
     OpenAboutDialog,
     ActionsMapChanged(Arc<ActionMap>),
+    NewFile,
+    OpenFile,
+    SaveFile,
+    SaveAsFile,
+    CloseFile,
 }
 
 #[derive(Debug)]
 pub enum HeaderBarOutput {
-    AttachActionGroup(RelmActionGroup<GeneralActionGroup>),
+    AttachFileActionGroup(RelmActionGroup<FileActionGroup>),
+    AttachGeneralActionGroup(RelmActionGroup<GeneralActionGroup>),
+}
+
+#[derive(Debug)]
+enum MenuTarget {
+    Nothing,
+    Flows,
+    Actions,
 }
 
 #[derive(Debug)]
 pub struct HeaderBarModel {
+    currently_menu_target: MenuTarget,
     engine_list: Arc<EngineList>,
     action_map: Arc<ActionMap>,
     action_header_rc: Rc<Controller<ActionsHeader>>,
     flow_header_rc: Rc<Controller<FlowsHeader>>,
-}
-
-impl std::fmt::Debug for GeneralActionGroup {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "GeneralActionGroup")
-    }
 }
 
 impl HeaderBarModel {
@@ -71,8 +84,29 @@ impl Component for HeaderBarModel {
                 set_stack = stack -> adw::ViewStack,
             },
 
-            #[name = "end_box"]
-            pack_end = &gtk::Box,
+            pack_end = &gtk::MenuButton {
+                set_icon_name: relm4_icons::icon_name::MENU,
+                set_tooltip: &lang::lookup("header-more"),
+                set_direction: gtk::ArrowType::Down,
+
+                #[wrap(Some)]
+                set_popover = &gtk::PopoverMenu::from_model(Some(&menu)) {
+                    set_position: gtk::PositionType::Bottom,
+                },
+            },
+        }
+    }
+
+    menu! {
+        menu: {
+            &lang::lookup("header-new") => FileNewAction,
+            &lang::lookup("header-open") => FileOpenAction,
+            &lang::lookup("header-save") => FileSaveAction,
+            &lang::lookup("header-save-as") => FileSaveAsAction,
+            &lang::lookup("header-close") => FileCloseAction,
+            section! {
+                &lang::lookup("header-about") => GeneralAboutAction,
+            }
         }
     }
 
@@ -82,6 +116,7 @@ impl Component for HeaderBarModel {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = HeaderBarModel {
+            currently_menu_target: MenuTarget::Nothing,
             action_header_rc: init.0,
             flow_header_rc: init.1,
             engine_list: init.3,
@@ -92,14 +127,57 @@ impl Component for HeaderBarModel {
         let widgets = view_output!();
 
         let sender_c = sender.clone();
+        let new_action: RelmAction<FileNewAction> = RelmAction::new_stateless(move |_| {
+            // unwrap rationale: receiver will never be disconnected
+            sender_c.input(HeaderBarInput::NewFile);
+        });
+        relm4::main_application().set_accelerators_for_action::<FileNewAction>(&["<primary>N"]);
+
+        let sender_c = sender.clone();
+        let open_action: RelmAction<FileOpenAction> = RelmAction::new_stateless(move |_| {
+            // unwrap rationale: receiver will never be disconnected
+            sender_c.input(HeaderBarInput::OpenFile);
+        });
+        relm4::main_application().set_accelerators_for_action::<FileOpenAction>(&["<primary>O"]);
+
+        let sender_c = sender.clone();
+        let save_action: RelmAction<FileSaveAction> = RelmAction::new_stateless(move |_| {
+            // unwrap rationale: receiver will never be disconnected
+            sender_c.input(HeaderBarInput::SaveFile);
+        });
+        relm4::main_application().set_accelerators_for_action::<FileSaveAction>(&["<primary>S"]);
+
+        let sender_c = sender.clone();
+        let save_as_action: RelmAction<FileSaveAsAction> = RelmAction::new_stateless(move |_| {
+            // unwrap rationale: receiver will never be disconnected
+            sender_c.input(HeaderBarInput::SaveAsFile);
+        });
+        relm4::main_application().set_accelerators_for_action::<FileSaveAsAction>(&["<primary>S"]);
+
+        let sender_c = sender.clone();
+        let close_action: RelmAction<FileCloseAction> = RelmAction::new_stateless(move |_| {
+            // unwrap rationale: receiver will never be disconnected
+            sender_c.input(HeaderBarInput::CloseFile);
+        });
+        relm4::main_application().set_accelerators_for_action::<FileCloseAction>(&["<primary>W"]);
+
+        let sender_c = sender.clone();
         let about_action: RelmAction<GeneralAboutAction> = RelmAction::new_stateless(move |_| {
             sender_c.input(HeaderBarInput::OpenAboutDialog);
         });
-        relm4::main_application()
-            .set_accelerators_for_action::<GeneralAboutAction>(&["<primary>A"]);
+        relm4::main_application().set_accelerators_for_action::<GeneralAboutAction>(&["F1"]);
+
+        let mut group = RelmActionGroup::<FileActionGroup>::new();
+        group.add_action(new_action);
+        group.add_action(open_action);
+        group.add_action(save_action);
+        group.add_action(save_as_action);
+        group.add_action(close_action);
+        let _ = sender.output(HeaderBarOutput::AttachFileActionGroup(group));
+
         let mut group = RelmActionGroup::<GeneralActionGroup>::new();
         group.add_action(about_action);
-        let _ = sender.output(HeaderBarOutput::AttachActionGroup(group));
+        let _ = sender.output(HeaderBarOutput::AttachGeneralActionGroup(group));
 
         ComponentParts { model, widgets }
     }
@@ -124,20 +202,104 @@ impl Component for HeaderBarModel {
                 if new_view == "flows" {
                     let rc_clone = self.flow_header_rc.clone();
                     self.swap_content(&widgets.start_box, &rc_clone.widgets().start);
-                    self.swap_content(&widgets.end_box, &rc_clone.widgets().end);
+                    self.currently_menu_target = MenuTarget::Flows;
                 } else if new_view == "actions" {
                     let rc_clone = self.action_header_rc.clone();
                     self.swap_content(&widgets.start_box, &rc_clone.widgets().start);
-                    self.swap_content(&widgets.end_box, &rc_clone.widgets().end);
+                    self.currently_menu_target = MenuTarget::Actions;
                 } else {
                     self.swap_content(&widgets.start_box, &gtk::Box::builder().build());
-                    self.swap_content(&widgets.end_box, &gtk::Box::builder().build());
+                    self.currently_menu_target = MenuTarget::Nothing;
                 }
             }
+            HeaderBarInput::NewFile => match self.currently_menu_target {
+                MenuTarget::Nothing => (),
+                MenuTarget::Flows => {
+                    self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(
+                        super::flows::header::FlowsHeaderOutput::NewFlow,
+                    ));
+                }
+                MenuTarget::Actions => {
+                    self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(
+                        super::actions::header::ActionsHeaderOutput::NewAction,
+                    ));
+                }
+            },
+            HeaderBarInput::OpenFile => match self.currently_menu_target {
+                MenuTarget::Nothing => (),
+                MenuTarget::Flows => {
+                    self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(
+                        super::flows::header::FlowsHeaderOutput::OpenFlow,
+                    ));
+                }
+                MenuTarget::Actions => {
+                    self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(
+                        super::actions::header::ActionsHeaderOutput::OpenAction,
+                    ));
+                }
+            },
+            HeaderBarInput::SaveFile => match self.currently_menu_target {
+                MenuTarget::Nothing => (),
+                MenuTarget::Flows => {
+                    self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(
+                        super::flows::header::FlowsHeaderOutput::SaveFlow,
+                    ));
+                }
+                MenuTarget::Actions => {
+                    self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(
+                        super::actions::header::ActionsHeaderOutput::SaveAction,
+                    ));
+                }
+            },
+            HeaderBarInput::SaveAsFile => match self.currently_menu_target {
+                MenuTarget::Nothing => (),
+                MenuTarget::Flows => {
+                    self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(
+                        super::flows::header::FlowsHeaderOutput::SaveAsFlow,
+                    ));
+                }
+                MenuTarget::Actions => {
+                    self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(
+                        super::actions::header::ActionsHeaderOutput::SaveAsAction,
+                    ));
+                }
+            },
+            HeaderBarInput::CloseFile => match self.currently_menu_target {
+                MenuTarget::Nothing => (),
+                MenuTarget::Flows => {
+                    self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(
+                        super::flows::header::FlowsHeaderOutput::CloseFlow,
+                    ));
+                }
+                MenuTarget::Actions => {
+                    self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(
+                        super::actions::header::ActionsHeaderOutput::CloseAction,
+                    ));
+                }
+            },
         }
         self.update_view(widgets, sender);
     }
 }
 
+relm4::new_action_group!(pub FileActionGroup, "file");
+relm4::new_stateless_action!(FileNewAction, FileActionGroup, "new");
+relm4::new_stateless_action!(FileOpenAction, FileActionGroup, "open");
+relm4::new_stateless_action!(FileSaveAction, FileActionGroup, "save");
+relm4::new_stateless_action!(FileSaveAsAction, FileActionGroup, "save-as");
+relm4::new_stateless_action!(FileCloseAction, FileActionGroup, "close");
+
+impl std::fmt::Debug for FileActionGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FileActionGroup")
+    }
+}
+
 relm4::new_action_group!(pub GeneralActionGroup, "general");
 relm4::new_stateless_action!(pub GeneralAboutAction, GeneralActionGroup, "about");
+
+impl std::fmt::Debug for GeneralActionGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "GeneralActionGroup")
+    }
+}
