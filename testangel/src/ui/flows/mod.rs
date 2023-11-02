@@ -638,7 +638,7 @@ impl Component for FlowsModel {
 
                 // Remove references to step and renumber references above step to one less than they were
                 for step in flow.actions.iter_mut() {
-                    for (_step_idx, source) in step.parameter_sources.iter_mut() {
+                    for (_param_idx, source) in step.parameter_sources.iter_mut() {
                         if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                             match (*from_step).cmp(&idx) {
                                 std::cmp::Ordering::Equal => *from_step = usize::MAX,

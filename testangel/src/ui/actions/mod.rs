@@ -805,7 +805,7 @@ impl Component for ActionsModel {
 
                 // Remove references to step and renumber references above step to one less than they were
                 for step in action.instructions.iter_mut() {
-                    for (_step_idx, source) in step.parameter_sources.iter_mut() {
+                    for (_param_idx, source) in step.parameter_sources.iter_mut() {
                         if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
                             source
                         {
