@@ -111,6 +111,7 @@ impl SimpleComponent for AppModel {
             });
 
         let stack = Rc::new(adw::ViewStack::new());
+        gtk::Window::set_default_icon_name("testangel");
 
         // Initialise the headerbar
         let header = header_bar::HeaderBarModel::builder()
