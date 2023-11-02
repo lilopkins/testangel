@@ -2,10 +2,11 @@ use std::{rc::Rc, sync::Arc};
 
 use gtk::prelude::*;
 use relm4::{
+    actions::{AccelsPlus, RelmAction, RelmActionGroup},
     adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
-    RelmIterChildrenExt, actions::{RelmAction, AccelsPlus, RelmActionGroup},
+    RelmIterChildrenExt,
 };
-use testangel::{ipc::EngineList, action_loader::ActionMap};
+use testangel::{action_loader::ActionMap, ipc::EngineList};
 
 use super::{actions::header::ActionsHeader, flows::header::FlowsHeader};
 
@@ -94,7 +95,8 @@ impl Component for HeaderBarModel {
         let about_action: RelmAction<GeneralAboutAction> = RelmAction::new_stateless(move |_| {
             sender_c.input(HeaderBarInput::OpenAboutDialog);
         });
-        relm4::main_application().set_accelerators_for_action::<GeneralAboutAction>(&["<primary>A"]);
+        relm4::main_application()
+            .set_accelerators_for_action::<GeneralAboutAction>(&["<primary>A"]);
         let mut group = RelmActionGroup::<GeneralActionGroup>::new();
         group.add_action(about_action);
         let _ = sender.output(HeaderBarOutput::AttachActionGroup(group));

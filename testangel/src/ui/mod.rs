@@ -2,7 +2,8 @@ use std::{rc::Rc, sync::Arc};
 
 use gtk::prelude::*;
 use relm4::{
-    adw, gtk, Component, ComponentController, ComponentParts, Controller, RelmApp, actions::RelmActionGroup,
+    actions::RelmActionGroup, adw, gtk, Component, ComponentController, ComponentParts, Controller,
+    RelmApp,
 };
 use testangel::{
     action_loader::{self, ActionMap},
@@ -126,9 +127,10 @@ impl Component for AppModel {
                 init.actions.clone(),
             ))
             .forward(sender.input_sender(), |msg| match msg {
-                header_bar::HeaderBarOutput::AttachActionGroup(group) => AppInput::AttachGeneralActionGroup(group),
+                header_bar::HeaderBarOutput::AttachActionGroup(group) => {
+                    AppInput::AttachGeneralActionGroup(group)
+                }
             });
-
 
         // Build model
         let model = AppModel {
@@ -173,7 +175,12 @@ impl Component for AppModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: relm4::ComponentSender<Self>, root: &Self::Root) {
+    fn update(
+        &mut self,
+        message: Self::Input,
+        _sender: relm4::ComponentSender<Self>,
+        root: &Self::Root,
+    ) {
         match message {
             AppInput::NoOp => (),
             AppInput::AttachGeneralActionGroup(group) => {
@@ -191,9 +198,10 @@ impl Component for AppModel {
                 self.actions.emit(actions::ActionInputs::ActionsMapChanged(
                     self.actions_map.clone(),
                 ));
-                self.header.emit(header_bar::HeaderBarInput::ActionsMapChanged(
-                    self.actions_map.clone(),
-                ))
+                self.header
+                    .emit(header_bar::HeaderBarInput::ActionsMapChanged(
+                        self.actions_map.clone(),
+                    ))
             }
         }
     }
