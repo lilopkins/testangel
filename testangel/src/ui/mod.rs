@@ -2,7 +2,7 @@ use std::{rc::Rc, sync::Arc};
 
 use gtk::prelude::*;
 use relm4::{
-    adw, gtk, Component, ComponentController, ComponentParts, Controller, RelmApp, SimpleComponent,
+    adw, gtk, Component, ComponentController, ComponentParts, Controller, RelmApp, actions::RelmActionGroup,
 };
 use testangel::{
     action_loader::{self, ActionMap},
@@ -52,6 +52,8 @@ enum AppInput {
     ChangedView(Option<String>),
     /// The actions might have changed and should be reloaded
     ReloadActionsMap,
+    /// Attach the action group to the window
+    AttachGeneralActionGroup(RelmActionGroup<header_bar::GeneralActionGroup>),
 }
 
 #[derive(Debug)]
@@ -67,10 +69,11 @@ struct AppModel {
 }
 
 #[relm4::component]
-impl SimpleComponent for AppModel {
+impl Component for AppModel {
     type Init = AppInit;
     type Input = AppInput;
     type Output = ();
+    type CommandOutput = ();
 
     view! {
         main_window = adw::Window {
@@ -119,8 +122,13 @@ impl SimpleComponent for AppModel {
                 actions.model().header_controller_rc(),
                 flows.model().header_controller_rc(),
                 stack.clone(),
+                init.engines.clone(),
+                init.actions.clone(),
             ))
-            .forward(sender.input_sender(), |_msg| AppInput::NoOp);
+            .forward(sender.input_sender(), |msg| match msg {
+                header_bar::HeaderBarOutput::AttachActionGroup(group) => AppInput::AttachGeneralActionGroup(group),
+            });
+
 
         // Build model
         let model = AppModel {
@@ -165,9 +173,12 @@ impl SimpleComponent for AppModel {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, message: Self::Input, _sender: relm4::ComponentSender<Self>) {
+    fn update(&mut self, message: Self::Input, _sender: relm4::ComponentSender<Self>, root: &Self::Root) {
         match message {
             AppInput::NoOp => (),
+            AppInput::AttachGeneralActionGroup(group) => {
+                group.register_for_widget(root);
+            }
             AppInput::ChangedView(new_view) => {
                 self.header
                     .emit(HeaderBarInput::ChangedView(new_view.unwrap_or_default()));
@@ -180,6 +191,9 @@ impl SimpleComponent for AppModel {
                 self.actions.emit(actions::ActionInputs::ActionsMapChanged(
                     self.actions_map.clone(),
                 ));
+                self.header.emit(header_bar::HeaderBarInput::ActionsMapChanged(
+                    self.actions_map.clone(),
+                ))
             }
         }
     }

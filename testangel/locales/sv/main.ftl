@@ -8,6 +8,7 @@ value = Värde
 nothing-open = Inget är öppet
 delete = Ta bort
 
+header-about = Om { app-name }
 acknowledgements-testing-title = Programtestning
 acknowledgements-translations-title = Översättningar
 
@@ -44,7 +45,6 @@ flow-header-open = Öppna flöde...
 flow-header-save = Spara flöde
 flow-header-save-as = Spara flöde som...
 flow-header-close = Stäng flöde
-flow-header-about = Om { app-name }
 flow-nothing-open-description = Öppna en flöde eller lägg till ett steg för att komma igång
 
 flow-action-changed = Åtgärder i flödet har ändrats
@@ -77,7 +77,6 @@ action-header-open = Öppna åtgärd...
 action-header-save = Spara åtgärd
 action-header-save-as = Spara åtgärd som...
 action-header-close = Stäng åtgärd
-action-header-about = Om { app-name }
 action-nothing-open-description = Öppna en åtgärd eller lägg till ett steg för att komma igång
 
 action-save-before = Spara denna åtgärden?

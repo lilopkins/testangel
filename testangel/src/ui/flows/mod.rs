@@ -348,7 +348,7 @@ impl Component for FlowsModel {
     ) -> ComponentParts<Self> {
         let header = Rc::new(
             header::FlowsHeader::builder()
-                .launch((init.1.clone(), init.0.clone()))
+                .launch(init.0.clone())
                 .forward(sender.input_sender(), |msg| match msg {
                     header::FlowsHeaderOutput::NewFlow => FlowInputs::NewFlow,
                     header::FlowsHeaderOutput::OpenFlow => FlowInputs::OpenFlow,

@@ -5,9 +5,9 @@ use relm4::{
     actions::{AccelsPlus, RelmAction, RelmActionGroup},
     adw,
     factory::FactoryVecDeque,
-    gtk, Component, ComponentController, ComponentParts, ComponentSender, RelmWidgetExt,
+    gtk, Component, ComponentParts, ComponentSender, RelmWidgetExt,
 };
-use testangel::{action_loader::ActionMap, ipc::EngineList};
+use testangel::action_loader::ActionMap;
 
 use crate::ui::{
     components::add_step_factory::{AddStepInit, AddStepResult, AddStepTrait},
@@ -16,7 +16,6 @@ use crate::ui::{
 
 #[derive(Debug)]
 pub struct FlowsHeader {
-    engine_list: Arc<EngineList>,
     action_map: Arc<ActionMap>,
     add_button: gtk::MenuButton,
     flow_open: bool,
@@ -34,9 +33,14 @@ pub enum FlowsHeaderOutput {
     AddStep(String),
 }
 
+impl std::fmt::Debug for FlowsActionGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FlowsActionGroup")
+    }
+}
+
 #[derive(Debug)]
 pub enum FlowsHeaderInput {
-    OpenAboutDialog,
     ActionsMapChanged(Arc<ActionMap>),
     /// Add the step with the action ID given
     AddStep(String),
@@ -56,7 +60,7 @@ impl AddStepTrait for FlowsHeaderInput {
 
 #[relm4::component(pub)]
 impl Component for FlowsHeader {
-    type Init = (Arc<EngineList>, Arc<ActionMap>);
+    type Init = Arc<ActionMap>;
     type Input = FlowsHeaderInput;
     type Output = FlowsHeaderOutput;
     type CommandOutput = ();
@@ -142,7 +146,7 @@ impl Component for FlowsHeader {
             &lang::lookup("flow-header-save-as") => FlowsSaveAsAction,
             &lang::lookup("flow-header-close") => FlowsCloseAction,
             section! {
-                &lang::lookup("flow-header-about") => FlowsAboutAction,
+                &lang::lookup("header-about") => crate::ui::header_bar::GeneralAboutAction,
             }
         }
     }
@@ -153,8 +157,7 @@ impl Component for FlowsHeader {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = FlowsHeader {
-            engine_list: init.0,
-            action_map: init.1,
+            action_map: init,
             flow_open: false,
             add_button: gtk::MenuButton::default(),
             search_results: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
@@ -202,19 +205,12 @@ impl Component for FlowsHeader {
         });
         relm4::main_application().set_accelerators_for_action::<FlowsCloseAction>(&["<primary>W"]);
 
-        let sender_c = sender.clone();
-        let about_action: RelmAction<FlowsAboutAction> = RelmAction::new_stateless(move |_| {
-            sender_c.input(FlowsHeaderInput::OpenAboutDialog);
-        });
-        relm4::main_application().set_accelerators_for_action::<FlowsAboutAction>(&["<primary>A"]);
-
         let mut group = RelmActionGroup::<FlowsActionGroup>::new();
         group.add_action(new_action);
         group.add_action(open_action);
         group.add_action(save_action);
         group.add_action(save_as_action);
         group.add_action(close_action);
-        group.add_action(about_action);
         group.register_for_widget(&widgets.end);
 
         ComponentParts { model, widgets }
@@ -225,18 +221,11 @@ impl Component for FlowsHeader {
         widgets: &mut Self::Widgets,
         message: Self::Input,
         sender: ComponentSender<Self>,
-        root: &Self::Root,
+        _root: &Self::Root,
     ) {
         match message {
             FlowsHeaderInput::ChangeFlowOpen(now) => {
                 self.flow_open = now;
-            }
-            FlowsHeaderInput::OpenAboutDialog => {
-                crate::ui::about::AppAbout::builder()
-                    .transient_for(root)
-                    .launch((self.engine_list.clone(), self.action_map.clone()))
-                    .widget()
-                    .set_visible(true);
             }
             FlowsHeaderInput::ActionsMapChanged(new_map) => {
                 self.action_map = new_map;
@@ -315,10 +304,9 @@ impl Component for FlowsHeader {
     }
 }
 
-relm4::new_action_group!(FlowsActionGroup, "flows");
+relm4::new_action_group!(pub FlowsActionGroup, "flows");
 relm4::new_stateless_action!(FlowsNewAction, FlowsActionGroup, "new");
 relm4::new_stateless_action!(FlowsOpenAction, FlowsActionGroup, "open");
 relm4::new_stateless_action!(FlowsSaveAction, FlowsActionGroup, "save");
 relm4::new_stateless_action!(FlowsSaveAsAction, FlowsActionGroup, "save-as");
 relm4::new_stateless_action!(FlowsCloseAction, FlowsActionGroup, "close");
-relm4::new_stateless_action!(FlowsAboutAction, FlowsActionGroup, "about");
