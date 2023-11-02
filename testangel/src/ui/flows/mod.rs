@@ -2,8 +2,9 @@ use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
-    adw, component::Connector, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component,
-    ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
+    adw, component::Connector, factory::FactoryVecDeque, gtk,
+    prelude::DynamicIndex, Component, ComponentController, ComponentParts, ComponentSender,
+    Controller, RelmWidgetExt,
 };
 use testangel::{
     action_loader::ActionMap,
@@ -110,6 +111,11 @@ pub enum FlowInputs {
     /// The [`ActionConfiguration`] has changed for the step indicated by the [`DynamicIndex`].
     /// This does not refresh the UI.
     ConfigUpdate(DynamicIndex, ActionConfiguration),
+}
+
+#[derive(Debug)]
+pub enum FlowOutputs {
+
 }
 
 #[derive(Debug)]
@@ -308,7 +314,7 @@ impl FlowsModel {
 impl Component for FlowsModel {
     type Init = (Arc<ActionMap>, Arc<EngineList>);
     type Input = FlowInputs;
-    type Output = ();
+    type Output = FlowOutputs;
     type CommandOutput = ();
 
     view! {

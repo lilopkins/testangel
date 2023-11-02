@@ -8,6 +8,12 @@ value = Value
 nothing-open = Nothing is Open
 delete = Delete
 
+header-more = More...
+header-new = New
+header-open = Open...
+header-save = Save
+header-save-as = Save as...
+header-close = Close
 header-about = About { app-name }
 acknowledgements-testing-title = Software Testing
 acknowledgements-translations-title = Translations
@@ -39,12 +45,6 @@ filetype-pdf = PDF files
 
 flow-header-add = Add step
 flow-header-run = Run flow
-flow-header-more = More...
-flow-header-new = New flow
-flow-header-open = Open flow...
-flow-header-save = Save flow
-flow-header-save-as = Save flow as...
-flow-header-close = Close flow
 flow-nothing-open-description = Open a flow or add a step to get started
 
 flow-action-changed = Flow Actions Changed
@@ -74,12 +74,6 @@ flow-step-label = Step { $step }: { $name }
 # Actions
 
 action-header-add = Add step
-action-header-more = More...
-action-header-new = New action
-action-header-open = Open action...
-action-header-save = Save action
-action-header-save-as = Save action as...
-action-header-close = Close action
 action-nothing-open-description = Open an action or add a step to get started
 
 action-save-before = Save this action?

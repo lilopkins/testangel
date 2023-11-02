@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use adw::prelude::*;
 use relm4::{
-    actions::{AccelsPlus, RelmAction, RelmActionGroup},
     adw,
     factory::FactoryVecDeque,
     gtk, Component, ComponentParts, ComponentSender, RelmWidgetExt,
@@ -33,12 +32,6 @@ pub enum FlowsHeaderOutput {
     AddStep(String),
 }
 
-impl std::fmt::Debug for FlowsActionGroup {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "FlowsActionGroup")
-    }
-}
-
 #[derive(Debug)]
 pub enum FlowsHeaderInput {
     ActionsMapChanged(Arc<ActionMap>),
@@ -50,6 +43,8 @@ pub enum FlowsHeaderInput {
     AddTopSearchResult,
     /// Inform the header bar if a flow is open or not.
     ChangeFlowOpen(bool),
+    /// Ask this to output the provided event
+    PleaseOutput(FlowsHeaderOutput),
 }
 
 impl AddStepTrait for FlowsHeaderInput {
@@ -120,35 +115,6 @@ impl Component for FlowsHeader {
                 },
             },
         },
-
-        #[name = "end"]
-        gtk::Box {
-            set_spacing: 5,
-
-            gtk::MenuButton {
-                set_icon_name: relm4_icons::icon_name::MENU,
-                set_tooltip: &lang::lookup("flow-header-more"),
-                set_direction: gtk::ArrowType::Down,
-
-                #[wrap(Some)]
-                set_popover = &gtk::PopoverMenu::from_model(Some(&flows_menu)) {
-                    set_position: gtk::PositionType::Bottom,
-                },
-            },
-        },
-    }
-
-    menu! {
-        flows_menu: {
-            &lang::lookup("flow-header-new") => FlowsNewAction,
-            &lang::lookup("flow-header-open") => FlowsOpenAction,
-            &lang::lookup("flow-header-save") => FlowsSaveAction,
-            &lang::lookup("flow-header-save-as") => FlowsSaveAsAction,
-            &lang::lookup("flow-header-close") => FlowsCloseAction,
-            section! {
-                &lang::lookup("header-about") => crate::ui::header_bar::GeneralAboutAction,
-            }
-        }
     }
 
     fn init(
@@ -169,50 +135,6 @@ impl Component for FlowsHeader {
         let add_button = &model.add_button;
         let widgets = view_output!();
 
-        let sender_c = sender.clone();
-        let new_action: RelmAction<FlowsNewAction> = RelmAction::new_stateless(move |_| {
-            // unwrap rationale: receiver will never be disconnected
-            sender_c.output(FlowsHeaderOutput::NewFlow).unwrap();
-        });
-        relm4::main_application().set_accelerators_for_action::<FlowsNewAction>(&["<primary>N"]);
-
-        let sender_c = sender.clone();
-        let open_action: RelmAction<FlowsOpenAction> = RelmAction::new_stateless(move |_| {
-            // unwrap rationale: receiver will never be disconnected
-            sender_c.output(FlowsHeaderOutput::OpenFlow).unwrap();
-        });
-        relm4::main_application().set_accelerators_for_action::<FlowsOpenAction>(&["<primary>O"]);
-
-        let sender_c = sender.clone();
-        let save_action: RelmAction<FlowsSaveAction> = RelmAction::new_stateless(move |_| {
-            // unwrap rationale: receiver will never be disconnected
-            sender_c.output(FlowsHeaderOutput::SaveFlow).unwrap();
-        });
-        relm4::main_application().set_accelerators_for_action::<FlowsSaveAction>(&["<primary>S"]);
-
-        let sender_c = sender.clone();
-        let save_as_action: RelmAction<FlowsSaveAsAction> = RelmAction::new_stateless(move |_| {
-            // unwrap rationale: receiver will never be disconnected
-            sender_c.output(FlowsHeaderOutput::SaveAsFlow).unwrap();
-        });
-        relm4::main_application()
-            .set_accelerators_for_action::<FlowsSaveAsAction>(&["<primary><shift>S"]);
-
-        let sender_c = sender.clone();
-        let close_action: RelmAction<FlowsCloseAction> = RelmAction::new_stateless(move |_| {
-            // unwrap rationale: receiver will never be disconnected
-            sender_c.output(FlowsHeaderOutput::CloseFlow).unwrap();
-        });
-        relm4::main_application().set_accelerators_for_action::<FlowsCloseAction>(&["<primary>W"]);
-
-        let mut group = RelmActionGroup::<FlowsActionGroup>::new();
-        group.add_action(new_action);
-        group.add_action(open_action);
-        group.add_action(save_action);
-        group.add_action(save_as_action);
-        group.add_action(close_action);
-        group.register_for_widget(&widgets.end);
-
         ComponentParts { model, widgets }
     }
 
@@ -224,6 +146,9 @@ impl Component for FlowsHeader {
         _root: &Self::Root,
     ) {
         match message {
+            FlowsHeaderInput::PleaseOutput(output) => {
+                let _ = sender.output(output);
+            }
             FlowsHeaderInput::ChangeFlowOpen(now) => {
                 self.flow_open = now;
             }
@@ -303,10 +228,3 @@ impl Component for FlowsHeader {
         self.update_view(widgets, sender);
     }
 }
-
-relm4::new_action_group!(pub FlowsActionGroup, "flows");
-relm4::new_stateless_action!(FlowsNewAction, FlowsActionGroup, "new");
-relm4::new_stateless_action!(FlowsOpenAction, FlowsActionGroup, "open");
-relm4::new_stateless_action!(FlowsSaveAction, FlowsActionGroup, "save");
-relm4::new_stateless_action!(FlowsSaveAsAction, FlowsActionGroup, "save-as");
-relm4::new_stateless_action!(FlowsCloseAction, FlowsActionGroup, "close");
