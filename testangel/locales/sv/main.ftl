@@ -18,6 +18,11 @@ header-about = Om { app-name }
 acknowledgements-testing-title = Programtestning
 acknowledgements-translations-title = Översättningar
 
+kind-string = Text
+kind-integer = Heltal
+kind-decimal = Decimal
+kind-boolean = Booleskt
+
 tab-flows = Flöder
 tab-actions = Åtgärder
 

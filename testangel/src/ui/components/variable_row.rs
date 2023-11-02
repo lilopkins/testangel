@@ -103,7 +103,12 @@ where
                     "variable-row-subtitle-with-value",
                     {
                         let mut map = HashMap::new();
-                        map.insert("kind", self.kind.to_string().into());
+                        map.insert("kind", lang::lookup(match self.kind {
+                            ParameterKind::String => "kind-string",
+                            ParameterKind::Integer => "kind-integer",
+                            ParameterKind::Decimal => "kind-decimal",
+                            ParameterKind::Boolean => "kind-boolean",
+                        }).into());
                         map.insert("source", self.source.to_string().into());
                         map.insert("value", self.value.to_string().into());
                         map
@@ -114,7 +119,12 @@ where
                     "variable-row-subtitle",
                     {
                         let mut map = HashMap::new();
-                        map.insert("kind", self.kind.to_string().into());
+                        map.insert("kind", lang::lookup(match self.kind {
+                            ParameterKind::String => "kind-string",
+                            ParameterKind::Integer => "kind-integer",
+                            ParameterKind::Decimal => "kind-decimal",
+                            ParameterKind::Boolean => "kind-boolean",
+                        }).into());
                         map.insert("source", self.get_nice_name_for(&self.source).into());
                         map
                     }

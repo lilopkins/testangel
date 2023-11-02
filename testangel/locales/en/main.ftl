@@ -18,6 +18,11 @@ header-about = About { app-name }
 acknowledgements-testing-title = Software Testing
 acknowledgements-translations-title = Translations
 
+kind-string = Text
+kind-integer = Integer
+kind-decimal = Decimal
+kind-boolean = Boolean
+
 tab-flows = Flows
 tab-actions = Actions
 
