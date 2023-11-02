@@ -9,7 +9,7 @@ use relm4::{
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
-use crate::next_ui::{
+use crate::ui::{
     components::add_step_factory::{AddStepInit, AddStepResult, AddStepTrait},
     lang,
 };
@@ -227,7 +227,7 @@ impl Component for ActionsHeader {
                 self.action_map = new_map;
             }
             ActionsHeaderInput::OpenAboutDialog => {
-                crate::next_ui::about::AppAbout::builder()
+                crate::ui::about::AppAbout::builder()
                     .transient_for(root)
                     .launch((self.engine_list.clone(), self.action_map.clone()))
                     .widget()

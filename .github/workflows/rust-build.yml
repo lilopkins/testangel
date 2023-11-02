@@ -66,7 +66,7 @@ jobs:
       - name: Build
         run: |
           # Build
-          cargo build -p testangel --bin testangel --release --no-default-features --features next-ui
+          cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-arithmetic --release
           cargo build -p testangel-compare --release
@@ -180,8 +180,6 @@ jobs:
           $env:INCLUDE="C:\gtk-build\gtk\x64\release\include;C:\gtk-build\gtk\x64\release\include\cairo;C:\gtk-build\gtk\x64\release\include\glib-2.0;C:\gtk-build\gtk\x64\release\include\gobject-introspection-1.0;C:\gtk-build\gtk\x64\release\lib\glib-2.0\include;" + $env:INCLUDE
           $env:PKG_CONFIG_PATH="C:\gtk-build\gtk\x64\release\lib\pkgconfig;" + $env:PKG_CONFIG_PATH
 
-          cargo build -p testangel --bin testangel --release --no-default-features --features next-ui,windows-keep-console-window
-          move target/release/testangel.exe target/release/testangel-new-ui.exe
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-arithmetic --release
@@ -194,7 +192,6 @@ jobs:
           cargo build -p testangel-user-interaction --release
           mkdir build
           copy target/release/testangel.exe build/
-          copy target/release/testangel-new-ui.exe build/
           cargo build -p testangel --bin testangel --release --features windows-keep-console-window
           copy target/release/testangel.exe build/testangel-dbg.exe
           copy target/release/testangel-executor.exe build/
@@ -274,8 +271,6 @@ jobs:
       - name: Build for mac
         run: |
           # Build
-          cargo build -p testangel --bin testangel --release --no-default-features --features next-ui
-          mv target/release/testangel target/release/testangel-new-ui
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-arithmetic --release
