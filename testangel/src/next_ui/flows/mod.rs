@@ -399,6 +399,7 @@ impl Component for FlowsModel {
                 // unwrap rationale: config updates can't happen if nothing is open
                 let flow = self.open_flow.as_mut().unwrap();
                 flow.actions[step.current_index()] = new_config;
+                self.needs_saving = true;
             }
             FlowInputs::NewFlow => {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
@@ -545,6 +546,7 @@ impl Component for FlowsModel {
                 flow.actions.push(ActionConfiguration::from(
                     self.action_map.get_action_by_id(&step_id).unwrap(),
                 ));
+                self.needs_saving = true;
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
@@ -615,6 +617,8 @@ impl Component for FlowsModel {
                     }
                 }
 
+                self.needs_saving = true;
+
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
@@ -644,6 +648,8 @@ impl Component for FlowsModel {
                         }
                     }
                 }
+
+                self.needs_saving = true;
             }
             FlowInputs::PasteStep(idx, config) => {
                 let flow = self.open_flow.as_mut().unwrap();
@@ -668,6 +674,8 @@ impl Component for FlowsModel {
                         }
                     }
                 }
+
+                self.needs_saving = true;
 
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);

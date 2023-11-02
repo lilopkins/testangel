@@ -496,30 +496,35 @@ impl Component for ActionsModel {
                     if let Some(new_visible) = meta.new_visible {
                         action.visible = new_visible;
                     }
+                    self.needs_saving = true;
                 }
             }
 
             ActionInputs::SetComment(step, new_comment) => {
                 if let Some(action) = self.open_action.as_mut() {
                     action.instructions[step.current_index()].comment = new_comment;
+                    self.needs_saving = true;
                 }
             }
 
             ActionInputs::ChangeRunCondition(step, new_condition) => {
                 if let Some(action) = self.open_action.as_mut() {
                     action.instructions[step.current_index()].run_if = new_condition;
+                    self.needs_saving = true;
                 }
             }
 
             ActionInputs::SetParameters(new_params) => {
                 if let Some(action) = self.open_action.as_mut() {
                     action.parameters = new_params;
+                    self.needs_saving = true;
                     sender.input(ActionInputs::UpdateStepsFromModel);
                 }
             }
             ActionInputs::SetOutputs(new_outputs) => {
                 if let Some(action) = self.open_action.as_mut() {
                     action.outputs = new_outputs;
+                    self.needs_saving = true;
                     sender.input(ActionInputs::UpdateStepsFromModel);
                 }
             }
@@ -536,6 +541,7 @@ impl Component for ActionsModel {
                             }
                         }
                     }
+                    self.needs_saving = true;
                     sender.input(ActionInputs::UpdateStepsFromModel);
                 }
             }
@@ -552,6 +558,7 @@ impl Component for ActionsModel {
                             }
                         }
                     }
+                    self.needs_saving = true;
                     sender.input(ActionInputs::UpdateStepsFromModel);
                 }
             }
@@ -563,8 +570,10 @@ impl Component for ActionsModel {
             }
             ActionInputs::ConfigUpdate(step, new_config) => {
                 // unwrap rationale: config updates can't happen if nothing is open
-                let action = self.open_action.as_mut().unwrap();
-                action.instructions[step.current_index()] = new_config;
+                if let Some(action) = self.open_action.as_mut() {
+                    self.needs_saving = true;
+                    action.instructions[step.current_index()] = new_config;
+                }
             }
             ActionInputs::NewAction => {
                 self.prompt_to_save(sender.input_sender(), ActionInputs::_NewAction);
@@ -678,6 +687,7 @@ impl Component for ActionsModel {
                 action.instructions.push(InstructionConfiguration::from(
                     self.engine_list.get_instruction_by_id(&step_id).unwrap(),
                 ));
+                self.needs_saving = true;
                 // Trigger UI steps refresh
                 sender.input(ActionInputs::UpdateStepsFromModel);
             }
@@ -772,6 +782,8 @@ impl Component for ActionsModel {
                     }
                 }
 
+                self.needs_saving = true;
+
                 // Trigger UI steps refresh
                 sender.input(ActionInputs::UpdateStepsFromModel);
             }
@@ -788,6 +800,8 @@ impl Component for ActionsModel {
                 }
 
                 action.instructions.remove(idx);
+
+                self.needs_saving = true;
 
                 // Remove references to step and renumber references above step to one less than they were
                 for step in action.instructions.iter_mut() {
@@ -829,6 +843,8 @@ impl Component for ActionsModel {
                         }
                     }
                 }
+
+                self.needs_saving = true;
 
                 // Trigger UI steps refresh
                 sender.input(ActionInputs::UpdateStepsFromModel);
