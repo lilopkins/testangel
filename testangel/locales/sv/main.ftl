@@ -32,7 +32,7 @@ delete-step = Ta bort steg
 
 source-literal = Direktvärde
 source-from-step = Från steg { $step }: { $name }
-source-from-param = From Parameter: { $param }
+source-from-param = Från parameter: { $param }
 
 # File types
 
@@ -90,7 +90,7 @@ action-metadata-name = Åtgördsnamn
 action-metadata-group = Åtgärdsgrupp
 action-metadata-author = Skapare
 action-metadata-description = Beskrivning
-action-metadata-visible = Visible in Flow Editor
+action-metadata-visible = Synlig i flödesredigeraren
 
 action-params-new = Ny ingångsparameter
 action-params-name-placeholder = Parametersnamn

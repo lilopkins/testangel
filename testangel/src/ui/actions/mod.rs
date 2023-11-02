@@ -288,7 +288,7 @@ impl ActionsModel {
             // Ask where
             let dialog = gtk::FileDialog::builder()
                 .modal(true)
-                .title(lang::lookup("action-header-save"))
+                .title(lang::lookup("header-save"))
                 .initial_folder(&gtk::gio::File::for_path(
                     std::env::var("TA_ACTION_DIR").unwrap_or("./actions".to_string()),
                 ))
@@ -588,7 +588,7 @@ impl Component for ActionsModel {
             ActionInputs::_OpenAction => {
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
-                    .title(lang::lookup("action-header-open"))
+                    .title(lang::lookup("header-open"))
                     .filters(&file_filters::filter_list(vec![
                         file_filters::actions(),
                         file_filters::all(),

@@ -97,14 +97,14 @@ impl Component for ActionOutputs {
             }
 
             ActionOutputsInput::ChangeAction(action) => {
-                let mut params = self.outputs.guard();
-                params.clear();
+                let mut outputs = self.outputs.guard();
+                outputs.clear();
                 self.raw_outputs.clear();
 
                 // Add each param from action
                 for (name, kind, source) in action.outputs {
                     self.raw_outputs.push((name.clone(), kind, source.clone()));
-                    params.push_back((Some((name, source)), self.possible_sources.clone()));
+                    outputs.push_back((Some((name, source)), self.possible_sources.clone()));
                 }
             }
 
@@ -171,6 +171,7 @@ struct OutputRow {
     name: String,
     possible_sources: Vec<(String, ParameterKind, InstructionParameterSource)>,
     src_index: u32,
+    original_source: Option<InstructionParameterSource>,
     inhibit_next_selection: usize,
 }
 
@@ -271,9 +272,12 @@ impl FactoryComponent for OutputRow {
                 }
             }
 
+            // src_index may be INVALID_LIST_POSITION here as possible_sources are sent after the action is changed.
+
             Self {
                 name,
                 src_index,
+                original_source: Some(p_src),
                 possible_sources,
                 inhibit_next_selection: 0,
             }
@@ -281,6 +285,7 @@ impl FactoryComponent for OutputRow {
             Self {
                 name: String::new(),
                 src_index: 0,
+                original_source: None,
                 possible_sources: init.1,
                 inhibit_next_selection: 0,
             }
@@ -296,7 +301,15 @@ impl FactoryComponent for OutputRow {
         match message {
             OutputRowInput::SetPossibleSources(new_sources) => {
                 let selection_index = widgets.dropdown.selected();
-                let (_, _, current_source) = &self.possible_sources[selection_index as usize];
+
+                let current_source = if selection_index == gtk::INVALID_LIST_POSITION {
+                    // Action loaded, this is the deferred assignment.
+                    // unwrap rationale: the list always has an item selected unless a new action was just loaded in,
+                    //   in which case this is the first load.
+                    self.original_source.as_ref().unwrap()
+                } else {
+                    &self.possible_sources[selection_index as usize].2
+                };
 
                 let mut src_index = gtk::INVALID_LIST_POSITION;
                 for (idx, (_, _, src)) in new_sources.iter().enumerate() {
