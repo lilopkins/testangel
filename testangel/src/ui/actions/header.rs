@@ -5,11 +5,11 @@ use relm4::{
     actions::{AccelsPlus, RelmAction, RelmActionGroup},
     adw,
     factory::FactoryVecDeque,
-    gtk, Component, ComponentController, ComponentParts, ComponentSender, RelmWidgetExt,
+    gtk, Component, ComponentParts, ComponentSender, RelmWidgetExt,
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
-use crate::next_ui::{
+use crate::ui::{
     components::add_step_factory::{AddStepInit, AddStepResult, AddStepTrait},
     lang,
 };
@@ -35,7 +35,6 @@ pub enum ActionsHeaderOutput {
 
 #[derive(Debug)]
 pub enum ActionsHeaderInput {
-    OpenAboutDialog,
     ActionsMapChanged(Arc<ActionMap>),
     /// Add the step with the instruction ID given
     AddStep(String),
@@ -131,7 +130,7 @@ impl Component for ActionsHeader {
             &lang::lookup("action-header-save-as") => ActionsSaveAsAction,
             &lang::lookup("action-header-close") => ActionsCloseAction,
             section! {
-                &lang::lookup("action-header-about") => ActionsAboutAction,
+                &lang::lookup("header-about") => crate::ui::header_bar::GeneralAboutAction,
             }
         }
     }
@@ -193,20 +192,12 @@ impl Component for ActionsHeader {
         relm4::main_application()
             .set_accelerators_for_action::<ActionsCloseAction>(&["<primary>W"]);
 
-        let sender_c = sender.clone();
-        let about_action: RelmAction<ActionsAboutAction> = RelmAction::new_stateless(move |_| {
-            sender_c.input(ActionsHeaderInput::OpenAboutDialog);
-        });
-        relm4::main_application()
-            .set_accelerators_for_action::<ActionsAboutAction>(&["<primary>A"]);
-
         let mut group = RelmActionGroup::<ActionsActionGroup>::new();
         group.add_action(new_action);
         group.add_action(open_action);
         group.add_action(save_action);
         group.add_action(save_as_action);
         group.add_action(close_action);
-        group.add_action(about_action);
         group.register_for_widget(&widgets.end);
 
         ComponentParts { model, widgets }
@@ -217,7 +208,7 @@ impl Component for ActionsHeader {
         widgets: &mut Self::Widgets,
         message: Self::Input,
         sender: ComponentSender<Self>,
-        root: &Self::Root,
+        _root: &Self::Root,
     ) {
         match message {
             ActionsHeaderInput::ChangeActionOpen(now) => {
@@ -225,13 +216,6 @@ impl Component for ActionsHeader {
             }
             ActionsHeaderInput::ActionsMapChanged(new_map) => {
                 self.action_map = new_map;
-            }
-            ActionsHeaderInput::OpenAboutDialog => {
-                crate::next_ui::about::AppAbout::builder()
-                    .transient_for(root)
-                    .launch((self.engine_list.clone(), self.action_map.clone()))
-                    .widget()
-                    .set_visible(true);
             }
             ActionsHeaderInput::AddStep(step_id) => {
                 // close popover
@@ -315,4 +299,3 @@ relm4::new_stateless_action!(ActionsOpenAction, ActionsActionGroup, "open");
 relm4::new_stateless_action!(ActionsSaveAction, ActionsActionGroup, "save");
 relm4::new_stateless_action!(ActionsSaveAsAction, ActionsActionGroup, "save-as");
 relm4::new_stateless_action!(ActionsCloseAction, ActionsActionGroup, "close");
-relm4::new_stateless_action!(ActionsAboutAction, ActionsActionGroup, "about");

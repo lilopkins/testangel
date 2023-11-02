@@ -2,7 +2,7 @@ use adw::prelude::*;
 use relm4::{adw, gtk, SimpleComponent};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
-use crate::next_ui::lang;
+use crate::ui::lang;
 
 #[allow(dead_code)]
 #[derive(Debug)]

@@ -9,7 +9,7 @@ use relm4::{
 use testangel::types::Action;
 use testangel_ipc::prelude::ParameterKind;
 
-use crate::next_ui::lang;
+use crate::ui::lang;
 
 #[derive(Debug)]
 pub enum ActionParamsInput {

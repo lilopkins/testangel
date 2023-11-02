@@ -11,7 +11,7 @@ use relm4::{
 use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
-use crate::next_ui::{
+use crate::ui::{
     components::variable_row::{
         ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
     },

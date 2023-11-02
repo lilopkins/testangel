@@ -3,8 +3,6 @@
     windows_subsystem = "windows"
 )]
 
-#[cfg(feature = "next-ui")]
-mod next_ui;
 #[cfg(feature = "ui")]
 mod ui;
 
@@ -26,21 +24,17 @@ fn main() {
         .apply()
         .expect("Couldn't start logger!");
 
-    #[cfg(feature = "next-ui")]
+    #[cfg(feature = "ui")]
     {
         use relm4::tokio::runtime;
         use testangel::version;
 
-        log::info!("Using locale: {}", next_ui::lang::initialise_i18n());
+        log::info!("Using locale: {}", ui::lang::initialise_i18n());
 
         if let Ok(rt) = runtime::Builder::new_current_thread().enable_all().build() {
             let _is_latest = rt.block_on(version::check_is_latest());
         }
 
-        next_ui::initialise_ui();
-    }
-    #[cfg(feature = "ui")]
-    {
         ui::initialise_ui();
     }
 }

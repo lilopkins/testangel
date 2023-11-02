@@ -8,6 +8,7 @@ value = Value
 nothing-open = Nothing is Open
 delete = Delete
 
+header-about = About { app-name }
 acknowledgements-testing-title = Software Testing
 acknowledgements-translations-title = Translations
 
@@ -44,7 +45,6 @@ flow-header-open = Open flow...
 flow-header-save = Save flow
 flow-header-save-as = Save flow as...
 flow-header-close = Close flow
-flow-header-about = About { app-name }
 flow-nothing-open-description = Open a flow or add a step to get started
 
 flow-action-changed = Flow Actions Changed
@@ -80,7 +80,6 @@ action-header-open = Open action...
 action-header-save = Save action
 action-header-save-as = Save action as...
 action-header-close = Close action
-action-header-about = About { app-name }
 action-nothing-open-description = Open an action or add a step to get started
 
 action-save-before = Save this action?

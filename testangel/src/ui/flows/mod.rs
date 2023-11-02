@@ -348,7 +348,7 @@ impl Component for FlowsModel {
     ) -> ComponentParts<Self> {
         let header = Rc::new(
             header::FlowsHeader::builder()
-                .launch((init.1.clone(), init.0.clone()))
+                .launch(init.0.clone())
                 .forward(sender.input_sender(), |msg| match msg {
                     header::FlowsHeaderOutput::NewFlow => FlowInputs::NewFlow,
                     header::FlowsHeaderOutput::OpenFlow => FlowInputs::OpenFlow,
@@ -399,6 +399,7 @@ impl Component for FlowsModel {
                 // unwrap rationale: config updates can't happen if nothing is open
                 let flow = self.open_flow.as_mut().unwrap();
                 flow.actions[step.current_index()] = new_config;
+                self.needs_saving = true;
             }
             FlowInputs::NewFlow => {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
@@ -545,6 +546,7 @@ impl Component for FlowsModel {
                 flow.actions.push(ActionConfiguration::from(
                     self.action_map.get_action_by_id(&step_id).unwrap(),
                 ));
+                self.needs_saving = true;
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
@@ -615,6 +617,8 @@ impl Component for FlowsModel {
                     }
                 }
 
+                self.needs_saving = true;
+
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
@@ -634,7 +638,7 @@ impl Component for FlowsModel {
 
                 // Remove references to step and renumber references above step to one less than they were
                 for step in flow.actions.iter_mut() {
-                    for (_step_idx, source) in step.parameter_sources.iter_mut() {
+                    for (_param_idx, source) in step.parameter_sources.iter_mut() {
                         if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                             match (*from_step).cmp(&idx) {
                                 std::cmp::Ordering::Equal => *from_step = usize::MAX,
@@ -644,6 +648,8 @@ impl Component for FlowsModel {
                         }
                     }
                 }
+
+                self.needs_saving = true;
             }
             FlowInputs::PasteStep(idx, config) => {
                 let flow = self.open_flow.as_mut().unwrap();
@@ -668,6 +674,8 @@ impl Component for FlowsModel {
                         }
                     }
                 }
+
+                self.needs_saving = true;
 
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);

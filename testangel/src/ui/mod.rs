@@ -1,366 +1,208 @@
-use std::{env, fmt::Debug, path::PathBuf, sync::Arc};
+use std::{rc::Rc, sync::Arc};
 
-use iced::{
-    executor,
-    settings::Settings,
-    window::{self, icon},
-    Application, Command, Element, Event, Subscription, Theme,
+use gtk::prelude::*;
+use relm4::{
+    actions::RelmActionGroup, adw, gtk, Component, ComponentController, ComponentParts, Controller,
+    RelmApp,
 };
-use testangel::{ipc::EngineList, *};
+use testangel::{
+    action_loader::{self, ActionMap},
+    ipc::{self, EngineList},
+};
 
-mod action_editor;
-mod action_running;
-mod flow_editor;
-mod flow_running;
-mod get_started;
+use self::header_bar::HeaderBarInput;
 
-pub(crate) fn initialise_ui() {
-    let mut settings = Settings::default();
-    settings.window.icon = Some(
-        icon::from_file_data(include_bytes!("../../../icon.png"), None).expect("icon was invalid!"),
-    );
-    settings.exit_on_close_request = false;
-    settings.window.min_size = Some((800, 600));
-    #[cfg(target_os = "linux")]
-    {
-        settings.window.platform_specific.application_id = String::from("TestAngel");
-    }
-    App::run(settings).expect("Couldn't open UI");
+mod about;
+mod actions;
+mod components;
+mod file_filters;
+mod flows;
+mod header_bar;
+pub(crate) mod lang;
+
+/// Initialise and open the UI.
+pub fn initialise_ui() {
+    log::info!("Starting Next UI...");
+    let app = RelmApp::new("lilopkins.testangel");
+    relm4_icons::initialize_icons();
+    initialise_icons();
+
+    let engines = Arc::new(ipc::get_engines());
+    let actions = Arc::new(action_loader::get_actions(engines.clone()));
+    app.run::<AppModel>(AppInit { engines, actions });
 }
 
-#[derive(Default)]
-pub struct App {
-    engine_list: Arc<EngineList>,
+fn initialise_icons() {
+    relm4::gtk::gio::resources_register_include!("icons.gresource").unwrap();
+    log::info!("Loaded icon bundle.");
 
-    state: State,
-    action_editor: action_editor::ActionEditor,
-    action_running: action_running::ActionRunning,
-    flow_editor: flow_editor::FlowEditor,
-    flow_running: flow_running::FlowRunning,
-    get_started: get_started::GetStarted,
+    let display = relm4::gtk::gdk::Display::default().unwrap();
+    let theme = gtk::IconTheme::for_display(&display);
+    theme.add_resource_path("/uk/hpkns/testangel/icons");
 }
 
-#[derive(Debug, Clone)]
-pub enum AppMessage {
-    Event(iced::Event),
-    ActionEditor(action_editor::ActionEditorMessage),
-    ActionRunning(action_running::ActionRunningMessage),
-    FlowEditor(flow_editor::FlowEditorMessage),
-    FlowRunning(flow_running::FlowRunningMessage),
-    GetStarted(get_started::GetStartedMessage),
-    OpenAction(Option<PathBuf>),
-    OpenFlow(Option<PathBuf>),
-    CloseEditor,
+pub struct AppInit {
+    engines: Arc<EngineList>,
+    actions: Arc<ActionMap>,
+}
+
+#[derive(Debug)]
+enum AppInput {
     NoOp,
-    UpdateIsLatest(bool),
+    /// The view has changed and should be read from visible_child_name, then components updated as needed.
+    ChangedView(Option<String>),
+    /// The actions might have changed and should be reloaded
+    ReloadActionsMap,
+    /// Attach the action group to the window
+    AttachGeneralActionGroup(RelmActionGroup<header_bar::GeneralActionGroup>),
 }
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
-enum State {
-    #[default]
-    GetStarted,
-    AutomationFlowEditor,
-    AutomationFlowRunning,
-    ActionEditor,
-    ActionRunning,
+#[derive(Debug)]
+struct AppModel {
+    stack: Rc<adw::ViewStack>,
+    header: Controller<header_bar::HeaderBarModel>,
+
+    flows: Controller<flows::FlowsModel>,
+    actions: Controller<actions::ActionsModel>,
+
+    engines_list: Arc<EngineList>,
+    actions_map: Arc<ActionMap>,
 }
 
-impl App {
-    fn update_action_list(&mut self) {
-        let actions_rc = Arc::new(action_loader::get_actions(self.engine_list.clone()));
-        self.flow_editor.update_action_map(actions_rc.clone());
-        self.flow_running.update_action_map(actions_rc);
-    }
-}
+#[relm4::component]
+impl Component for AppModel {
+    type Init = AppInit;
+    type Input = AppInput;
+    type Output = ();
+    type CommandOutput = ();
 
-impl Application for App {
-    type Message = AppMessage;
-    type Flags = ();
-    type Executor = executor::Default;
-    type Theme = Theme;
+    view! {
+        main_window = adw::Window {
+            set_title: Some(&lang::lookup("app-name")),
+            set_default_width: 800,
+            set_default_height: 600,
+            set_icon_name: Some("testangel"),
 
-    fn new(_flags: ()) -> (Self, Command<Self::Message>) {
-        let engines_rc = Arc::new(ipc::get_engines());
-        let actions_rc = Arc::new(action_loader::get_actions(engines_rc.clone()));
-        (
-            Self {
-                engine_list: engines_rc.clone(),
-                action_editor: action_editor::ActionEditor::new(engines_rc.clone()),
-                action_running: action_running::ActionRunning::new(engines_rc.clone()),
-                flow_editor: flow_editor::FlowEditor::new(actions_rc.clone()),
-                flow_running: flow_running::FlowRunning::new(actions_rc, engines_rc),
-                ..Default::default()
-            },
-            Command::perform(version::check_is_latest(), AppMessage::UpdateIsLatest),
-        )
-    }
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_spacing: 0,
 
-    fn title(&self) -> String {
-        let sub_title = match self.state {
-            State::GetStarted => self.get_started.title(),
-            State::ActionEditor => self.action_editor.title(),
-            State::AutomationFlowEditor => self.flow_editor.title(),
-            State::AutomationFlowRunning => self.flow_running.title(),
-            State::ActionRunning => self.action_editor.title(),
-        };
-        let separator = if sub_title.is_some() { " :: " } else { "" };
-        let sub_title = sub_title.unwrap_or_default();
-        format!("TestAngel{separator}{sub_title}")
-    }
+                model.header.widget(),
 
-    fn subscription(&self) -> Subscription<Self::Message> {
-        Subscription::batch(vec![
-            match self.state {
-                State::GetStarted => self.get_started.subscription().map(AppMessage::GetStarted),
-                State::ActionEditor => self
-                    .action_editor
-                    .subscription()
-                    .map(AppMessage::ActionEditor),
-                State::ActionRunning => self
-                    .action_running
-                    .subscription()
-                    .map(AppMessage::ActionRunning),
-                State::AutomationFlowEditor => {
-                    self.flow_editor.subscription().map(AppMessage::FlowEditor)
-                }
-                State::AutomationFlowRunning => self
-                    .flow_running
-                    .subscription()
-                    .map(AppMessage::FlowRunning),
-            },
-            iced::subscription::events().map(AppMessage::Event),
-        ])
-    }
-
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
-        match message {
-            AppMessage::NoOp => (),
-            AppMessage::UpdateIsLatest(is_latest) => {
-                self.get_started.set_is_latest(is_latest);
-            }
-            AppMessage::Event(event) => {
-                if let Event::Window(window::Event::CloseRequested) = event {
-                    std::process::exit(0);
-                }
-            }
-            AppMessage::ActionEditor(msg) => {
-                let (msg_out, cmd) = self.action_editor.update(msg);
-                if let Some(msg_out) = msg_out {
-                    match msg_out {
-                        action_editor::ActionEditorMessageOut::RunAction(action) => {
-                            self.action_running.set_action(action);
-                            self.state = State::ActionRunning;
-                        }
-                    }
-                }
-                if let Some(cmd) = cmd {
-                    return cmd;
-                }
-            }
-            AppMessage::ActionRunning(msg) => {
-                let (msg_out, cmd) = self.action_running.update(msg);
-                if let Some(msg_out) = msg_out {
-                    match msg_out {
-                        action_running::ActionRunningMessageOut::BackToEditor => {
-                            self.state = State::ActionEditor;
-                        }
-                        action_running::ActionRunningMessageOut::SaveActionReport(evidence) => {
-                            return Command::perform(
-                                rfd::AsyncFileDialog::new()
-                                    .add_filter("Portable Document Format", &["pdf"])
-                                    .set_file_name("report.pdf")
-                                    .set_title("Save Report")
-                                    .set_directory(env::current_dir().expect("Failed to get cwd"))
-                                    .save_file(),
-                                |f| {
-                                    AppMessage::ActionRunning(
-                                        action_running::ActionRunningMessage::Save(
-                                            f.map(|f| f.path().to_path_buf()),
-                                            evidence,
-                                        ),
-                                    )
-                                },
-                            );
-                        }
-                    }
-                }
-                if let Some(cmd) = cmd {
-                    return cmd;
-                }
-            }
-            AppMessage::FlowEditor(msg) => {
-                let (msg_out, cmd) = self.flow_editor.update(msg);
-                if let Some(msg_out) = msg_out {
-                    match msg_out {
-                        flow_editor::FlowEditorMessageOut::RunFlow(flow) => {
-                            self.state = State::AutomationFlowRunning;
-                            self.flow_running.start_flow(flow);
-                        }
-                    }
-                }
-                if let Some(cmd) = cmd {
-                    return cmd;
-                }
-            }
-            AppMessage::CloseEditor => {
-                self.state = State::GetStarted;
-            }
-            AppMessage::FlowRunning(msg) => {
-                let (msg_out, cmd) = self.flow_running.update(msg);
-                if let Some(msg_out) = msg_out {
-                    match msg_out {
-                        flow_running::FlowRunningMessageOut::BackToEditor => {
-                            self.state = State::AutomationFlowEditor;
-                        }
-                        flow_running::FlowRunningMessageOut::SaveFlowReport(evidence) => {
-                            return Command::perform(
-                                rfd::AsyncFileDialog::new()
-                                    .add_filter("Portable Document Format", &["pdf"])
-                                    .set_file_name("report.pdf")
-                                    .set_title("Save Report")
-                                    .set_directory(env::current_dir().expect("Failed to get cwd"))
-                                    .save_file(),
-                                |f| {
-                                    AppMessage::FlowRunning(flow_running::FlowRunningMessage::Save(
-                                        f.map(|f| f.path().to_path_buf()),
-                                        evidence,
-                                    ))
-                                },
-                            );
-                        }
-                    }
-                }
-                if let Some(cmd) = cmd {
-                    return cmd;
-                }
-            }
-            AppMessage::GetStarted(msg) => {
-                let (msg_out, cmd) = self.get_started.update(msg);
-                if let Some(msg_out) = msg_out {
-                    match msg_out {
-                        get_started::GetStartedMessage::NewAction => {
-                            self.state = State::ActionEditor;
-                            self.action_editor.new_action();
-                        }
-                        get_started::GetStartedMessage::NewFlow => {
-                            self.state = State::AutomationFlowEditor;
-                            self.update_action_list();
-                            self.flow_editor.new_flow();
-                        }
-                        get_started::GetStartedMessage::OpenAction => {
-                            return Command::perform(
-                                rfd::AsyncFileDialog::new()
-                                    .add_filter("TestAngel Actions", &["taaction"])
-                                    .set_title("Open Action")
-                                    .set_directory(
-                                        env::var("TA_ACTION_DIR").unwrap_or("./actions".to_owned()),
-                                    )
-                                    .pick_file(),
-                                |ret| AppMessage::OpenAction(ret.map(|f| f.path().to_path_buf())),
-                            );
-                        }
-                        get_started::GetStartedMessage::OpenFlow => {
-                            return Command::perform(
-                                rfd::AsyncFileDialog::new()
-                                    .add_filter("TestAngel Flows", &["taflow"])
-                                    .set_title("Open Flow")
-                                    .set_directory(
-                                        env::var("TA_FLOW_DIR").unwrap_or(".".to_owned()),
-                                    )
-                                    .pick_file(),
-                                |ret| AppMessage::OpenFlow(ret.map(|f| f.path().to_path_buf())),
-                            );
-                        }
-                    }
-                }
-                if let Some(cmd) = cmd {
-                    return cmd;
-                }
-            }
-            AppMessage::OpenAction(maybe_file) => {
-                if let Some(file) = maybe_file {
-                    match self.action_editor.open_action(file) {
-                        Ok(_) => self.state = State::ActionEditor,
-                        Err(e) => {
-                            return Command::perform(
-                                rfd::AsyncMessageDialog::new()
-                                    .set_level(rfd::MessageLevel::Error)
-                                    .set_title("Failed to open action")
-                                    .set_description(format!("{e}"))
-                                    .set_buttons(rfd::MessageButtons::Ok)
-                                    .show(),
-                                |_| AppMessage::NoOp,
-                            )
-                        }
-                    }
-                }
-            }
-            AppMessage::OpenFlow(maybe_file) => {
-                if let Some(file) = maybe_file {
-                    self.update_action_list();
-                    match self.flow_editor.open_flow(file) {
-                        Ok(changed) => {
-                            self.state = State::AutomationFlowEditor;
-                            if !changed.is_empty() {
-                                return Command::perform(rfd::AsyncMessageDialog::new()
-                                    .set_level(rfd::MessageLevel::Warning)
-                                    .set_title("Action has changed")
-                                    .set_buttons(rfd::MessageButtons::Ok)
-                                    .set_description(format!(
-                                        "The parameters in steps {} have changed so it has been reset.",
-                                        changed.iter().map(|step| step.to_string()).collect::<Vec<_>>().join(",")
-                                    ))
-                                    .show(), |_| AppMessage::NoOp);
-                            }
-                        }
-                        Err(e) => {
-                            return Command::perform(
-                                rfd::AsyncMessageDialog::new()
-                                    .set_level(rfd::MessageLevel::Error)
-                                    .set_title("Failed to open flow")
-                                    .set_description(format!("{e}"))
-                                    .set_buttons(rfd::MessageButtons::Ok)
-                                    .show(),
-                                |_| AppMessage::NoOp,
-                            )
-                        }
-                    }
-                }
+                #[local_ref]
+                stack -> adw::ViewStack {
+                    connect_visible_child_name_notify[sender] => move |st| {
+                        sender.input(AppInput::ChangedView(st.visible_child_name().map(|s| s.into())));
+                    },
+                },
             }
         }
-        Command::none()
     }
 
-    fn view(&self) -> Element<'_, Self::Message> {
-        // Render content
-        let content: Element<'_, AppMessage> = match self.state {
-            State::GetStarted => self.get_started.view().map(AppMessage::GetStarted),
-            State::ActionEditor => self.action_editor.view().map(AppMessage::ActionEditor),
-            State::ActionRunning => self.action_running.view().map(AppMessage::ActionRunning),
-            State::AutomationFlowEditor => self.flow_editor.view().map(AppMessage::FlowEditor),
-            State::AutomationFlowRunning => self.flow_running.view().map(AppMessage::FlowRunning),
+    fn init(
+        init: Self::Init,
+        root: &Self::Root,
+        sender: relm4::ComponentSender<Self>,
+    ) -> relm4::ComponentParts<Self> {
+        // Initialise the sub-components (pages)
+        let flows = flows::FlowsModel::builder()
+            .launch((init.actions.clone(), init.engines.clone()))
+            .forward(sender.input_sender(), |_msg| AppInput::NoOp);
+        let actions = actions::ActionsModel::builder()
+            .launch((init.actions.clone(), init.engines.clone()))
+            .forward(sender.input_sender(), |msg| match msg {
+                actions::ActionOutputs::ReloadActions => AppInput::ReloadActionsMap,
+            });
+
+        let stack = Rc::new(adw::ViewStack::new());
+        gtk::Window::set_default_icon_name("testangel");
+
+        // Initialise the headerbar
+        let header = header_bar::HeaderBarModel::builder()
+            .launch((
+                actions.model().header_controller_rc(),
+                flows.model().header_controller_rc(),
+                stack.clone(),
+                init.engines.clone(),
+                init.actions.clone(),
+            ))
+            .forward(sender.input_sender(), |msg| match msg {
+                header_bar::HeaderBarOutput::AttachActionGroup(group) => {
+                    AppInput::AttachGeneralActionGroup(group)
+                }
+            });
+
+        // Build model
+        let model = AppModel {
+            actions_map: init.actions,
+            engines_list: init.engines,
+            stack,
+            header,
+            flows,
+            actions,
         };
 
-        content
+        // Render window parts
+        let stack = &*model.stack;
+
+        // Add pages
+        stack.add_titled_with_icon(
+            model.flows.widget(),
+            Some("flows"),
+            &lang::lookup("tab-flows"),
+            relm4_icons::icon_name::PAPYRUS_VERTICAL,
+        );
+        if !std::env::var("TA_HIDE_ACTION_EDITOR")
+            .unwrap_or("no".to_string())
+            .eq_ignore_ascii_case("yes")
+        {
+            stack.add_titled_with_icon(
+                model.actions.widget(),
+                Some("actions"),
+                &lang::lookup("tab-actions"),
+                relm4_icons::icon_name::PUZZLE_PIECE,
+            );
+        }
+
+        let widgets = view_output!();
+        log::debug!("Initialised model: {model:?}");
+
+        // Trigger initial header bar update
+        sender.input(AppInput::ChangedView(
+            stack.visible_child_name().map(|s| s.into()),
+        ));
+
+        ComponentParts { model, widgets }
     }
-}
 
-trait UiComponent {
-    type Message: Debug + Send;
-    type MessageOut: Debug + Send;
-
-    fn title(&self) -> Option<&str>;
-
-    /// Handle a message.
     fn update(
         &mut self,
-        message: Self::Message,
-    ) -> (Option<Self::MessageOut>, Option<Command<AppMessage>>);
-
-    fn subscription(&self) -> Subscription<Self::Message> {
-        Subscription::none()
+        message: Self::Input,
+        _sender: relm4::ComponentSender<Self>,
+        root: &Self::Root,
+    ) {
+        match message {
+            AppInput::NoOp => (),
+            AppInput::AttachGeneralActionGroup(group) => {
+                group.register_for_widget(root);
+            }
+            AppInput::ChangedView(new_view) => {
+                self.header
+                    .emit(HeaderBarInput::ChangedView(new_view.unwrap_or_default()));
+            }
+            AppInput::ReloadActionsMap => {
+                self.actions_map = Arc::new(action_loader::get_actions(self.engines_list.clone()));
+                self.flows.emit(flows::FlowInputs::ActionsMapChanged(
+                    self.actions_map.clone(),
+                ));
+                self.actions.emit(actions::ActionInputs::ActionsMapChanged(
+                    self.actions_map.clone(),
+                ));
+                self.header
+                    .emit(header_bar::HeaderBarInput::ActionsMapChanged(
+                        self.actions_map.clone(),
+                    ))
+            }
+        }
     }
-
-    /// Render the central panel UI.
-    fn view(&self) -> Element<'_, Self::Message>;
 }
