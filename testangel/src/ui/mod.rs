@@ -108,8 +108,7 @@ impl Component for AppModel {
         // Initialise the sub-components (pages)
         let flows = flows::FlowsModel::builder()
             .launch((init.actions.clone(), init.engines.clone()))
-            .forward(sender.input_sender(), |msg| match msg {
-            });
+            .forward(sender.input_sender(), |msg| match msg {});
         let actions = actions::ActionsModel::builder()
             .launch((init.actions.clone(), init.engines.clone()))
             .forward(sender.input_sender(), |msg| match msg {

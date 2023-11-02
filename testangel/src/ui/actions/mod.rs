@@ -2,8 +2,8 @@ use std::{cmp::Ordering, collections::HashMap, fs, path::PathBuf, rc::Rc, sync::
 
 use adw::prelude::*;
 use relm4::{
-    adw, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component,
-    ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
+    adw, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component, ComponentController,
+    ComponentParts, ComponentSender, Controller, RelmWidgetExt,
 };
 use testangel::{
     action_loader::ActionMap,

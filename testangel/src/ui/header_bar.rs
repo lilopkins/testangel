@@ -10,7 +10,10 @@ use testangel::{action_loader::ActionMap, ipc::EngineList};
 
 use crate::ui::lang;
 
-use super::{actions::header::{ActionsHeader, ActionsHeaderInput}, flows::header::{FlowsHeader, FlowsHeaderInput}};
+use super::{
+    actions::header::{ActionsHeader, ActionsHeaderInput},
+    flows::header::{FlowsHeader, FlowsHeaderInput},
+};
 
 #[derive(Debug)]
 pub enum HeaderBarInput {
@@ -149,23 +152,20 @@ impl Component for HeaderBarModel {
             // unwrap rationale: receiver will never be disconnected
             sender_c.input(HeaderBarInput::SaveAsFile);
         });
-        relm4::main_application()
-            .set_accelerators_for_action::<FileSaveAsAction>(&["<primary>S"]);
+        relm4::main_application().set_accelerators_for_action::<FileSaveAsAction>(&["<primary>S"]);
 
         let sender_c = sender.clone();
         let close_action: RelmAction<FileCloseAction> = RelmAction::new_stateless(move |_| {
             // unwrap rationale: receiver will never be disconnected
             sender_c.input(HeaderBarInput::CloseFile);
         });
-        relm4::main_application()
-            .set_accelerators_for_action::<FileCloseAction>(&["<primary>W"]);
+        relm4::main_application().set_accelerators_for_action::<FileCloseAction>(&["<primary>W"]);
 
         let sender_c = sender.clone();
         let about_action: RelmAction<GeneralAboutAction> = RelmAction::new_stateless(move |_| {
             sender_c.input(HeaderBarInput::OpenAboutDialog);
         });
-        relm4::main_application()
-            .set_accelerators_for_action::<GeneralAboutAction>(&["F1"]);
+        relm4::main_application().set_accelerators_for_action::<GeneralAboutAction>(&["F1"]);
 
         let mut group = RelmActionGroup::<FileActionGroup>::new();
         group.add_action(new_action);
@@ -212,61 +212,71 @@ impl Component for HeaderBarModel {
                     self.currently_menu_target = MenuTarget::Nothing;
                 }
             }
-            HeaderBarInput::NewFile => {
-                match self.currently_menu_target {
-                    MenuTarget::Nothing => (),
-                    MenuTarget::Flows => {
-                        self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(super::flows::header::FlowsHeaderOutput::NewFlow));
-                    }
-                    MenuTarget::Actions => {
-                        self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(super::actions::header::ActionsHeaderOutput::NewAction));
-                    }
+            HeaderBarInput::NewFile => match self.currently_menu_target {
+                MenuTarget::Nothing => (),
+                MenuTarget::Flows => {
+                    self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(
+                        super::flows::header::FlowsHeaderOutput::NewFlow,
+                    ));
                 }
-            }
-            HeaderBarInput::OpenFile => {
-                match self.currently_menu_target {
-                    MenuTarget::Nothing => (),
-                    MenuTarget::Flows => {
-                        self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(super::flows::header::FlowsHeaderOutput::OpenFlow));
-                    }
-                    MenuTarget::Actions => {
-                        self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(super::actions::header::ActionsHeaderOutput::OpenAction));
-                    }
+                MenuTarget::Actions => {
+                    self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(
+                        super::actions::header::ActionsHeaderOutput::NewAction,
+                    ));
                 }
-            }
-            HeaderBarInput::SaveFile => {
-                match self.currently_menu_target {
-                    MenuTarget::Nothing => (),
-                    MenuTarget::Flows => {
-                        self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(super::flows::header::FlowsHeaderOutput::SaveFlow));
-                    }
-                    MenuTarget::Actions => {
-                        self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(super::actions::header::ActionsHeaderOutput::SaveAction));
-                    }
+            },
+            HeaderBarInput::OpenFile => match self.currently_menu_target {
+                MenuTarget::Nothing => (),
+                MenuTarget::Flows => {
+                    self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(
+                        super::flows::header::FlowsHeaderOutput::OpenFlow,
+                    ));
                 }
-            }
-            HeaderBarInput::SaveAsFile => {
-                match self.currently_menu_target {
-                    MenuTarget::Nothing => (),
-                    MenuTarget::Flows => {
-                        self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(super::flows::header::FlowsHeaderOutput::SaveAsFlow));
-                    }
-                    MenuTarget::Actions => {
-                        self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(super::actions::header::ActionsHeaderOutput::SaveAsAction));
-                    }
+                MenuTarget::Actions => {
+                    self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(
+                        super::actions::header::ActionsHeaderOutput::OpenAction,
+                    ));
                 }
-            }
-            HeaderBarInput::CloseFile => {
-                match self.currently_menu_target {
-                    MenuTarget::Nothing => (),
-                    MenuTarget::Flows => {
-                        self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(super::flows::header::FlowsHeaderOutput::CloseFlow));
-                    }
-                    MenuTarget::Actions => {
-                        self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(super::actions::header::ActionsHeaderOutput::CloseAction));
-                    }
+            },
+            HeaderBarInput::SaveFile => match self.currently_menu_target {
+                MenuTarget::Nothing => (),
+                MenuTarget::Flows => {
+                    self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(
+                        super::flows::header::FlowsHeaderOutput::SaveFlow,
+                    ));
                 }
-            }
+                MenuTarget::Actions => {
+                    self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(
+                        super::actions::header::ActionsHeaderOutput::SaveAction,
+                    ));
+                }
+            },
+            HeaderBarInput::SaveAsFile => match self.currently_menu_target {
+                MenuTarget::Nothing => (),
+                MenuTarget::Flows => {
+                    self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(
+                        super::flows::header::FlowsHeaderOutput::SaveAsFlow,
+                    ));
+                }
+                MenuTarget::Actions => {
+                    self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(
+                        super::actions::header::ActionsHeaderOutput::SaveAsAction,
+                    ));
+                }
+            },
+            HeaderBarInput::CloseFile => match self.currently_menu_target {
+                MenuTarget::Nothing => (),
+                MenuTarget::Flows => {
+                    self.flow_header_rc.emit(FlowsHeaderInput::PleaseOutput(
+                        super::flows::header::FlowsHeaderOutput::CloseFlow,
+                    ));
+                }
+                MenuTarget::Actions => {
+                    self.action_header_rc.emit(ActionsHeaderInput::PleaseOutput(
+                        super::actions::header::ActionsHeaderOutput::CloseAction,
+                    ));
+                }
+            },
         }
         self.update_view(widgets, sender);
     }

@@ -2,9 +2,8 @@ use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
-    adw, component::Connector, factory::FactoryVecDeque, gtk,
-    prelude::DynamicIndex, Component, ComponentController, ComponentParts, ComponentSender,
-    Controller, RelmWidgetExt,
+    adw, component::Connector, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component,
+    ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
 };
 use testangel::{
     action_loader::ActionMap,
@@ -114,9 +113,7 @@ pub enum FlowInputs {
 }
 
 #[derive(Debug)]
-pub enum FlowOutputs {
-
-}
+pub enum FlowOutputs {}
 
 #[derive(Debug)]
 pub struct FlowsModel {
@@ -419,13 +416,22 @@ impl Component for FlowsModel {
                     }
                     sender.input(FlowInputs::UpdateStepsFromModel);
                 }
-                if steps_reset.len() > 0 {
-                    let toast = adw::Toast::new(&lang::lookup_with_args("flow-action-changed-message", {
-                        let mut map = HashMap::new();
-                        map.insert("stepCount", steps_reset.len().into());
-                        map.insert("steps", steps_reset.iter().map(|i| (i + 1).to_string()).collect::<Vec<_>>().join(", ").into());
-                        map
-                    }));
+                if !steps_reset.is_empty() {
+                    let toast =
+                        adw::Toast::new(&lang::lookup_with_args("flow-action-changed-message", {
+                            let mut map = HashMap::new();
+                            map.insert("stepCount", steps_reset.len().into());
+                            map.insert(
+                                "steps",
+                                steps_reset
+                                    .iter()
+                                    .map(|i| (i + 1).to_string())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                                    .into(),
+                            );
+                            map
+                        }));
                     toast.set_timeout(0); // indefinte so it can be seen when switching back
                     widgets.toast_target.add_toast(toast);
                 }

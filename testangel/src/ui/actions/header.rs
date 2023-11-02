@@ -2,9 +2,7 @@ use std::sync::Arc;
 
 use adw::prelude::*;
 use relm4::{
-    adw,
-    factory::FactoryVecDeque,
-    gtk, Component, ComponentParts, ComponentSender, RelmWidgetExt,
+    adw, factory::FactoryVecDeque, gtk, Component, ComponentParts, ComponentSender, RelmWidgetExt,
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
