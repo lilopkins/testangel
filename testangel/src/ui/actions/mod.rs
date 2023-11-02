@@ -580,6 +580,7 @@ impl Component for ActionsModel {
             }
             ActionInputs::_NewAction => {
                 self.new_action();
+                sender.input(ActionInputs::UpdateStepsFromModel);
             }
             ActionInputs::OpenAction => {
                 self.prompt_to_save(sender.input_sender(), ActionInputs::_OpenAction);

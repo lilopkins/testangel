@@ -406,6 +406,7 @@ impl Component for FlowsModel {
             }
             FlowInputs::_NewFlow => {
                 self.new_flow();
+                sender.input(FlowInputs::UpdateStepsFromModel);
             }
             FlowInputs::OpenFlow => {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_OpenFlow);
