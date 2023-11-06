@@ -125,7 +125,6 @@ where
                             ParameterKind::Decimal => "kind-decimal",
                             ParameterKind::Boolean => "kind-boolean",
                         }).into());
-                        map.insert("source", self.get_nice_name_for(&self.source).into());
                         map
                     }
                 )
@@ -135,10 +134,17 @@ where
                 set_spacing: 15,
                 set_orientation: gtk::Orientation::Horizontal,
 
-                adw::Bin {
-                    #[watch]
-                    set_visible: self.source == PS::literal(),
-                    self.literal_input.widget(),
+                if self.source == PS::literal() {
+                    adw::Bin {
+                        self.literal_input.widget(),
+                    }
+                } else {
+                    adw::Bin {
+                        gtk::Label {
+                            #[watch]
+                            set_label: &self.get_nice_name_for(&self.source),
+                        },
+                    }
                 },
 
                 gtk::MenuButton {

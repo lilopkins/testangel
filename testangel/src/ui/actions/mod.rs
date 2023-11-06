@@ -531,6 +531,14 @@ impl Component for ActionsModel {
             ActionInputs::ParamIndexRemoved(idx) => {
                 if let Some(action) = self.open_action.as_mut() {
                     for ic in action.instructions.iter_mut() {
+                        if let InstructionParameterSource::FromParameter(n) = &mut ic.run_if {
+                            match idx.cmp(n) {
+                                Ordering::Equal => ic.run_if = InstructionParameterSource::Literal,
+                                Ordering::Less => *n -= 1,
+                                _ => (),
+                            }
+                        }
+
                         for (_, src) in ic.parameter_sources.iter_mut() {
                             if let InstructionParameterSource::FromParameter(n) = src {
                                 match idx.cmp(n) {
@@ -548,6 +556,14 @@ impl Component for ActionsModel {
             ActionInputs::ParamIndexesSwapped(a, b) => {
                 if let Some(action) = self.open_action.as_mut() {
                     for ic in action.instructions.iter_mut() {
+                        if let InstructionParameterSource::FromParameter(n) = &mut ic.run_if {
+                            if *n == a {
+                                *n = b;
+                            } else if *n == b {
+                                *n = a;
+                            }
+                        }
+
                         for (_, src) in ic.parameter_sources.iter_mut() {
                             if let InstructionParameterSource::FromParameter(n) = src {
                                 if *n == a {
@@ -768,6 +784,18 @@ impl Component for ActionsModel {
 
                 // Remove references to step and renumber references above step to one less than they were
                 for step in action.instructions.iter_mut() {
+                    if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
+                        &mut step.run_if
+                    {
+                        match (*from_step).cmp(&idx) {
+                            std::cmp::Ordering::Equal => {
+                                step.run_if = InstructionParameterSource::Literal
+                            }
+                            std::cmp::Ordering::Greater => *from_step -= 1,
+                            _ => (),
+                        }
+                    }
+
                     for (_step_idx, source) in step.parameter_sources.iter_mut() {
                         if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
                             source
@@ -806,6 +834,16 @@ impl Component for ActionsModel {
 
                 // Remove references to step and renumber references above step to one less than they were
                 for step in action.instructions.iter_mut() {
+                    if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
+                        &mut step.run_if
+                    {
+                        match (*from_step).cmp(&idx) {
+                            std::cmp::Ordering::Equal => *from_step = usize::MAX,
+                            std::cmp::Ordering::Greater => *from_step -= 1,
+                            _ => (),
+                        }
+                    }
+
                     for (_param_idx, source) in step.parameter_sources.iter_mut() {
                         if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
                             source
@@ -827,6 +865,21 @@ impl Component for ActionsModel {
 
                 // Remove references to step and renumber references above step to one less than they were
                 for (step_idx, step) in action.instructions.iter_mut().enumerate() {
+                    if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
+                        &mut step.run_if
+                    {
+                        if *from_step == usize::MAX {
+                            if step_idx < idx {
+                                // can't refer to it anymore
+                                step.run_if = InstructionParameterSource::Literal;
+                            } else {
+                                *from_step = idx;
+                            }
+                        } else if *from_step >= idx {
+                            *from_step += 1;
+                        }
+                    }
+
                     for (_param_idx, source) in step.parameter_sources.iter_mut() {
                         if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
                             source

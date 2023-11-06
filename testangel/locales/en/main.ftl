@@ -27,7 +27,7 @@ tab-flows = Flows
 tab-actions = Actions
 
 variable-row-edit-param = Edit Parameter
-variable-row-subtitle = { $kind }, { $source }
+variable-row-subtitle = { $kind }
 variable-row-subtitle-with-value = { $kind }, { $source }: { $value }
 
 drag-drop-here = Drop step here
@@ -73,6 +73,7 @@ flow-save-open-error-missing-action = The action for step { $step } (with intern
 flow-execution-running = Flow running...
 flow-execution-failed = Flow failed.
 flow-execution-failed-message = Flow failed at step { $step }: { $reason }
+flow-execution-save-evidence-anyway = Save Evidence Anyway
 
 flow-step-label = Step { $step }: { $name }
 
