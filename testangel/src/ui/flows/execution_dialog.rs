@@ -18,7 +18,7 @@ pub enum ExecutionDialogCommandOutput {
     Complete(Vec<Evidence>),
 
     /// Execution failed at the given step and for the given reason
-    Failed(usize, FlowError),
+    Failed(usize, FlowError, Vec<Evidence>),
 }
 
 #[derive(Debug)]
@@ -32,6 +32,7 @@ pub struct ExecutionDialogInit {
 pub enum ExecutionDialogInput {
     Close,
     FailedToGenerateReport(ReportGenerationError),
+    SaveEvidence(Vec<Evidence>),
 }
 
 #[derive(Debug)]
@@ -105,6 +106,9 @@ impl Component for ExecutionDialog {
             }
 
             for (step, action_config) in flow.actions.iter().enumerate() {
+                log::debug!("Output state: {outputs:?}");
+                log::debug!("Evidence state: {evidence:?}");
+                log::debug!("Executing: {action_config:?}");
                 match action_config.execute(
                     action_map.clone(),
                     engine_list.clone(),
@@ -115,7 +119,7 @@ impl Component for ExecutionDialog {
                         evidence = [evidence, ev].concat();
                     }
                     Err(e) => {
-                        return ExecutionDialogCommandOutput::Failed(step + 1, e);
+                        return ExecutionDialogCommandOutput::Failed(step + 1, e, evidence);
                     }
                 }
             }
@@ -153,19 +157,7 @@ impl Component for ExecutionDialog {
                 });
                 dialog.set_visible(true);
             }
-        }
-    }
-
-    fn update_cmd(
-        &mut self,
-        message: Self::CommandOutput,
-        sender: relm4::ComponentSender<Self>,
-        root: &Self::Root,
-    ) {
-        match message {
-            ExecutionDialogCommandOutput::Complete(evidence) => {
-                log::info!("Execution complete.");
-
+            ExecutionDialogInput::SaveEvidence(evidence) => {
                 // Present save dialog
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
@@ -199,9 +191,23 @@ impl Component for ExecutionDialog {
                     },
                 );
             }
+        }
+    }
 
-            ExecutionDialogCommandOutput::Failed(step, reason) => {
-                log::warn!("Execution failed");
+    fn update_cmd(
+        &mut self,
+        message: Self::CommandOutput,
+        sender: relm4::ComponentSender<Self>,
+        root: &Self::Root,
+    ) {
+        match message {
+            ExecutionDialogCommandOutput::Complete(evidence) => {
+                log::info!("Execution complete.");
+                sender.input(ExecutionDialogInput::SaveEvidence(evidence));
+            }
+
+            ExecutionDialogCommandOutput::Failed(step, reason, evidence) => {
+                log::warn!("Execution failed. Evidence: {evidence:?}");
                 let dialog = self.create_message_dialog(
                     lang::lookup("flow-execution-failed"),
                     lang::lookup_with_args("flow-execution-failed-message", {
@@ -212,10 +218,16 @@ impl Component for ExecutionDialog {
                     }),
                 );
                 dialog.set_transient_for(Some(root));
+                if !evidence.is_empty() {
+                    dialog.add_response("save", &lang::lookup("flow-execution-save-evidence-anyway"));
+                }
                 dialog.add_response("ok", &lang::lookup("ok"));
                 dialog.set_default_response(Some("ok"));
                 let sender_c = sender.clone();
-                dialog.connect_response(None, move |dlg, _response| {
+                dialog.connect_response(None, move |dlg, response| {
+                    if response == "save" {
+                        sender_c.input(ExecutionDialogInput::SaveEvidence(evidence.clone()));
+                    }
                     sender_c.input(ExecutionDialogInput::Close);
                     dlg.close();
                 });
