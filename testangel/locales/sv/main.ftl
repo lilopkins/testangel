@@ -27,7 +27,7 @@ tab-flows = Flöder
 tab-actions = Åtgärder
 
 variable-row-edit-param = Redigera parameter
-variable-row-subtitle = { $kind }, { $source }
+variable-row-subtitle = { $kind }
 variable-row-subtitle-with-value = { $kind }, { $source }: { $value }
 
 drag-drop-here = Dra och släpp hit

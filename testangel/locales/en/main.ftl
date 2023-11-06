@@ -27,7 +27,7 @@ tab-flows = Flows
 tab-actions = Actions
 
 variable-row-edit-param = Edit Parameter
-variable-row-subtitle = { $kind }, { $source }
+variable-row-subtitle = { $kind }
 variable-row-subtitle-with-value = { $kind }, { $source }: { $value }
 
 drag-drop-here = Drop step here
