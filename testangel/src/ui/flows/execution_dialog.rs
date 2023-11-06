@@ -219,7 +219,8 @@ impl Component for ExecutionDialog {
                 );
                 dialog.set_transient_for(Some(root));
                 if !evidence.is_empty() {
-                    dialog.add_response("save", &lang::lookup("flow-execution-save-evidence-anyway"));
+                    dialog
+                        .add_response("save", &lang::lookup("flow-execution-save-evidence-anyway"));
                 }
                 dialog.add_response("ok", &lang::lookup("ok"));
                 dialog.set_default_response(Some("ok"));
