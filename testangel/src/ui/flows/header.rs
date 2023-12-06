@@ -89,6 +89,7 @@ impl Component for FlowsHeader {
                             },
                         },
 
+                        #[name = "menu_scrolled_area"]
                         gtk::ScrolledWindow {
                             set_hscrollbar_policy: gtk::PolicyType::Never,
                             set_min_content_height: 150,
@@ -152,6 +153,7 @@ impl Component for FlowsHeader {
             }
             FlowsHeaderInput::ActionsMapChanged(new_map) => {
                 self.action_map = new_map;
+                sender.input(FlowsHeaderInput::SearchForSteps(String::new()));
             }
             FlowsHeaderInput::AddStep(step_id) => {
                 // close popover
@@ -170,6 +172,10 @@ impl Component for FlowsHeader {
             FlowsHeaderInput::SearchForSteps(query) => {
                 let mut results = self.search_results.guard();
                 results.clear();
+
+                // Reset scroll
+                let adj = widgets.menu_scrolled_area.vadjustment();
+                adj.set_value(adj.lower());
 
                 let show_hidden = std::env::var("TA_SHOW_HIDDEN_ACTIONS")
                     .unwrap_or("no".to_string())

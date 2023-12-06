@@ -89,6 +89,7 @@ impl Component for ActionsHeader {
                             },
                         },
 
+                        #[name = "menu_scrolled_area"]
                         gtk::ScrolledWindow {
                             set_hscrollbar_policy: gtk::PolicyType::Never,
                             set_min_content_height: 150,
@@ -163,6 +164,10 @@ impl Component for ActionsHeader {
             ActionsHeaderInput::SearchForSteps(query) => {
                 let mut results = self.search_results.guard();
                 results.clear();
+
+                // Reset scroll
+                let adj = widgets.menu_scrolled_area.vadjustment();
+                adj.set_value(adj.lower());
 
                 // Collect results
                 if query.is_empty() {

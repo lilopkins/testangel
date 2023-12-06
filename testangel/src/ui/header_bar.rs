@@ -152,7 +152,8 @@ impl Component for HeaderBarModel {
             // unwrap rationale: receiver will never be disconnected
             sender_c.input(HeaderBarInput::SaveAsFile);
         });
-        relm4::main_application().set_accelerators_for_action::<FileSaveAsAction>(&["<primary>S"]);
+        relm4::main_application()
+            .set_accelerators_for_action::<FileSaveAsAction>(&["<primary><shift>S"]);
 
         let sender_c = sender.clone();
         let close_action: RelmAction<FileCloseAction> = RelmAction::new_stateless(move |_| {
