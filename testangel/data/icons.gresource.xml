@@ -3,4 +3,7 @@
     <gresource prefix="uk/hpkns/testangel/icons/scalable/actions/">
         <file preprocess="xml-stripblanks" alias="testangel.svg">icons/testangel.svg</file>
     </gresource>
+    <gresource prefix="/org/gtk/example/icons/scalable/actions/">
+        <file preprocess="xml-stripblanks">document-edit-symbolic.svg</file>
+    </gresource>
 </gresources>
