@@ -139,11 +139,9 @@ where
                         self.literal_input.widget(),
                     }
                 } else {
-                    adw::Bin {
-                        gtk::Label {
-                            #[watch]
-                            set_label: &self.get_nice_name_for(&self.source),
-                        },
+                    gtk::Label {
+                        #[watch]
+                        set_label: &self.get_nice_name_for(&self.source),
                     }
                 },
 
@@ -154,6 +152,7 @@ where
                     set_direction: gtk::ArrowType::Left,
 
                     #[wrap(Some)]
+                    #[name = "popover"]
                     set_popover = &gtk::Popover {
                         gtk::ScrolledWindow {
                             set_hscrollbar_policy: gtk::PolicyType::Never,
@@ -219,10 +218,17 @@ where
         widgets
     }
 
-    fn update(&mut self, message: Self::Input, sender: FactorySender<Self>) {
+    fn update_with_view(
+        &mut self,
+        widgets: &mut Self::Widgets,
+        message: Self::Input,
+        sender: FactorySender<Self>,
+    ) {
         match message {
             VariableRowInput::SourceSelected(new_source) => {
                 self.source = new_source.clone();
+                widgets.popover.popdown();
+
                 sender.output(VariableRowOutput::NewSourceFor(
                     self.idx.clone(),
                     new_source,
@@ -233,6 +239,7 @@ where
                 sender.output(VariableRowOutput::NewValueFor(self.idx.clone(), new_value));
             }
         }
+        self.update_view(widgets, sender);
     }
 
     fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
