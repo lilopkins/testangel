@@ -120,6 +120,8 @@ impl FactoryComponent for ActionComponent {
                     gtk::Button::builder().css_classes(["flat"]).build() {
                         set_icon_name: relm4_icons::icon_name::UP,
                         set_tooltip: &lang::lookup("move-up"),
+                        set_valign: gtk::Align::Start,
+                        set_height_request: 30,
 
                         connect_clicked[sender, index, config] => move |_| {
                             if index.clone().current_index() != 0 {
@@ -131,6 +133,8 @@ impl FactoryComponent for ActionComponent {
                     gtk::Button::builder().css_classes(["flat"]).build() {
                         set_icon_name: relm4_icons::icon_name::DOWN,
                         set_tooltip: &lang::lookup("move-down"),
+                        set_valign: gtk::Align::Start,
+                        set_height_request: 30,
 
                         connect_clicked[sender, index, config] => move |_| {
                             sender.output(ActionComponentOutput::Cut(index.clone()));
@@ -140,6 +144,8 @@ impl FactoryComponent for ActionComponent {
                     gtk::Button::builder().css_classes(["flat"]).build() {
                         set_icon_name: relm4_icons::icon_name::X_CIRCULAR,
                         set_tooltip: &lang::lookup("delete-step"),
+                        set_valign: gtk::Align::Start,
+                        set_height_request: 30,
 
                         connect_clicked[sender, index] => move |_| {
                             sender.output(ActionComponentOutput::Remove(index.clone()));
