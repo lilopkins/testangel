@@ -83,6 +83,9 @@ impl Component for Metadata {
 
                 #[name = "visible"]
                 add_suffix = &gtk::Switch {
+                    set_margin_top: 12,
+                    set_margin_bottom: 12,
+
                     connect_state_set[sender] => move |_switch, state| {
                         let _ = sender.output(MetadataOutput {
                             new_visible: Some(state),
