@@ -153,6 +153,7 @@ impl Component for FlowsHeader {
             }
             FlowsHeaderInput::ActionsMapChanged(new_map) => {
                 self.action_map = new_map;
+                sender.input(FlowsHeaderInput::SearchForSteps(String::new()));
             }
             FlowsHeaderInput::AddStep(step_id) => {
                 // close popover
