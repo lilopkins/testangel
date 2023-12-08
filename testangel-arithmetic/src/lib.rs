@@ -84,6 +84,78 @@ lazy_static! {
         })
     .with_instruction(
         Instruction::new(
+            "arithmetic-dec-add",
+            "Add (Decimal)",
+            "Add together two decimals.",
+        )
+        .with_parameter("val1", "A", ParameterKind::Decimal)
+        .with_parameter("val2", "B", ParameterKind::Decimal)
+        .with_output("result", "A + B", ParameterKind::Decimal),
+        |_state, params, output, _evidence| {
+            let val1 = params["val1"].value_f32();
+            let val2 = params["val2"].value_f32();
+
+            // Produce output and evidence
+            let result = val1 + val2;
+            output.insert("result".to_owned(), ParameterValue::Decimal(result));
+            Ok(())
+        })
+    .with_instruction(
+        Instruction::new(
+            "arithmetic-dec-sub",
+            "Subtract (Decimal)",
+            "Subtract two decimals.",
+        )
+        .with_parameter("val1", "A", ParameterKind::Decimal)
+        .with_parameter("val2", "B", ParameterKind::Decimal)
+        .with_output("result", "A - B", ParameterKind::Decimal),
+        |_state, params, output, _evidence| {
+            let val1 = params["val1"].value_f32();
+            let val2 = params["val2"].value_f32();
+
+            // Produce output and evidence
+            let result = val1 - val2;
+            output.insert("result".to_owned(), ParameterValue::Decimal(result));
+            Ok(())
+        })
+    .with_instruction(
+        Instruction::new(
+            "arithmetic-dec-mul",
+            "Multiply (Decimal)",
+            "Multiply two decimals.",
+        )
+        .with_parameter("val1", "A", ParameterKind::Decimal)
+        .with_parameter("val2", "B", ParameterKind::Decimal)
+        .with_output("result", "A × B", ParameterKind::Decimal),
+        |_state, params, output, _evidence| {
+            let val1 = params["val1"].value_f32();
+            let val2 = params["val2"].value_f32();
+
+            // Produce output and evidence
+            let result = val1 * val2;
+            output.insert("result".to_owned(), ParameterValue::Decimal(result));
+            Ok(())
+        })
+    .with_instruction(
+        Instruction::new(
+            "arithmetic-dec-div",
+            "Divide (Decimal)",
+            "Divide two decimals, returning the result.",
+        )
+        .with_parameter("val1", "A", ParameterKind::Decimal)
+        .with_parameter("val2", "B", ParameterKind::Decimal)
+        .with_output("result", "A ÷ B", ParameterKind::Decimal),
+        |_state, params, output, _evidence| {
+            let val1 = params["val1"].value_f32();
+            let val2 = params["val2"].value_f32();
+
+            // Produce output and evidence
+            let result = val1 / val2;
+            output.insert("result".to_owned(), ParameterValue::Decimal(result));
+            Ok(())
+        })
+    .with_instruction(
+        Instruction::new(
             "arithmetic-counter-inc",
             "Increase Counter",
             "Increase a counter.",
