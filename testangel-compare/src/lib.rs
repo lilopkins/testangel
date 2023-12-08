@@ -25,6 +25,24 @@ lazy_static! {
         })
     .with_instruction(
         Instruction::new(
+            "compare-eq-decs",
+            "Equal (Decimal)",
+            "Compare the value of two decimals.",
+        )
+        .with_parameter("val1", "A", ParameterKind::Decimal)
+        .with_parameter("val2", "B", ParameterKind::Decimal)
+        .with_output("result", "A = B", ParameterKind::Boolean),
+        |_state, params, output, _evidence| {
+            let val1 = params["val1"].value_f32();
+            let val2 = params["val2"].value_f32();
+
+            // Produce output and evidence
+            let result = val1 == val2;
+            output.insert("result".to_owned(), ParameterValue::Boolean(result));
+            Ok(())
+        })
+    .with_instruction(
+        Instruction::new(
             "compare-eq-str",
             "Equal (String)",
             "Compare the value of two strings.",
