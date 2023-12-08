@@ -32,6 +32,23 @@ lazy_static! {
         })
     .with_instruction(
         Instruction::new(
+            "rand-decimal",
+            "Random Decimal",
+            "Generates a random decimal between zero and the maximum you specify.",
+        )
+        .with_parameter("max", "Maximum", ParameterKind::Decimal)
+        .with_output("result", "Result", ParameterKind::Decimal),
+        |_state, params, output, _evidence| {
+            let max = params["max"].value_f32();
+
+            output.insert(
+                "result".to_string(),
+                ParameterValue::Decimal(rand::thread_rng().gen_range(0.0..max)),
+            );
+            Ok(())
+        })
+    .with_instruction(
+        Instruction::new(
             "rand-string",
             "Random String",
             "Generate a random string given the regular expression-like format you provide.",
