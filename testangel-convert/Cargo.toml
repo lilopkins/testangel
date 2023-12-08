@@ -11,5 +11,6 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+interpolator = "0.5.0"
 lazy_static = "1.4.0"
 testangel-engine = { path = "../testangel-engine" }
