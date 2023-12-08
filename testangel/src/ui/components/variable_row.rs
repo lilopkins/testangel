@@ -129,6 +129,7 @@ where
                     }
                 )
             },
+            set_use_markup: false,
 
             add_suffix = &gtk::Box {
                 set_spacing: 15,
