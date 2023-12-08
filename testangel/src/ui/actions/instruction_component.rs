@@ -352,7 +352,9 @@ impl FactoryComponent for InstructionComponent {
         {
             // initialise rows
             let mut variable_rows = self.variable_rows.guard();
-            for (id, (name, kind)) in self.instruction.parameters().iter() {
+            for id in self.instruction.parameter_order() {
+                let (name, kind) = self.instruction.parameters().get(id).unwrap();
+
                 let possible_sources = self
                     .possible_outputs
                     .iter()
