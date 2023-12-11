@@ -1,10 +1,9 @@
 use std::{collections::HashMap, fmt::Display, sync::Mutex};
 
 use fluent::FluentValue;
-use fluent_templates::{loader::langid, LanguageIdentifier, Loader};
+use fluent_templates::{LanguageIdentifier, Loader};
 use once_cell::sync::Lazy;
 
-const FALLBACK: LanguageIdentifier = langid!("en");
 fluent_templates::static_loader! {
     static LOCALES = {
         locales: "locales",
@@ -42,7 +41,7 @@ pub fn initialise_i18n() -> LanguageIdentifier {
     if locale_is_default {
         log::info!("No suitable locale found, using default.");
         let mut use_locale = USE_LOCALE.lock().unwrap();
-        use_locale.replace(FALLBACK);
+        use_locale.replace("en".parse().unwrap()); // en fallback
     }
 
     let use_locale = USE_LOCALE.lock().unwrap();
