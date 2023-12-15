@@ -159,12 +159,12 @@ jobs:
           pipx install gvsbuild
           gvsbuild build gtk4 libadwaita librsvg --ninja-opts -j2
 
-      - name: Build GTK4 with known good gvsbuild (${{ env.GVSBUILD_KNOWN_GOOD_VERSION }})
+      - name: Build GTK4 with known good gvsbuild (${{ vars.GVSBUILD_KNOWN_GOOD_VERSION }})
         if: steps.build-gtk4-fallible.outcome == 'failure'
         run: |
           python -m pip install --user pipx
           python -m pipx ensurepath
-          pipx install gvsbuild==${{ env.GVSBUILD_KNOWN_GOOD_VERSION }}
+          pipx install gvsbuild==${{ vars.GVSBUILD_KNOWN_GOOD_VERSION }}
           gvsbuild build gtk4 libadwaita librsvg --ninja-opts -j2
 
       - name: Restore git binary
