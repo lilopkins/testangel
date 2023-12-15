@@ -151,10 +151,20 @@ jobs:
           Move-Item "C:\Program Files\Git\bin" "C:\Program Files\Git\notbin"
 
       - name: Build GTK4
+        continue-on-error: true
+        id: build-gtk4-fallible
         run: |
           python -m pip install --user pipx
           python -m pipx ensurepath
           pipx install gvsbuild
+          gvsbuild build gtk4 libadwaita librsvg --ninja-opts -j2
+
+      - name: Build GTK4 with known good gvsbuild (${{ env.GVSBUILD_KNOWN_GOOD_VERSION }})
+        if: steps.build-gtk4-fallible.conclusion == 'failure'
+        run: |
+          python -m pip install --user pipx
+          python -m pipx ensurepath
+          pipx install gvsbuild==${{ env.GVSBUILD_KNOWN_GOOD_VERSION }}
           gvsbuild build gtk4 libadwaita librsvg --ninja-opts -j2
 
       - name: Restore git binary
