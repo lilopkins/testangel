@@ -164,7 +164,7 @@ jobs:
         run: |
           python -m pip install --user pipx
           python -m pipx ensurepath
-          pipx install gvsbuild==${{ vars.GVSBUILD_KNOWN_GOOD_VERSION }}
+          pipx install --force gvsbuild==${{ vars.GVSBUILD_KNOWN_GOOD_VERSION }}
           gvsbuild build gtk4 libadwaita librsvg --ninja-opts -j2
 
       - name: Restore git binary
