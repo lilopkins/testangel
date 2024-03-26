@@ -13,7 +13,8 @@ use testangel_ipc::prelude::{Instruction, ParameterKind, ParameterValue};
 
 use crate::ui::{
     components::variable_row::{
-        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowOutput, VariableRowParentInput
+        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowOutput,
+        VariableRowParentInput,
     },
     lang,
 };
@@ -312,10 +313,12 @@ impl FactoryComponent for InstructionComponent {
             .map(|(idx, _)| idx)
             .unwrap_or_else(|| {
                 // fix a potentially very broken situation
-                sender_c.output(InstructionComponentOutput::ChangeRunCondition(
-                    index.clone(),
-                    InstructionParameterSource::Literal,
-                )).unwrap();
+                sender_c
+                    .output(InstructionComponentOutput::ChangeRunCondition(
+                        index.clone(),
+                        InstructionParameterSource::Literal,
+                    ))
+                    .unwrap();
                 log::warn!(
                     "Fixed bad pointing run condition! This fix should never have been called!"
                 );
@@ -333,8 +336,12 @@ impl FactoryComponent for InstructionComponent {
             variable_rows: FactoryVecDeque::builder()
                 .launch(adw::PreferencesGroup::default())
                 .forward(sender.input_sender(), |output| match output {
-                    VariableRowOutput::NewSourceFor(idx, source) => InstructionComponentInput::NewSourceFor(idx, source),
-                    VariableRowOutput::NewValueFor(idx, value) => InstructionComponentInput::NewValueFor(idx, value),
+                    VariableRowOutput::NewSourceFor(idx, source) => {
+                        InstructionComponentInput::NewSourceFor(idx, source)
+                    }
+                    VariableRowOutput::NewValueFor(idx, value) => {
+                        InstructionComponentInput::NewValueFor(idx, value)
+                    }
                 }),
             drop_proposed_above: false,
             drop_proposed_below: false,
@@ -395,17 +402,21 @@ impl FactoryComponent for InstructionComponent {
             }
             InstructionComponentInput::NewSourceFor(idx, source) => {
                 self.config.parameter_sources.insert(idx, source);
-                sender.output(InstructionComponentOutput::ConfigUpdate(
-                    self.step.clone(),
-                    self.config.clone(),
-                )).unwrap();
+                sender
+                    .output(InstructionComponentOutput::ConfigUpdate(
+                        self.step.clone(),
+                        self.config.clone(),
+                    ))
+                    .unwrap();
             }
             InstructionComponentInput::NewValueFor(idx, source) => {
                 self.config.parameter_values.insert(idx, source);
-                sender.output(InstructionComponentOutput::ConfigUpdate(
-                    self.step.clone(),
-                    self.config.clone(),
-                )).unwrap();
+                sender
+                    .output(InstructionComponentOutput::ConfigUpdate(
+                        self.step.clone(),
+                        self.config.clone(),
+                    ))
+                    .unwrap();
             }
             InstructionComponentInput::ProposedDrop { above, below } => {
                 self.drop_proposed_above = above;
@@ -413,10 +424,12 @@ impl FactoryComponent for InstructionComponent {
             }
             InstructionComponentInput::ChangeRunCondition(idx) => {
                 let (_, src) = &self.possible_run_conditions[idx as usize];
-                sender.output(InstructionComponentOutput::ChangeRunCondition(
-                    self.step.clone(),
-                    src.clone(),
-                )).unwrap();
+                sender
+                    .output(InstructionComponentOutput::ChangeRunCondition(
+                        self.step.clone(),
+                        src.clone(),
+                    ))
+                    .unwrap();
             }
         }
     }

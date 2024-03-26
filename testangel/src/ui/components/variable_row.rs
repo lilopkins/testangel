@@ -175,8 +175,7 @@ where
         _index: &Self::Index,
         sender: relm4::FactorySender<Self>,
     ) -> Self {
-        let mut potential_sources =
-            FactoryVecDeque::builder()
+        let mut potential_sources = FactoryVecDeque::builder()
             .launch(gtk::Box::default())
             .forward(sender.input_sender(), VariableRowInput::SourceSelected);
         {
@@ -231,14 +230,18 @@ where
                 self.source = new_source.clone();
                 widgets.popover.popdown();
 
-                sender.output(VariableRowOutput::NewSourceFor(
-                    self.idx.clone(),
-                    new_source,
-                )).unwrap();
+                sender
+                    .output(VariableRowOutput::NewSourceFor(
+                        self.idx.clone(),
+                        new_source,
+                    ))
+                    .unwrap();
             }
             VariableRowInput::ChangeValue(new_value) => {
                 self.value = new_value.clone();
-                sender.output(VariableRowOutput::NewValueFor(self.idx.clone(), new_value)).unwrap();
+                sender
+                    .output(VariableRowOutput::NewValueFor(self.idx.clone(), new_value))
+                    .unwrap();
             }
         }
         self.update_view(widgets, sender);

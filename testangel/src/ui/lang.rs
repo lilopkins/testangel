@@ -59,8 +59,7 @@ pub(crate) fn lookup<S>(text_id: S) -> String
 where
     S: AsRef<str> + Display,
 {
-    LOCALES
-        .lookup(&current_locale(), text_id.as_ref())
+    LOCALES.lookup(&current_locale(), text_id.as_ref())
 }
 
 /// Lookup a string with args
@@ -69,6 +68,5 @@ where
     S: AsRef<str> + Display,
     K: AsRef<str>,
 {
-    LOCALES
-        .lookup_with_args(&current_locale(), text_id.as_ref(), &args)
+    LOCALES.lookup_with_args(&current_locale(), text_id.as_ref(), &args)
 }

@@ -378,9 +378,7 @@ impl Component for FlowsModel {
                 .forward(sender.input_sender(), |output| match output {
                     ActionComponentOutput::Remove(idx) => FlowInputs::RemoveStep(idx),
                     ActionComponentOutput::Cut(idx) => FlowInputs::CutStep(idx),
-                    ActionComponentOutput::Paste(idx, step) => {
-                        FlowInputs::PasteStep(idx, step)
-                    }
+                    ActionComponentOutput::Paste(idx, step) => FlowInputs::PasteStep(idx, step),
                     ActionComponentOutput::ConfigUpdate(step, config) => {
                         FlowInputs::ConfigUpdate(step, config)
                     }

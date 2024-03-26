@@ -13,7 +13,8 @@ use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
 use crate::ui::{
     components::variable_row::{
-        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowOutput, VariableRowParentInput
+        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowOutput,
+        VariableRowParentInput,
     },
     lang,
 };
@@ -252,8 +253,12 @@ impl FactoryComponent for ActionComponent {
             variable_rows: FactoryVecDeque::builder()
                 .launch(adw::PreferencesGroup::default())
                 .forward(sender.input_sender(), |output| match output {
-                    VariableRowOutput::NewSourceFor(idx, source) => ActionComponentInput::NewSourceFor(idx, source),
-                    VariableRowOutput::NewValueFor(idx, value) => ActionComponentInput::NewValueFor(idx, value),
+                    VariableRowOutput::NewSourceFor(idx, source) => {
+                        ActionComponentInput::NewSourceFor(idx, source)
+                    }
+                    VariableRowOutput::NewValueFor(idx, value) => {
+                        ActionComponentInput::NewValueFor(idx, value)
+                    }
                 }),
             drop_proposed_above: false,
             drop_proposed_below: false,
@@ -309,17 +314,21 @@ impl FactoryComponent for ActionComponent {
             ActionComponentInput::SetVisible(to) => self.visible = to,
             ActionComponentInput::NewSourceFor(idx, source) => {
                 self.config.parameter_sources.insert(idx, source);
-                sender.output(ActionComponentOutput::ConfigUpdate(
-                    self.step.clone(),
-                    self.config.clone(),
-                )).unwrap();
+                sender
+                    .output(ActionComponentOutput::ConfigUpdate(
+                        self.step.clone(),
+                        self.config.clone(),
+                    ))
+                    .unwrap();
             }
             ActionComponentInput::NewValueFor(idx, source) => {
                 self.config.parameter_values.insert(idx, source);
-                sender.output(ActionComponentOutput::ConfigUpdate(
-                    self.step.clone(),
-                    self.config.clone(),
-                )).unwrap();
+                sender
+                    .output(ActionComponentOutput::ConfigUpdate(
+                        self.step.clone(),
+                        self.config.clone(),
+                    ))
+                    .unwrap();
             }
             ActionComponentInput::ProposedDrop { above, below } => {
                 self.drop_proposed_above = above;

@@ -66,10 +66,12 @@ impl Component for ActionParams {
         let model = ActionParams {
             raw_params: vec![],
             params: FactoryVecDeque::builder()
-                .launch(gtk::Box::builder()
-                    .orientation(gtk::Orientation::Vertical)
-                    .spacing(5)
-                    .build())
+                .launch(
+                    gtk::Box::builder()
+                        .orientation(gtk::Orientation::Vertical)
+                        .spacing(5)
+                        .build(),
+                )
                 .forward(sender.input_sender(), ActionParamsInput::_FromRow),
         };
         let widgets = view_output!();

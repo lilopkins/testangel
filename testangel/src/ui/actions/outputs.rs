@@ -69,10 +69,12 @@ impl Component for ActionOutputs {
         let model = ActionOutputs {
             raw_outputs: vec![],
             outputs: FactoryVecDeque::builder()
-                .launch(gtk::Box::builder()
-                    .orientation(gtk::Orientation::Vertical)
-                    .spacing(5)
-                    .build())
+                .launch(
+                    gtk::Box::builder()
+                        .orientation(gtk::Orientation::Vertical)
+                        .spacing(5)
+                        .build(),
+                )
                 .forward(sender.input_sender(), ActionOutputsInput::_FromRow),
             possible_sources: vec![],
         };
@@ -336,7 +338,9 @@ impl FactoryComponent for OutputRow {
                     return;
                 }
                 let (_, _, source) = self.possible_sources[dropdown_idx as usize].clone();
-                sender.output(OutputRowOutput::SetOutputSource(index.clone(), source)).unwrap();
+                sender
+                    .output(OutputRowOutput::SetOutputSource(index.clone(), source))
+                    .unwrap();
             }
         }
     }
