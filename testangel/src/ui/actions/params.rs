@@ -60,7 +60,7 @@ impl Component for ActionParams {
 
     fn init(
         _init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
         let model = ActionParams {
@@ -196,7 +196,7 @@ impl FactoryComponent for ParamRow {
                 set_placeholder_text: Some(&lang::lookup("action-params-name-placeholder")),
 
                 connect_changed[sender, index] => move |entry| {
-                    sender.output(ParamRowOutput::SetParamName(index.clone(), entry.text().to_string()));
+                    sender.output(ParamRowOutput::SetParamName(index.clone(), entry.text().to_string())).unwrap();
                 },
             },
 
@@ -208,7 +208,7 @@ impl FactoryComponent for ParamRow {
                 connect_selected_notify[sender, index] => move |dropdown| {
                     let idx = dropdown.selected();
                     let (_, kind) = PARAM_KINDS[idx as usize];
-                    sender.output(ParamRowOutput::SetParamKind(index.clone(), kind));
+                    sender.output(ParamRowOutput::SetParamKind(index.clone(), kind)).unwrap();
                 },
             },
 
@@ -217,7 +217,7 @@ impl FactoryComponent for ParamRow {
                 set_icon_name: "up",
                 set_tooltip: &lang::lookup("move-up"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(ParamRowOutput::MoveUp(index.clone()));
+                    sender.output(ParamRowOutput::MoveUp(index.clone())).unwrap();
                 }
             },
             // move down
@@ -225,7 +225,7 @@ impl FactoryComponent for ParamRow {
                 set_icon_name: "down",
                 set_tooltip: &lang::lookup("move-down"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(ParamRowOutput::MoveDown(index.clone()));
+                    sender.output(ParamRowOutput::MoveDown(index.clone())).unwrap();
                 }
             },
             // delete
@@ -233,7 +233,7 @@ impl FactoryComponent for ParamRow {
                 set_icon_name: "x-circular",
                 set_tooltip: &lang::lookup("delete"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(ParamRowOutput::Delete(index.clone()));
+                    sender.output(ParamRowOutput::Delete(index.clone())).unwrap();
                 }
             }
         }

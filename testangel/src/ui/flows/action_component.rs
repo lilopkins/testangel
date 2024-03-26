@@ -124,8 +124,8 @@ impl FactoryComponent for ActionComponent {
 
                         connect_clicked[sender, index, config] => move |_| {
                             if index.clone().current_index() != 0 {
-                                sender.output(ActionComponentOutput::Cut(index.clone()));
-                                sender.output(ActionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone()));
+                                sender.output(ActionComponentOutput::Cut(index.clone())).unwrap();
+                                sender.output(ActionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone())).unwrap();
                             }
                         },
                     },
@@ -136,8 +136,8 @@ impl FactoryComponent for ActionComponent {
                         set_height_request: 30,
 
                         connect_clicked[sender, index, config] => move |_| {
-                            sender.output(ActionComponentOutput::Cut(index.clone()));
-                            sender.output(ActionComponentOutput::Paste(index.clone().current_index() + 1, config.clone()));
+                            sender.output(ActionComponentOutput::Cut(index.clone())).unwrap();
+                            sender.output(ActionComponentOutput::Paste(index.clone().current_index() + 1, config.clone())).unwrap();
                         },
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
@@ -147,7 +147,7 @@ impl FactoryComponent for ActionComponent {
                         set_height_request: 30,
 
                         connect_clicked[sender, index] => move |_| {
-                            sender.output(ActionComponentOutput::Remove(index.clone()));
+                            sender.output(ActionComponentOutput::Remove(index.clone())).unwrap();
                         },
                     },
                 },
@@ -189,7 +189,7 @@ impl FactoryComponent for ActionComponent {
                             } else {
                                 1
                             };
-                            sender.output(ActionComponentOutput::MoveStep(*from, to, offset));
+                            sender.output(ActionComponentOutput::MoveStep(*from, to, offset)).unwrap();
                             sender.input(ActionComponentInput::ProposedDrop { above: false, below: false, });
                             return true;
                         }
@@ -263,7 +263,7 @@ impl FactoryComponent for ActionComponent {
     fn init_widgets(
         &mut self,
         index: &Self::Index,
-        root: &Self::Root,
+        root: Self::Root,
         _returned_widget: &<Self::ParentWidget as relm4::factory::FactoryView>::ReturnedWidget,
         sender: relm4::FactorySender<Self>,
     ) -> Self::Widgets {
@@ -312,14 +312,14 @@ impl FactoryComponent for ActionComponent {
                 sender.output(ActionComponentOutput::ConfigUpdate(
                     self.step.clone(),
                     self.config.clone(),
-                ));
+                )).unwrap();
             }
             ActionComponentInput::NewValueFor(idx, source) => {
                 self.config.parameter_values.insert(idx, source);
                 sender.output(ActionComponentOutput::ConfigUpdate(
                     self.step.clone(),
                     self.config.clone(),
-                ));
+                )).unwrap();
             }
             ActionComponentInput::ProposedDrop { above, below } => {
                 self.drop_proposed_above = above;

@@ -63,7 +63,7 @@ impl Component for ActionOutputs {
 
     fn init(
         _init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
         let model = ActionOutputs {
@@ -212,7 +212,7 @@ impl FactoryComponent for OutputRow {
                 set_placeholder_text: Some(&lang::lookup("action-outputs-name-placeholder")),
 
                 connect_changed[sender, index] => move |entry| {
-                    sender.output(OutputRowOutput::SetOutputName(index.clone(), entry.text().to_string()));
+                    sender.output(OutputRowOutput::SetOutputName(index.clone(), entry.text().to_string())).unwrap();
                 },
             },
 
@@ -233,7 +233,7 @@ impl FactoryComponent for OutputRow {
                 set_icon_name: "up",
                 set_tooltip: &lang::lookup("move-up"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(OutputRowOutput::MoveUp(index.clone()));
+                    sender.output(OutputRowOutput::MoveUp(index.clone())).unwrap();
                 }
             },
             // move down
@@ -241,7 +241,7 @@ impl FactoryComponent for OutputRow {
                 set_icon_name: "down",
                 set_tooltip: &lang::lookup("move-down"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(OutputRowOutput::MoveDown(index.clone()));
+                    sender.output(OutputRowOutput::MoveDown(index.clone())).unwrap();
                 }
             },
             // delete
@@ -249,7 +249,7 @@ impl FactoryComponent for OutputRow {
                 set_icon_name: "x-circular",
                 set_tooltip: &lang::lookup("delete"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(OutputRowOutput::Delete(index.clone()));
+                    sender.output(OutputRowOutput::Delete(index.clone())).unwrap();
                 }
             }
         }
@@ -336,7 +336,7 @@ impl FactoryComponent for OutputRow {
                     return;
                 }
                 let (_, _, source) = self.possible_sources[dropdown_idx as usize].clone();
-                sender.output(OutputRowOutput::SetOutputSource(index.clone(), source));
+                sender.output(OutputRowOutput::SetOutputSource(index.clone(), source)).unwrap();
             }
         }
     }

@@ -35,7 +35,7 @@ impl FactoryComponent for AddStepResult {
             set_label: &self.label,
 
             connect_clicked[sender, id] => move |_| {
-                sender.output(id.clone())
+                sender.output(id.clone()).unwrap()
             }
         }
     }
@@ -50,7 +50,7 @@ impl FactoryComponent for AddStepResult {
     fn init_widgets(
         &mut self,
         _index: &Self::Index,
-        root: &Self::Root,
+        root: Self::Root,
         _returned_widget: &<Self::ParentWidget as relm4::factory::FactoryView>::ReturnedWidget,
         sender: FactorySender<Self>,
     ) -> Self::Widgets {

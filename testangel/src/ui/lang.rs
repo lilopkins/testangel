@@ -61,10 +61,6 @@ where
 {
     LOCALES
         .lookup(&current_locale(), text_id.as_ref())
-        .unwrap_or_else(|| {
-            log::warn!("Missing translation for {text_id}");
-            text_id.as_ref().to_string()
-        })
 }
 
 /// Lookup a string with args
@@ -75,8 +71,4 @@ where
 {
     LOCALES
         .lookup_with_args(&current_locale(), text_id.as_ref(), &args)
-        .unwrap_or_else(|| {
-            log::warn!("Missing translation for {text_id}");
-            text_id.as_ref().to_string()
-        })
 }

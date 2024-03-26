@@ -348,7 +348,7 @@ impl Component for FlowsModel {
 
     fn init(
         init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let header = Rc::new(
@@ -376,16 +376,16 @@ impl Component for FlowsModel {
             live_actions_list: FactoryVecDeque::builder()
                 .launch(gtk::Box::default())
                 .forward(sender.input_sender(), |output| match output {
-                    ActionComponentOutput::Remove(idx) => Some(FlowInputs::RemoveStep(idx)),
-                    ActionComponentOutput::Cut(idx) => Some(FlowInputs::CutStep(idx)),
+                    ActionComponentOutput::Remove(idx) => FlowInputs::RemoveStep(idx),
+                    ActionComponentOutput::Cut(idx) => FlowInputs::CutStep(idx),
                     ActionComponentOutput::Paste(idx, step) => {
-                        Some(FlowInputs::PasteStep(idx, step))
+                        FlowInputs::PasteStep(idx, step)
                     }
                     ActionComponentOutput::ConfigUpdate(step, config) => {
-                        Some(FlowInputs::ConfigUpdate(step, config))
+                        FlowInputs::ConfigUpdate(step, config)
                     }
                     ActionComponentOutput::MoveStep(from, to, offset) => {
-                        Some(FlowInputs::MoveStep(from, to, offset))
+                        FlowInputs::MoveStep(from, to, offset)
                     }
                 }),
         };

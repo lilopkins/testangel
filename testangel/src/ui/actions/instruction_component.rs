@@ -151,7 +151,7 @@ impl FactoryComponent for InstructionComponent {
 
                                 connect_changed[sender, index] => move |entry| {
                                     sender.input(InstructionComponentInput::SetComment(entry.text().to_string()));
-                                    sender.output(InstructionComponentOutput::SetComment(index.clone(), entry.text().to_string()));
+                                    sender.output(InstructionComponentOutput::SetComment(index.clone(), entry.text().to_string())).unwrap();
                                 },
                             }
                         },
@@ -164,8 +164,8 @@ impl FactoryComponent for InstructionComponent {
 
                         connect_clicked[sender, index, config] => move |_| {
                             if index.clone().current_index() != 0 {
-                                sender.output(InstructionComponentOutput::Cut(index.clone()));
-                                sender.output(InstructionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone()));
+                                sender.output(InstructionComponentOutput::Cut(index.clone())).unwrap();
+                                sender.output(InstructionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone())).unwrap();
                             }
                         },
                     },
@@ -176,8 +176,8 @@ impl FactoryComponent for InstructionComponent {
                         set_height_request: 30,
 
                         connect_clicked[sender, index, config] => move |_| {
-                            sender.output(InstructionComponentOutput::Cut(index.clone()));
-                            sender.output(InstructionComponentOutput::Paste(index.clone().current_index() + 1, config.clone()));
+                            sender.output(InstructionComponentOutput::Cut(index.clone())).unwrap();
+                            sender.output(InstructionComponentOutput::Paste(index.clone().current_index() + 1, config.clone())).unwrap();
                         },
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
@@ -187,7 +187,7 @@ impl FactoryComponent for InstructionComponent {
                         set_height_request: 30,
 
                         connect_clicked[sender, index] => move |_| {
-                            sender.output(InstructionComponentOutput::Remove(index.clone()));
+                            sender.output(InstructionComponentOutput::Remove(index.clone())).unwrap();
                         },
                     },
                 },
@@ -229,7 +229,7 @@ impl FactoryComponent for InstructionComponent {
                             } else {
                                 1
                             };
-                            sender.output(InstructionComponentOutput::MoveStep(*from, to, offset));
+                            sender.output(InstructionComponentOutput::MoveStep(*from, to, offset)).unwrap();
                             sender.input(InstructionComponentInput::ProposedDrop { above: false, below: false, });
                             return true;
                         }
@@ -315,7 +315,7 @@ impl FactoryComponent for InstructionComponent {
                 sender_c.output(InstructionComponentOutput::ChangeRunCondition(
                     index.clone(),
                     InstructionParameterSource::Literal,
-                ));
+                )).unwrap();
                 log::warn!(
                     "Fixed bad pointing run condition! This fix should never have been called!"
                 );
@@ -344,7 +344,7 @@ impl FactoryComponent for InstructionComponent {
     fn init_widgets(
         &mut self,
         index: &Self::Index,
-        root: &Self::Root,
+        root: Self::Root,
         _returned_widget: &<Self::ParentWidget as relm4::factory::FactoryView>::ReturnedWidget,
         sender: relm4::FactorySender<Self>,
     ) -> Self::Widgets {
@@ -398,14 +398,14 @@ impl FactoryComponent for InstructionComponent {
                 sender.output(InstructionComponentOutput::ConfigUpdate(
                     self.step.clone(),
                     self.config.clone(),
-                ));
+                )).unwrap();
             }
             InstructionComponentInput::NewValueFor(idx, source) => {
                 self.config.parameter_values.insert(idx, source);
                 sender.output(InstructionComponentOutput::ConfigUpdate(
                     self.step.clone(),
                     self.config.clone(),
-                ));
+                )).unwrap();
             }
             InstructionComponentInput::ProposedDrop { above, below } => {
                 self.drop_proposed_above = above;
@@ -416,7 +416,7 @@ impl FactoryComponent for InstructionComponent {
                 sender.output(InstructionComponentOutput::ChangeRunCondition(
                     self.step.clone(),
                     src.clone(),
-                ));
+                )).unwrap();
             }
         }
     }

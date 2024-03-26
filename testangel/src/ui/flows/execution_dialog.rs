@@ -83,7 +83,7 @@ impl Component for ExecutionDialog {
 
     fn init(
         init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
         let model = ExecutionDialog;

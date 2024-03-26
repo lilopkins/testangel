@@ -83,7 +83,7 @@ pub enum VariableRowOutput<T, PS> {
 #[relm4::factory(pub)]
 impl<PS, I, T> FactoryComponent for VariableRow<PS, T, I>
 where
-    PS: ParameterSourceTrait + Debug + std::fmt::Display + PartialEq<PS> + Clone + 'static,
+    PS: ParameterSourceTrait + Debug + std::fmt::Display + Send + PartialEq<PS> + Clone + 'static,
     I: Debug + VariableRowParentInput<T, PS> + 'static,
     T: Clone + Debug + 'static,
 {
@@ -211,7 +211,7 @@ where
     fn init_widgets(
         &mut self,
         _index: &Self::Index,
-        root: &Self::Root,
+        root: Self::Root,
         _returned_widget: &<Self::ParentWidget as relm4::factory::FactoryView>::ReturnedWidget,
         _sender: FactorySender<Self>,
     ) -> Self::Widgets {
@@ -234,11 +234,11 @@ where
                 sender.output(VariableRowOutput::NewSourceFor(
                     self.idx.clone(),
                     new_source,
-                ));
+                )).unwrap();
             }
             VariableRowInput::ChangeValue(new_value) => {
                 self.value = new_value.clone();
-                sender.output(VariableRowOutput::NewValueFor(self.idx.clone(), new_value));
+                sender.output(VariableRowOutput::NewValueFor(self.idx.clone(), new_value)).unwrap();
             }
         }
         self.update_view(widgets, sender);
@@ -281,7 +281,7 @@ impl<PS: Debug + Clone + 'static> FactoryComponent for SourceSearchResult<PS> {
 
     fn update(&mut self, message: Self::Input, sender: FactorySender<Self>) {
         match message {
-            SourceSearchResultInput::Select => sender.output(self.source.clone()),
+            SourceSearchResultInput::Select => sender.output(self.source.clone()).unwrap(),
         }
     }
 }
