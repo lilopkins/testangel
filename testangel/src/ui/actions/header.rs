@@ -60,7 +60,7 @@ impl Component for ActionsHeader {
 
             #[local_ref]
             add_button -> gtk::MenuButton {
-                set_icon_name: "plus",
+                set_icon_name: relm4_icons::icon_names::PLUS,
                 set_tooltip: &lang::lookup("action-header-add"),
 
                 #[wrap(Some)]

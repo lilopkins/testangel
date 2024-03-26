@@ -85,7 +85,7 @@ impl Component for HeaderBarModel {
             },
 
             pack_end = &gtk::MenuButton {
-                set_icon_name: "menu",
+                set_icon_name: relm4_icons::icon_names::MENU,
                 set_tooltip: &lang::lookup("header-more"),
                 set_direction: gtk::ArrowType::Down,
 

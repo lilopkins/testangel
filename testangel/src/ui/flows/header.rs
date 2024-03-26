@@ -60,7 +60,7 @@ impl Component for FlowsHeader {
 
             #[local_ref]
             add_button -> gtk::MenuButton {
-                set_icon_name: "plus",
+                set_icon_name: relm4_icons::icon_names::PLUS,
                 set_tooltip: &lang::lookup("flow-header-add"),
 
                 #[wrap(Some)]
@@ -98,7 +98,7 @@ impl Component for FlowsHeader {
                 },
             },
             gtk::Button {
-                set_icon_name: "play",
+                set_icon_name: relm4_icons::icon_names::PLAY,
                 set_tooltip: &lang::lookup("flow-header-run"),
                 #[watch]
                 set_sensitive: model.flow_open,

@@ -26,6 +26,11 @@ pub fn initialise_ui() {
     let app = RelmApp::new("uk.hpkns.testangel");
     relm4_icons::initialize_icons();
 
+    let display = gtk::gdk::Display::default().unwrap();
+    let theme = gtk::IconTheme::for_display(&display);
+    theme.add_resource_path("/uk/hpkns/testangel/icons/");
+    theme.add_resource_path("/uk/hpkns/testangel/icons/scalable/actions/");
+
     let engines = Arc::new(ipc::get_engines());
     let actions = Arc::new(action_loader::get_actions(engines.clone()));
     app.run::<AppModel>(AppInit { engines, actions });
@@ -144,7 +149,7 @@ impl Component for AppModel {
             model.flows.widget(),
             Some("flows"),
             &lang::lookup("tab-flows"),
-            "papyrus-vertical",
+            relm4_icons::icon_names::PAPYRUS_VERTICAL,
         );
         if !std::env::var("TA_HIDE_ACTION_EDITOR")
             .unwrap_or("no".to_string())
@@ -154,7 +159,7 @@ impl Component for AppModel {
                 model.actions.widget(),
                 Some("actions"),
                 &lang::lookup("tab-actions"),
-                "puzzle-piece",
+                relm4_icons::icon_names::PUZZLE_PIECE,
             );
         }
 
