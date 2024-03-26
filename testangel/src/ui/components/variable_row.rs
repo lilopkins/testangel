@@ -147,7 +147,7 @@ where
                 },
 
                 gtk::MenuButton {
-                    set_icon_name: relm4_icons::icon_name::EDIT,
+                    set_icon_name: "edit",
                     set_tooltip_text: Some(&lang::lookup("variable-row-edit-param")),
                     set_css_classes: &["flat"],
                     set_direction: gtk::ArrowType::Left,

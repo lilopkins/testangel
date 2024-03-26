@@ -90,7 +90,7 @@ pub fn save_report<P: AsRef<Path>>(
                 let mut data = vec![];
                 img.write_to(
                     &mut BufWriter::new(Cursor::new(&mut data)),
-                    image::ImageOutputFormat::Png,
+                    image::ImageFormat::Png,
                 )
                 .map_err(ReportGenerationError::FailedToGenerateImage)?;
 

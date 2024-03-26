@@ -328,7 +328,7 @@ impl Component for FlowsModel {
                     adw::StatusPage {
                         set_title: &lang::lookup("nothing-open"),
                         set_description: Some(&lang::lookup("flow-nothing-open-description")),
-                        set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
+                        set_icon_name: Some("lightbulb"),
                         #[watch]
                         set_visible: model.open_flow.is_none(),
                         set_vexpand: true,

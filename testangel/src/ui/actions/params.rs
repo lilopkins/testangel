@@ -216,7 +216,7 @@ impl FactoryComponent for ParamRow {
 
             // move up
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::UP,
+                set_icon_name: "up",
                 set_tooltip: &lang::lookup("move-up"),
                 connect_clicked[index, sender] => move |_| {
                     sender.output(ParamRowOutput::MoveUp(index.clone()));
@@ -224,7 +224,7 @@ impl FactoryComponent for ParamRow {
             },
             // move down
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::DOWN,
+                set_icon_name: "down",
                 set_tooltip: &lang::lookup("move-down"),
                 connect_clicked[index, sender] => move |_| {
                     sender.output(ParamRowOutput::MoveDown(index.clone()));
@@ -232,7 +232,7 @@ impl FactoryComponent for ParamRow {
             },
             // delete
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::X_CIRCULAR,
+                set_icon_name: "x-circular",
                 set_tooltip: &lang::lookup("delete"),
                 connect_clicked[index, sender] => move |_| {
                     sender.output(ParamRowOutput::Delete(index.clone()));
