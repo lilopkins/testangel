@@ -11,6 +11,8 @@ use testangel::{
     types::{ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
 };
 
+use crate::ui::flows::action_component::ActionComponentOutput;
+
 use super::{file_filters, lang};
 
 mod action_component;
@@ -371,7 +373,21 @@ impl Component for FlowsModel {
             needs_saving: false,
             execution_dialog: None,
             header,
-            live_actions_list: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
+            live_actions_list: FactoryVecDeque::builder()
+                .launch(gtk::Box::default())
+                .forward(sender.input_sender(), |output| match output {
+                    ActionComponentOutput::Remove(idx) => Some(FlowInputs::RemoveStep(idx)),
+                    ActionComponentOutput::Cut(idx) => Some(FlowInputs::CutStep(idx)),
+                    ActionComponentOutput::Paste(idx, step) => {
+                        Some(FlowInputs::PasteStep(idx, step))
+                    }
+                    ActionComponentOutput::ConfigUpdate(step, config) => {
+                        Some(FlowInputs::ConfigUpdate(step, config))
+                    }
+                    ActionComponentOutput::MoveStep(from, to, offset) => {
+                        Some(FlowInputs::MoveStep(from, to, offset))
+                    }
+                }),
         };
 
         // Trigger update actions from model

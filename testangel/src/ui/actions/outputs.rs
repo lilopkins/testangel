@@ -68,13 +68,12 @@ impl Component for ActionOutputs {
     ) -> relm4::ComponentParts<Self> {
         let model = ActionOutputs {
             raw_outputs: vec![],
-            outputs: FactoryVecDeque::new(
-                gtk::Box::builder()
+            outputs: FactoryVecDeque::builder()
+                .launch(gtk::Box::builder()
                     .orientation(gtk::Orientation::Vertical)
                     .spacing(5)
-                    .build(),
-                sender.input_sender(),
-            ),
+                    .build())
+                .forward(sender.input_sender(), ActionOutputsInput::_FromRow),
             possible_sources: vec![],
         };
         let widgets = view_output!();
@@ -199,7 +198,6 @@ impl FactoryComponent for OutputRow {
     type Input = OutputRowInput;
     type Output = OutputRowOutput;
     type CommandOutput = ();
-    type ParentInput = ActionOutputsInput;
     type ParentWidget = gtk::Box;
 
     view! {
@@ -341,9 +339,5 @@ impl FactoryComponent for OutputRow {
                 sender.output(OutputRowOutput::SetOutputSource(index.clone(), source));
             }
         }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        Some(ActionOutputsInput::_FromRow(output))
     }
 }

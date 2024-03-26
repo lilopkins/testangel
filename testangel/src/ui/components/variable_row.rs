@@ -92,7 +92,6 @@ where
     type Output = VariableRowOutput<T, PS>;
     type CommandOutput = ();
     type ParentWidget = adw::PreferencesGroup;
-    type ParentInput = I;
 
     view! {
         adw::ActionRow {
@@ -177,7 +176,9 @@ where
         sender: relm4::FactorySender<Self>,
     ) -> Self {
         let mut potential_sources =
-            FactoryVecDeque::new(gtk::Box::default(), sender.input_sender());
+            FactoryVecDeque::builder()
+            .launch(gtk::Box::default())
+            .forward(sender.input_sender(), VariableRowInput::SourceSelected);
         {
             // populate sources
             let mut potential_sources = potential_sources.guard();
@@ -242,13 +243,6 @@ where
         }
         self.update_view(widgets, sender);
     }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        match output {
-            VariableRowOutput::NewSourceFor(idx, source) => Some(I::new_source_for(idx, source)),
-            VariableRowOutput::NewValueFor(idx, value) => Some(I::new_value_for(idx, value)),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -269,7 +263,6 @@ impl<PS: Debug + Clone + 'static> FactoryComponent for SourceSearchResult<PS> {
     type Output = PS;
     type CommandOutput = ();
     type ParentWidget = gtk::Box;
-    type ParentInput = VariableRowInput<PS>;
 
     view! {
         root = gtk::Button::builder().css_classes(["flat"]).build() {
@@ -290,9 +283,5 @@ impl<PS: Debug + Clone + 'static> FactoryComponent for SourceSearchResult<PS> {
         match message {
             SourceSearchResultInput::Select => sender.output(self.source.clone()),
         }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        Some(VariableRowInput::SourceSelected(output))
     }
 }

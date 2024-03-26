@@ -13,7 +13,7 @@ use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
 use crate::ui::{
     components::variable_row::{
-        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
+        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowOutput, VariableRowParentInput
     },
     lang,
 };
@@ -82,7 +82,6 @@ impl FactoryComponent for ActionComponent {
     type Input = ActionComponentInput;
     type Output = ActionComponentOutput;
     type CommandOutput = ();
-    type ParentInput = super::FlowInputs;
     type ParentWidget = gtk::Box;
 
     view! {
@@ -250,10 +249,12 @@ impl FactoryComponent for ActionComponent {
             config,
             action,
             visible: true,
-            variable_rows: FactoryVecDeque::new(
-                adw::PreferencesGroup::default(),
-                sender.input_sender(),
-            ),
+            variable_rows: FactoryVecDeque::builder()
+                .launch(adw::PreferencesGroup::default())
+                .forward(sender.input_sender(), |output| match output {
+                    VariableRowOutput::NewSourceFor(idx, source) => ActionComponentInput::NewSourceFor(idx, source),
+                    VariableRowOutput::NewValueFor(idx, value) => ActionComponentInput::NewValueFor(idx, value),
+                }),
             drop_proposed_above: false,
             drop_proposed_below: false,
         }
@@ -323,22 +324,6 @@ impl FactoryComponent for ActionComponent {
             ActionComponentInput::ProposedDrop { above, below } => {
                 self.drop_proposed_above = above;
                 self.drop_proposed_below = below;
-            }
-        }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        match output {
-            ActionComponentOutput::Remove(idx) => Some(super::FlowInputs::RemoveStep(idx)),
-            ActionComponentOutput::Cut(idx) => Some(super::FlowInputs::CutStep(idx)),
-            ActionComponentOutput::Paste(idx, step) => {
-                Some(super::FlowInputs::PasteStep(idx, step))
-            }
-            ActionComponentOutput::ConfigUpdate(step, config) => {
-                Some(super::FlowInputs::ConfigUpdate(step, config))
-            }
-            ActionComponentOutput::MoveStep(from, to, offset) => {
-                Some(super::FlowInputs::MoveStep(from, to, offset))
             }
         }
     }

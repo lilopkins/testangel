@@ -65,13 +65,12 @@ impl Component for ActionParams {
     ) -> relm4::ComponentParts<Self> {
         let model = ActionParams {
             raw_params: vec![],
-            params: FactoryVecDeque::new(
-                gtk::Box::builder()
+            params: FactoryVecDeque::builder()
+                .launch(gtk::Box::builder()
                     .orientation(gtk::Orientation::Vertical)
                     .spacing(5)
-                    .build(),
-                sender.input_sender(),
-            ),
+                    .build())
+                .forward(sender.input_sender(), ActionParamsInput::_FromRow),
         };
         let widgets = view_output!();
 
@@ -183,7 +182,6 @@ impl FactoryComponent for ParamRow {
     type Input = ();
     type Output = ParamRowOutput;
     type CommandOutput = ();
-    type ParentInput = ActionParamsInput;
     type ParentWidget = gtk::Box;
 
     view! {
@@ -262,9 +260,5 @@ impl FactoryComponent for ParamRow {
                 kind_index: gtk::INVALID_LIST_POSITION,
             }
         }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        Some(ActionParamsInput::_FromRow(output))
     }
 }

@@ -13,7 +13,7 @@ use testangel_ipc::prelude::{Instruction, ParameterKind, ParameterValue};
 
 use crate::ui::{
     components::variable_row::{
-        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
+        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowOutput, VariableRowParentInput
     },
     lang,
 };
@@ -89,7 +89,6 @@ impl FactoryComponent for InstructionComponent {
     type Input = InstructionComponentInput;
     type Output = InstructionComponentOutput;
     type CommandOutput = ();
-    type ParentInput = super::ActionInputs;
     type ParentWidget = gtk::Box;
 
     view! {
@@ -331,10 +330,12 @@ impl FactoryComponent for InstructionComponent {
             config,
             instruction,
             visible: true,
-            variable_rows: FactoryVecDeque::new(
-                adw::PreferencesGroup::default(),
-                sender.input_sender(),
-            ),
+            variable_rows: FactoryVecDeque::builder()
+                .launch(adw::PreferencesGroup::default())
+                .forward(sender.input_sender(), |output| match output {
+                    VariableRowOutput::NewSourceFor(idx, source) => InstructionComponentInput::NewSourceFor(idx, source),
+                    VariableRowOutput::NewValueFor(idx, value) => InstructionComponentInput::NewValueFor(idx, value),
+                }),
             drop_proposed_above: false,
             drop_proposed_below: false,
         }
@@ -416,28 +417,6 @@ impl FactoryComponent for InstructionComponent {
                     self.step.clone(),
                     src.clone(),
                 ));
-            }
-        }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        match output {
-            InstructionComponentOutput::Remove(idx) => Some(super::ActionInputs::RemoveStep(idx)),
-            InstructionComponentOutput::Cut(idx) => Some(super::ActionInputs::CutStep(idx)),
-            InstructionComponentOutput::Paste(idx, step) => {
-                Some(super::ActionInputs::PasteStep(idx, step))
-            }
-            InstructionComponentOutput::ConfigUpdate(step, config) => {
-                Some(super::ActionInputs::ConfigUpdate(step, config))
-            }
-            InstructionComponentOutput::MoveStep(from, to, offset) => {
-                Some(super::ActionInputs::MoveStep(from, to, offset))
-            }
-            InstructionComponentOutput::ChangeRunCondition(step, new_condition) => {
-                Some(super::ActionInputs::ChangeRunCondition(step, new_condition))
-            }
-            InstructionComponentOutput::SetComment(idx, comment) => {
-                Some(super::ActionInputs::SetComment(idx, comment))
             }
         }
     }

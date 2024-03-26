@@ -7,7 +7,7 @@ use relm4::{
 use testangel::action_loader::ActionMap;
 
 use crate::ui::{
-    components::add_step_factory::{AddStepInit, AddStepResult, AddStepTrait},
+    components::add_step_factory::{AddStepInit, AddStepResult},
     lang,
 };
 
@@ -16,7 +16,7 @@ pub struct FlowsHeader {
     action_map: Arc<ActionMap>,
     add_button: gtk::MenuButton,
     flow_open: bool,
-    search_results: FactoryVecDeque<AddStepResult<FlowsHeaderInput>>,
+    search_results: FactoryVecDeque<AddStepResult>,
 }
 
 #[derive(Debug)]
@@ -43,12 +43,6 @@ pub enum FlowsHeaderInput {
     ChangeFlowOpen(bool),
     /// Ask this to output the provided event
     PleaseOutput(FlowsHeaderOutput),
-}
-
-impl AddStepTrait for FlowsHeaderInput {
-    fn add_step(value: String) -> Self {
-        Self::AddStep(value)
-    }
 }
 
 #[relm4::component(pub)]
@@ -125,7 +119,9 @@ impl Component for FlowsHeader {
             action_map: init,
             flow_open: false,
             add_button: gtk::MenuButton::default(),
-            search_results: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
+            search_results: FactoryVecDeque::builder()
+                .launch(gtk::Box::default())
+                .forward(sender.input_sender(), FlowsHeaderInput::AddStep),
         };
         // Reset search results
         sender.input(FlowsHeaderInput::SearchForSteps(String::new()));
