@@ -13,7 +13,8 @@ use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
 use crate::ui::{
     components::variable_row::{
-        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
+        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowOutput,
+        VariableRowParentInput,
     },
     lang,
 };
@@ -82,7 +83,6 @@ impl FactoryComponent for ActionComponent {
     type Input = ActionComponentInput;
     type Output = ActionComponentOutput;
     type CommandOutput = ();
-    type ParentInput = super::FlowInputs;
     type ParentWidget = gtk::Box;
 
     view! {
@@ -118,37 +118,37 @@ impl FactoryComponent for ActionComponent {
                     set_spacing: 5,
 
                     gtk::Button::builder().css_classes(["flat"]).build() {
-                        set_icon_name: relm4_icons::icon_name::UP,
+                        set_icon_name: relm4_icons::icon_names::UP,
                         set_tooltip: &lang::lookup("move-up"),
                         set_valign: gtk::Align::Start,
                         set_height_request: 30,
 
                         connect_clicked[sender, index, config] => move |_| {
                             if index.clone().current_index() != 0 {
-                                sender.output(ActionComponentOutput::Cut(index.clone()));
-                                sender.output(ActionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone()));
+                                sender.output(ActionComponentOutput::Cut(index.clone())).unwrap();
+                                sender.output(ActionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone())).unwrap();
                             }
                         },
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
-                        set_icon_name: relm4_icons::icon_name::DOWN,
+                        set_icon_name: relm4_icons::icon_names::DOWN,
                         set_tooltip: &lang::lookup("move-down"),
                         set_valign: gtk::Align::Start,
                         set_height_request: 30,
 
                         connect_clicked[sender, index, config] => move |_| {
-                            sender.output(ActionComponentOutput::Cut(index.clone()));
-                            sender.output(ActionComponentOutput::Paste(index.clone().current_index() + 1, config.clone()));
+                            sender.output(ActionComponentOutput::Cut(index.clone())).unwrap();
+                            sender.output(ActionComponentOutput::Paste(index.clone().current_index() + 1, config.clone())).unwrap();
                         },
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
-                        set_icon_name: relm4_icons::icon_name::X_CIRCULAR,
+                        set_icon_name: relm4_icons::icon_names::X_CIRCULAR,
                         set_tooltip: &lang::lookup("delete-step"),
                         set_valign: gtk::Align::Start,
                         set_height_request: 30,
 
                         connect_clicked[sender, index] => move |_| {
-                            sender.output(ActionComponentOutput::Remove(index.clone()));
+                            sender.output(ActionComponentOutput::Remove(index.clone())).unwrap();
                         },
                     },
                 },
@@ -190,7 +190,7 @@ impl FactoryComponent for ActionComponent {
                             } else {
                                 1
                             };
-                            sender.output(ActionComponentOutput::MoveStep(*from, to, offset));
+                            sender.output(ActionComponentOutput::MoveStep(*from, to, offset)).unwrap();
                             sender.input(ActionComponentInput::ProposedDrop { above: false, below: false, });
                             return true;
                         }
@@ -250,10 +250,16 @@ impl FactoryComponent for ActionComponent {
             config,
             action,
             visible: true,
-            variable_rows: FactoryVecDeque::new(
-                adw::PreferencesGroup::default(),
-                sender.input_sender(),
-            ),
+            variable_rows: FactoryVecDeque::builder()
+                .launch(adw::PreferencesGroup::default())
+                .forward(sender.input_sender(), |output| match output {
+                    VariableRowOutput::NewSourceFor(idx, source) => {
+                        ActionComponentInput::NewSourceFor(idx, source)
+                    }
+                    VariableRowOutput::NewValueFor(idx, value) => {
+                        ActionComponentInput::NewValueFor(idx, value)
+                    }
+                }),
             drop_proposed_above: false,
             drop_proposed_below: false,
         }
@@ -262,7 +268,7 @@ impl FactoryComponent for ActionComponent {
     fn init_widgets(
         &mut self,
         index: &Self::Index,
-        root: &Self::Root,
+        root: Self::Root,
         _returned_widget: &<Self::ParentWidget as relm4::factory::FactoryView>::ReturnedWidget,
         sender: relm4::FactorySender<Self>,
     ) -> Self::Widgets {
@@ -308,37 +314,25 @@ impl FactoryComponent for ActionComponent {
             ActionComponentInput::SetVisible(to) => self.visible = to,
             ActionComponentInput::NewSourceFor(idx, source) => {
                 self.config.parameter_sources.insert(idx, source);
-                sender.output(ActionComponentOutput::ConfigUpdate(
-                    self.step.clone(),
-                    self.config.clone(),
-                ));
+                sender
+                    .output(ActionComponentOutput::ConfigUpdate(
+                        self.step.clone(),
+                        self.config.clone(),
+                    ))
+                    .unwrap();
             }
             ActionComponentInput::NewValueFor(idx, source) => {
                 self.config.parameter_values.insert(idx, source);
-                sender.output(ActionComponentOutput::ConfigUpdate(
-                    self.step.clone(),
-                    self.config.clone(),
-                ));
+                sender
+                    .output(ActionComponentOutput::ConfigUpdate(
+                        self.step.clone(),
+                        self.config.clone(),
+                    ))
+                    .unwrap();
             }
             ActionComponentInput::ProposedDrop { above, below } => {
                 self.drop_proposed_above = above;
                 self.drop_proposed_below = below;
-            }
-        }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        match output {
-            ActionComponentOutput::Remove(idx) => Some(super::FlowInputs::RemoveStep(idx)),
-            ActionComponentOutput::Cut(idx) => Some(super::FlowInputs::CutStep(idx)),
-            ActionComponentOutput::Paste(idx, step) => {
-                Some(super::FlowInputs::PasteStep(idx, step))
-            }
-            ActionComponentOutput::ConfigUpdate(step, config) => {
-                Some(super::FlowInputs::ConfigUpdate(step, config))
-            }
-            ActionComponentOutput::MoveStep(from, to, offset) => {
-                Some(super::FlowInputs::MoveStep(from, to, offset))
             }
         }
     }

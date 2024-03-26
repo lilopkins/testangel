@@ -13,7 +13,8 @@ use testangel_ipc::prelude::{Instruction, ParameterKind, ParameterValue};
 
 use crate::ui::{
     components::variable_row::{
-        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowParentInput,
+        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowOutput,
+        VariableRowParentInput,
     },
     lang,
 };
@@ -89,7 +90,6 @@ impl FactoryComponent for InstructionComponent {
     type Input = InstructionComponentInput;
     type Output = InstructionComponentOutput;
     type CommandOutput = ();
-    type ParentInput = super::ActionInputs;
     type ParentWidget = gtk::Box;
 
     view! {
@@ -140,7 +140,7 @@ impl FactoryComponent for InstructionComponent {
                         },
                     },
                     gtk::MenuButton::builder().css_classes(["flat"]).build() {
-                        set_icon_name: relm4_icons::icon_name::TAG,
+                        set_icon_name: relm4_icons::icon_names::TAG,
                         set_tooltip: &lang::lookup("action-step-set-comment"),
                         set_valign: gtk::Align::Start,
                         set_height_request: 30,
@@ -152,43 +152,43 @@ impl FactoryComponent for InstructionComponent {
 
                                 connect_changed[sender, index] => move |entry| {
                                     sender.input(InstructionComponentInput::SetComment(entry.text().to_string()));
-                                    sender.output(InstructionComponentOutput::SetComment(index.clone(), entry.text().to_string()));
+                                    sender.output(InstructionComponentOutput::SetComment(index.clone(), entry.text().to_string())).unwrap();
                                 },
                             }
                         },
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
-                        set_icon_name: relm4_icons::icon_name::UP,
+                        set_icon_name: relm4_icons::icon_names::UP,
                         set_tooltip: &lang::lookup("move-up"),
                         set_valign: gtk::Align::Start,
                         set_height_request: 30,
 
                         connect_clicked[sender, index, config] => move |_| {
                             if index.clone().current_index() != 0 {
-                                sender.output(InstructionComponentOutput::Cut(index.clone()));
-                                sender.output(InstructionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone()));
+                                sender.output(InstructionComponentOutput::Cut(index.clone())).unwrap();
+                                sender.output(InstructionComponentOutput::Paste((index.clone().current_index() - 1).max(0), config.clone())).unwrap();
                             }
                         },
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
-                        set_icon_name: relm4_icons::icon_name::DOWN,
+                        set_icon_name: relm4_icons::icon_names::DOWN,
                         set_tooltip: &lang::lookup("move-down"),
                         set_valign: gtk::Align::Start,
                         set_height_request: 30,
 
                         connect_clicked[sender, index, config] => move |_| {
-                            sender.output(InstructionComponentOutput::Cut(index.clone()));
-                            sender.output(InstructionComponentOutput::Paste(index.clone().current_index() + 1, config.clone()));
+                            sender.output(InstructionComponentOutput::Cut(index.clone())).unwrap();
+                            sender.output(InstructionComponentOutput::Paste(index.clone().current_index() + 1, config.clone())).unwrap();
                         },
                     },
                     gtk::Button::builder().css_classes(["flat"]).build() {
-                        set_icon_name: relm4_icons::icon_name::X_CIRCULAR,
+                        set_icon_name: relm4_icons::icon_names::X_CIRCULAR,
                         set_tooltip: &lang::lookup("delete-step"),
                         set_valign: gtk::Align::Start,
                         set_height_request: 30,
 
                         connect_clicked[sender, index] => move |_| {
-                            sender.output(InstructionComponentOutput::Remove(index.clone()));
+                            sender.output(InstructionComponentOutput::Remove(index.clone())).unwrap();
                         },
                     },
                 },
@@ -230,7 +230,7 @@ impl FactoryComponent for InstructionComponent {
                             } else {
                                 1
                             };
-                            sender.output(InstructionComponentOutput::MoveStep(*from, to, offset));
+                            sender.output(InstructionComponentOutput::MoveStep(*from, to, offset)).unwrap();
                             sender.input(InstructionComponentInput::ProposedDrop { above: false, below: false, });
                             return true;
                         }
@@ -313,10 +313,12 @@ impl FactoryComponent for InstructionComponent {
             .map(|(idx, _)| idx)
             .unwrap_or_else(|| {
                 // fix a potentially very broken situation
-                sender_c.output(InstructionComponentOutput::ChangeRunCondition(
-                    index.clone(),
-                    InstructionParameterSource::Literal,
-                ));
+                sender_c
+                    .output(InstructionComponentOutput::ChangeRunCondition(
+                        index.clone(),
+                        InstructionParameterSource::Literal,
+                    ))
+                    .unwrap();
                 log::warn!(
                     "Fixed bad pointing run condition! This fix should never have been called!"
                 );
@@ -331,10 +333,16 @@ impl FactoryComponent for InstructionComponent {
             config,
             instruction,
             visible: true,
-            variable_rows: FactoryVecDeque::new(
-                adw::PreferencesGroup::default(),
-                sender.input_sender(),
-            ),
+            variable_rows: FactoryVecDeque::builder()
+                .launch(adw::PreferencesGroup::default())
+                .forward(sender.input_sender(), |output| match output {
+                    VariableRowOutput::NewSourceFor(idx, source) => {
+                        InstructionComponentInput::NewSourceFor(idx, source)
+                    }
+                    VariableRowOutput::NewValueFor(idx, value) => {
+                        InstructionComponentInput::NewValueFor(idx, value)
+                    }
+                }),
             drop_proposed_above: false,
             drop_proposed_below: false,
         }
@@ -343,7 +351,7 @@ impl FactoryComponent for InstructionComponent {
     fn init_widgets(
         &mut self,
         index: &Self::Index,
-        root: &Self::Root,
+        root: Self::Root,
         _returned_widget: &<Self::ParentWidget as relm4::factory::FactoryView>::ReturnedWidget,
         sender: relm4::FactorySender<Self>,
     ) -> Self::Widgets {
@@ -394,17 +402,21 @@ impl FactoryComponent for InstructionComponent {
             }
             InstructionComponentInput::NewSourceFor(idx, source) => {
                 self.config.parameter_sources.insert(idx, source);
-                sender.output(InstructionComponentOutput::ConfigUpdate(
-                    self.step.clone(),
-                    self.config.clone(),
-                ));
+                sender
+                    .output(InstructionComponentOutput::ConfigUpdate(
+                        self.step.clone(),
+                        self.config.clone(),
+                    ))
+                    .unwrap();
             }
             InstructionComponentInput::NewValueFor(idx, source) => {
                 self.config.parameter_values.insert(idx, source);
-                sender.output(InstructionComponentOutput::ConfigUpdate(
-                    self.step.clone(),
-                    self.config.clone(),
-                ));
+                sender
+                    .output(InstructionComponentOutput::ConfigUpdate(
+                        self.step.clone(),
+                        self.config.clone(),
+                    ))
+                    .unwrap();
             }
             InstructionComponentInput::ProposedDrop { above, below } => {
                 self.drop_proposed_above = above;
@@ -412,32 +424,12 @@ impl FactoryComponent for InstructionComponent {
             }
             InstructionComponentInput::ChangeRunCondition(idx) => {
                 let (_, src) = &self.possible_run_conditions[idx as usize];
-                sender.output(InstructionComponentOutput::ChangeRunCondition(
-                    self.step.clone(),
-                    src.clone(),
-                ));
-            }
-        }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        match output {
-            InstructionComponentOutput::Remove(idx) => Some(super::ActionInputs::RemoveStep(idx)),
-            InstructionComponentOutput::Cut(idx) => Some(super::ActionInputs::CutStep(idx)),
-            InstructionComponentOutput::Paste(idx, step) => {
-                Some(super::ActionInputs::PasteStep(idx, step))
-            }
-            InstructionComponentOutput::ConfigUpdate(step, config) => {
-                Some(super::ActionInputs::ConfigUpdate(step, config))
-            }
-            InstructionComponentOutput::MoveStep(from, to, offset) => {
-                Some(super::ActionInputs::MoveStep(from, to, offset))
-            }
-            InstructionComponentOutput::ChangeRunCondition(step, new_condition) => {
-                Some(super::ActionInputs::ChangeRunCondition(step, new_condition))
-            }
-            InstructionComponentOutput::SetComment(idx, comment) => {
-                Some(super::ActionInputs::SetComment(idx, comment))
+                sender
+                    .output(InstructionComponentOutput::ChangeRunCondition(
+                        self.step.clone(),
+                        src.clone(),
+                    ))
+                    .unwrap();
             }
         }
     }

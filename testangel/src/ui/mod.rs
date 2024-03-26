@@ -23,22 +23,17 @@ pub(crate) mod lang;
 /// Initialise and open the UI.
 pub fn initialise_ui() {
     log::info!("Starting Next UI...");
-    let app = RelmApp::new("lilopkins.testangel");
+    let app = RelmApp::new("uk.hpkns.testangel");
     relm4_icons::initialize_icons();
-    initialise_icons();
+
+    let display = gtk::gdk::Display::default().unwrap();
+    let theme = gtk::IconTheme::for_display(&display);
+    theme.add_resource_path("/uk/hpkns/testangel/icons/");
+    theme.add_resource_path("/uk/hpkns/testangel/icons/scalable/actions/");
 
     let engines = Arc::new(ipc::get_engines());
     let actions = Arc::new(action_loader::get_actions(engines.clone()));
     app.run::<AppModel>(AppInit { engines, actions });
-}
-
-fn initialise_icons() {
-    relm4::gtk::gio::resources_register_include!("icons.gresource").unwrap();
-    log::info!("Loaded icon bundle.");
-
-    let display = relm4::gtk::gdk::Display::default().unwrap();
-    let theme = gtk::IconTheme::for_display(&display);
-    theme.add_resource_path("/uk/hpkns/testangel/icons");
 }
 
 pub struct AppInit {
@@ -102,7 +97,7 @@ impl Component for AppModel {
 
     fn init(
         init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
         // Initialise the sub-components (pages)
@@ -154,7 +149,7 @@ impl Component for AppModel {
             model.flows.widget(),
             Some("flows"),
             &lang::lookup("tab-flows"),
-            relm4_icons::icon_name::PAPYRUS_VERTICAL,
+            relm4_icons::icon_names::PAPYRUS_VERTICAL,
         );
         if !std::env::var("TA_HIDE_ACTION_EDITOR")
             .unwrap_or("no".to_string())
@@ -164,7 +159,7 @@ impl Component for AppModel {
                 model.actions.widget(),
                 Some("actions"),
                 &lang::lookup("tab-actions"),
-                relm4_icons::icon_name::PUZZLE_PIECE,
+                relm4_icons::icon_names::PUZZLE_PIECE,
             );
         }
 

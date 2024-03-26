@@ -59,12 +59,7 @@ pub(crate) fn lookup<S>(text_id: S) -> String
 where
     S: AsRef<str> + Display,
 {
-    LOCALES
-        .lookup(&current_locale(), text_id.as_ref())
-        .unwrap_or_else(|| {
-            log::warn!("Missing translation for {text_id}");
-            text_id.as_ref().to_string()
-        })
+    LOCALES.lookup(&current_locale(), text_id.as_ref())
 }
 
 /// Lookup a string with args
@@ -73,10 +68,5 @@ where
     S: AsRef<str> + Display,
     K: AsRef<str>,
 {
-    LOCALES
-        .lookup_with_args(&current_locale(), text_id.as_ref(), &args)
-        .unwrap_or_else(|| {
-            log::warn!("Missing translation for {text_id}");
-            text_id.as_ref().to_string()
-        })
+    LOCALES.lookup_with_args(&current_locale(), text_id.as_ref(), &args)
 }

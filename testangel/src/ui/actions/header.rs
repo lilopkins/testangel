@@ -7,7 +7,7 @@ use relm4::{
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
 use crate::ui::{
-    components::add_step_factory::{AddStepInit, AddStepResult, AddStepTrait},
+    components::add_step_factory::{AddStepInit, AddStepResult},
     lang,
 };
 
@@ -17,7 +17,7 @@ pub struct ActionsHeader {
     engine_list: Arc<EngineList>,
     add_button: gtk::MenuButton,
     action_open: bool,
-    search_results: FactoryVecDeque<AddStepResult<ActionsHeaderInput>>,
+    search_results: FactoryVecDeque<AddStepResult>,
 }
 
 #[derive(Debug)]
@@ -45,12 +45,6 @@ pub enum ActionsHeaderInput {
     PleaseOutput(ActionsHeaderOutput),
 }
 
-impl AddStepTrait for ActionsHeaderInput {
-    fn add_step(value: String) -> Self {
-        Self::AddStep(value)
-    }
-}
-
 #[relm4::component(pub)]
 impl Component for ActionsHeader {
     type Init = (Arc<EngineList>, Arc<ActionMap>);
@@ -66,7 +60,7 @@ impl Component for ActionsHeader {
 
             #[local_ref]
             add_button -> gtk::MenuButton {
-                set_icon_name: relm4_icons::icon_name::PLUS,
+                set_icon_name: relm4_icons::icon_names::PLUS,
                 set_tooltip: &lang::lookup("action-header-add"),
 
                 #[wrap(Some)]
@@ -108,7 +102,7 @@ impl Component for ActionsHeader {
 
     fn init(
         init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = ActionsHeader {
@@ -116,7 +110,9 @@ impl Component for ActionsHeader {
             action_map: init.1,
             action_open: false,
             add_button: gtk::MenuButton::default(),
-            search_results: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
+            search_results: FactoryVecDeque::builder()
+                .launch(gtk::Box::default())
+                .forward(sender.input_sender(), ActionsHeaderInput::AddStep),
         };
         // Reset search results
         sender.input(ActionsHeaderInput::SearchForSteps(String::new()));

@@ -11,6 +11,8 @@ use testangel::{
     types::{ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
 };
 
+use crate::ui::flows::action_component::ActionComponentOutput;
+
 use super::{file_filters, lang};
 
 mod action_component;
@@ -328,7 +330,7 @@ impl Component for FlowsModel {
                     adw::StatusPage {
                         set_title: &lang::lookup("nothing-open"),
                         set_description: Some(&lang::lookup("flow-nothing-open-description")),
-                        set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
+                        set_icon_name: Some(relm4_icons::icon_names::LIGHTBULB),
                         #[watch]
                         set_visible: model.open_flow.is_none(),
                         set_vexpand: true,
@@ -346,7 +348,7 @@ impl Component for FlowsModel {
 
     fn init(
         init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let header = Rc::new(
@@ -371,7 +373,19 @@ impl Component for FlowsModel {
             needs_saving: false,
             execution_dialog: None,
             header,
-            live_actions_list: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
+            live_actions_list: FactoryVecDeque::builder()
+                .launch(gtk::Box::default())
+                .forward(sender.input_sender(), |output| match output {
+                    ActionComponentOutput::Remove(idx) => FlowInputs::RemoveStep(idx),
+                    ActionComponentOutput::Cut(idx) => FlowInputs::CutStep(idx),
+                    ActionComponentOutput::Paste(idx, step) => FlowInputs::PasteStep(idx, step),
+                    ActionComponentOutput::ConfigUpdate(step, config) => {
+                        FlowInputs::ConfigUpdate(step, config)
+                    }
+                    ActionComponentOutput::MoveStep(from, to, offset) => {
+                        FlowInputs::MoveStep(from, to, offset)
+                    }
+                }),
         };
 
         // Trigger update actions from model

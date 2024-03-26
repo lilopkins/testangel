@@ -12,6 +12,8 @@ use testangel::{
 };
 use testangel_ipc::prelude::ParameterKind;
 
+use crate::ui::actions::instruction_component::InstructionComponentOutput;
+
 use super::{file_filters, lang};
 
 pub mod header;
@@ -358,7 +360,7 @@ impl Component for ActionsModel {
                     adw::StatusPage {
                         set_title: &lang::lookup("nothing-open"),
                         set_description: Some(&lang::lookup("action-nothing-open-description")),
-                        set_icon_name: Some(relm4_icons::icon_name::LIGHTBULB),
+                        set_icon_name: Some(relm4_icons::icon_names::LIGHTBULB),
                         set_vexpand: true,
                     }
                 } else {
@@ -398,7 +400,7 @@ impl Component for ActionsModel {
 
     fn init(
         init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let header = Rc::new(
@@ -421,10 +423,27 @@ impl Component for ActionsModel {
             open_path: None,
             needs_saving: false,
             header,
-            live_instructions_list: FactoryVecDeque::new(
-                gtk::Box::default(),
-                sender.input_sender(),
-            ),
+            live_instructions_list: FactoryVecDeque::builder()
+                .launch(gtk::Box::default())
+                .forward(sender.input_sender(), |output| match output {
+                    InstructionComponentOutput::Remove(idx) => ActionInputs::RemoveStep(idx),
+                    InstructionComponentOutput::Cut(idx) => ActionInputs::CutStep(idx),
+                    InstructionComponentOutput::Paste(idx, step) => {
+                        ActionInputs::PasteStep(idx, step)
+                    }
+                    InstructionComponentOutput::ConfigUpdate(step, config) => {
+                        ActionInputs::ConfigUpdate(step, config)
+                    }
+                    InstructionComponentOutput::MoveStep(from, to, offset) => {
+                        ActionInputs::MoveStep(from, to, offset)
+                    }
+                    InstructionComponentOutput::ChangeRunCondition(step, new_condition) => {
+                        ActionInputs::ChangeRunCondition(step, new_condition)
+                    }
+                    InstructionComponentOutput::SetComment(idx, comment) => {
+                        ActionInputs::SetComment(idx, comment)
+                    }
+                }),
             metadata: metadata_component::Metadata::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| {

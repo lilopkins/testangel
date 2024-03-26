@@ -91,7 +91,7 @@ impl Component for Metadata {
                             new_visible: Some(state),
                             ..Default::default()
                         });
-                        gtk::Inhibit(false)
+                        gtk::glib::signal::Propagation::Stop
                     },
                 },
 
@@ -101,7 +101,7 @@ impl Component for Metadata {
 
     fn init(
         _init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
         let model = Metadata;

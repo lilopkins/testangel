@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<gresources>
-    <gresource prefix="uk/hpkns/testangel/icons/scalable/actions/">
-        <file preprocess="xml-stripblanks" alias="testangel.svg">icons/testangel.svg</file>
-    </gresource>
-    <gresource prefix="/org/gtk/libgtk/icons/scalable/actions/">
-        <file preprocess="xml-stripblanks" alias="document-edit-symbolic.svg">icons/document-edit-symbolic.svg</file>
-    </gresource>
-</gresources>

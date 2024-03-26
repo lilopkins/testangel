@@ -60,18 +60,19 @@ impl Component for ActionParams {
 
     fn init(
         _init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
         let model = ActionParams {
             raw_params: vec![],
-            params: FactoryVecDeque::new(
-                gtk::Box::builder()
-                    .orientation(gtk::Orientation::Vertical)
-                    .spacing(5)
-                    .build(),
-                sender.input_sender(),
-            ),
+            params: FactoryVecDeque::builder()
+                .launch(
+                    gtk::Box::builder()
+                        .orientation(gtk::Orientation::Vertical)
+                        .spacing(5)
+                        .build(),
+                )
+                .forward(sender.input_sender(), ActionParamsInput::_FromRow),
         };
         let widgets = view_output!();
 
@@ -183,7 +184,6 @@ impl FactoryComponent for ParamRow {
     type Input = ();
     type Output = ParamRowOutput;
     type CommandOutput = ();
-    type ParentInput = ActionParamsInput;
     type ParentWidget = gtk::Box;
 
     view! {
@@ -198,7 +198,7 @@ impl FactoryComponent for ParamRow {
                 set_placeholder_text: Some(&lang::lookup("action-params-name-placeholder")),
 
                 connect_changed[sender, index] => move |entry| {
-                    sender.output(ParamRowOutput::SetParamName(index.clone(), entry.text().to_string()));
+                    sender.output(ParamRowOutput::SetParamName(index.clone(), entry.text().to_string())).unwrap();
                 },
             },
 
@@ -210,32 +210,32 @@ impl FactoryComponent for ParamRow {
                 connect_selected_notify[sender, index] => move |dropdown| {
                     let idx = dropdown.selected();
                     let (_, kind) = PARAM_KINDS[idx as usize];
-                    sender.output(ParamRowOutput::SetParamKind(index.clone(), kind));
+                    sender.output(ParamRowOutput::SetParamKind(index.clone(), kind)).unwrap();
                 },
             },
 
             // move up
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::UP,
+                set_icon_name: relm4_icons::icon_names::UP,
                 set_tooltip: &lang::lookup("move-up"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(ParamRowOutput::MoveUp(index.clone()));
+                    sender.output(ParamRowOutput::MoveUp(index.clone())).unwrap();
                 }
             },
             // move down
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::DOWN,
+                set_icon_name: relm4_icons::icon_names::DOWN,
                 set_tooltip: &lang::lookup("move-down"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(ParamRowOutput::MoveDown(index.clone()));
+                    sender.output(ParamRowOutput::MoveDown(index.clone())).unwrap();
                 }
             },
             // delete
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::X_CIRCULAR,
+                set_icon_name: relm4_icons::icon_names::X_CIRCULAR,
                 set_tooltip: &lang::lookup("delete"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(ParamRowOutput::Delete(index.clone()));
+                    sender.output(ParamRowOutput::Delete(index.clone())).unwrap();
                 }
             }
         }
@@ -262,9 +262,5 @@ impl FactoryComponent for ParamRow {
                 kind_index: gtk::INVALID_LIST_POSITION,
             }
         }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        Some(ActionParamsInput::_FromRow(output))
     }
 }

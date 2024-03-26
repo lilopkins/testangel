@@ -83,7 +83,7 @@ pub enum VariableRowOutput<T, PS> {
 #[relm4::factory(pub)]
 impl<PS, I, T> FactoryComponent for VariableRow<PS, T, I>
 where
-    PS: ParameterSourceTrait + Debug + std::fmt::Display + PartialEq<PS> + Clone + 'static,
+    PS: ParameterSourceTrait + Debug + std::fmt::Display + Send + PartialEq<PS> + Clone + 'static,
     I: Debug + VariableRowParentInput<T, PS> + 'static,
     T: Clone + Debug + 'static,
 {
@@ -92,7 +92,6 @@ where
     type Output = VariableRowOutput<T, PS>;
     type CommandOutput = ();
     type ParentWidget = adw::PreferencesGroup;
-    type ParentInput = I;
 
     view! {
         adw::ActionRow {
@@ -147,7 +146,7 @@ where
                 },
 
                 gtk::MenuButton {
-                    set_icon_name: relm4_icons::icon_name::EDIT,
+                    set_icon_name: relm4_icons::icon_names::EDIT,
                     set_tooltip_text: Some(&lang::lookup("variable-row-edit-param")),
                     set_css_classes: &["flat"],
                     set_direction: gtk::ArrowType::Left,
@@ -176,8 +175,9 @@ where
         _index: &Self::Index,
         sender: relm4::FactorySender<Self>,
     ) -> Self {
-        let mut potential_sources =
-            FactoryVecDeque::new(gtk::Box::default(), sender.input_sender());
+        let mut potential_sources = FactoryVecDeque::builder()
+            .launch(gtk::Box::default())
+            .forward(sender.input_sender(), VariableRowInput::SourceSelected);
         {
             // populate sources
             let mut potential_sources = potential_sources.guard();
@@ -210,7 +210,7 @@ where
     fn init_widgets(
         &mut self,
         _index: &Self::Index,
-        root: &Self::Root,
+        root: Self::Root,
         _returned_widget: &<Self::ParentWidget as relm4::factory::FactoryView>::ReturnedWidget,
         _sender: FactorySender<Self>,
     ) -> Self::Widgets {
@@ -230,24 +230,21 @@ where
                 self.source = new_source.clone();
                 widgets.popover.popdown();
 
-                sender.output(VariableRowOutput::NewSourceFor(
-                    self.idx.clone(),
-                    new_source,
-                ));
+                sender
+                    .output(VariableRowOutput::NewSourceFor(
+                        self.idx.clone(),
+                        new_source,
+                    ))
+                    .unwrap();
             }
             VariableRowInput::ChangeValue(new_value) => {
                 self.value = new_value.clone();
-                sender.output(VariableRowOutput::NewValueFor(self.idx.clone(), new_value));
+                sender
+                    .output(VariableRowOutput::NewValueFor(self.idx.clone(), new_value))
+                    .unwrap();
             }
         }
         self.update_view(widgets, sender);
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        match output {
-            VariableRowOutput::NewSourceFor(idx, source) => Some(I::new_source_for(idx, source)),
-            VariableRowOutput::NewValueFor(idx, value) => Some(I::new_value_for(idx, value)),
-        }
     }
 }
 
@@ -269,7 +266,6 @@ impl<PS: Debug + Clone + 'static> FactoryComponent for SourceSearchResult<PS> {
     type Output = PS;
     type CommandOutput = ();
     type ParentWidget = gtk::Box;
-    type ParentInput = VariableRowInput<PS>;
 
     view! {
         root = gtk::Button::builder().css_classes(["flat"]).build() {
@@ -288,11 +284,7 @@ impl<PS: Debug + Clone + 'static> FactoryComponent for SourceSearchResult<PS> {
 
     fn update(&mut self, message: Self::Input, sender: FactorySender<Self>) {
         match message {
-            SourceSearchResultInput::Select => sender.output(self.source.clone()),
+            SourceSearchResultInput::Select => sender.output(self.source.clone()).unwrap(),
         }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        Some(VariableRowInput::SourceSelected(output))
     }
 }

@@ -7,7 +7,7 @@ use relm4::{
 use testangel::action_loader::ActionMap;
 
 use crate::ui::{
-    components::add_step_factory::{AddStepInit, AddStepResult, AddStepTrait},
+    components::add_step_factory::{AddStepInit, AddStepResult},
     lang,
 };
 
@@ -16,7 +16,7 @@ pub struct FlowsHeader {
     action_map: Arc<ActionMap>,
     add_button: gtk::MenuButton,
     flow_open: bool,
-    search_results: FactoryVecDeque<AddStepResult<FlowsHeaderInput>>,
+    search_results: FactoryVecDeque<AddStepResult>,
 }
 
 #[derive(Debug)]
@@ -45,12 +45,6 @@ pub enum FlowsHeaderInput {
     PleaseOutput(FlowsHeaderOutput),
 }
 
-impl AddStepTrait for FlowsHeaderInput {
-    fn add_step(value: String) -> Self {
-        Self::AddStep(value)
-    }
-}
-
 #[relm4::component(pub)]
 impl Component for FlowsHeader {
     type Init = Arc<ActionMap>;
@@ -66,7 +60,7 @@ impl Component for FlowsHeader {
 
             #[local_ref]
             add_button -> gtk::MenuButton {
-                set_icon_name: relm4_icons::icon_name::PLUS,
+                set_icon_name: relm4_icons::icon_names::PLUS,
                 set_tooltip: &lang::lookup("flow-header-add"),
 
                 #[wrap(Some)]
@@ -104,7 +98,7 @@ impl Component for FlowsHeader {
                 },
             },
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::PLAY,
+                set_icon_name: relm4_icons::icon_names::PLAY,
                 set_tooltip: &lang::lookup("flow-header-run"),
                 #[watch]
                 set_sensitive: model.flow_open,
@@ -118,14 +112,16 @@ impl Component for FlowsHeader {
 
     fn init(
         init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = FlowsHeader {
             action_map: init,
             flow_open: false,
             add_button: gtk::MenuButton::default(),
-            search_results: FactoryVecDeque::new(gtk::Box::default(), sender.input_sender()),
+            search_results: FactoryVecDeque::builder()
+                .launch(gtk::Box::default())
+                .forward(sender.input_sender(), FlowsHeaderInput::AddStep),
         };
         // Reset search results
         sender.input(FlowsHeaderInput::SearchForSteps(String::new()));

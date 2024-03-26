@@ -63,18 +63,19 @@ impl Component for ActionOutputs {
 
     fn init(
         _init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
         let model = ActionOutputs {
             raw_outputs: vec![],
-            outputs: FactoryVecDeque::new(
-                gtk::Box::builder()
-                    .orientation(gtk::Orientation::Vertical)
-                    .spacing(5)
-                    .build(),
-                sender.input_sender(),
-            ),
+            outputs: FactoryVecDeque::builder()
+                .launch(
+                    gtk::Box::builder()
+                        .orientation(gtk::Orientation::Vertical)
+                        .spacing(5)
+                        .build(),
+                )
+                .forward(sender.input_sender(), ActionOutputsInput::_FromRow),
             possible_sources: vec![],
         };
         let widgets = view_output!();
@@ -199,7 +200,6 @@ impl FactoryComponent for OutputRow {
     type Input = OutputRowInput;
     type Output = OutputRowOutput;
     type CommandOutput = ();
-    type ParentInput = ActionOutputsInput;
     type ParentWidget = gtk::Box;
 
     view! {
@@ -214,7 +214,7 @@ impl FactoryComponent for OutputRow {
                 set_placeholder_text: Some(&lang::lookup("action-outputs-name-placeholder")),
 
                 connect_changed[sender, index] => move |entry| {
-                    sender.output(OutputRowOutput::SetOutputName(index.clone(), entry.text().to_string()));
+                    sender.output(OutputRowOutput::SetOutputName(index.clone(), entry.text().to_string())).unwrap();
                 },
             },
 
@@ -232,26 +232,26 @@ impl FactoryComponent for OutputRow {
 
             // move up
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::UP,
+                set_icon_name: relm4_icons::icon_names::UP,
                 set_tooltip: &lang::lookup("move-up"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(OutputRowOutput::MoveUp(index.clone()));
+                    sender.output(OutputRowOutput::MoveUp(index.clone())).unwrap();
                 }
             },
             // move down
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::DOWN,
+                set_icon_name: relm4_icons::icon_names::DOWN,
                 set_tooltip: &lang::lookup("move-down"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(OutputRowOutput::MoveDown(index.clone()));
+                    sender.output(OutputRowOutput::MoveDown(index.clone())).unwrap();
                 }
             },
             // delete
             gtk::Button {
-                set_icon_name: relm4_icons::icon_name::X_CIRCULAR,
+                set_icon_name: relm4_icons::icon_names::X_CIRCULAR,
                 set_tooltip: &lang::lookup("delete"),
                 connect_clicked[index, sender] => move |_| {
-                    sender.output(OutputRowOutput::Delete(index.clone()));
+                    sender.output(OutputRowOutput::Delete(index.clone())).unwrap();
                 }
             }
         }
@@ -338,12 +338,10 @@ impl FactoryComponent for OutputRow {
                     return;
                 }
                 let (_, _, source) = self.possible_sources[dropdown_idx as usize].clone();
-                sender.output(OutputRowOutput::SetOutputSource(index.clone(), source));
+                sender
+                    .output(OutputRowOutput::SetOutputSource(index.clone(), source))
+                    .unwrap();
             }
         }
-    }
-
-    fn forward_to_parent(output: Self::Output) -> Option<Self::ParentInput> {
-        Some(ActionOutputsInput::_FromRow(output))
     }
 }

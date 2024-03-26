@@ -37,7 +37,7 @@ impl SimpleComponent for LiteralInput {
 
     fn init(
         init: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: relm4::ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
         let model = Self { kind: init.kind() };
