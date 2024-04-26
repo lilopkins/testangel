@@ -623,11 +623,11 @@ impl Component for FlowsModel {
                         });
                         // add possible outputs to list AFTER processing this step
                         // unwrap rationale: actions are check to exist prior to opening.
-                        for (output_idx, (name, kind, _)) in self
+                        for (output_idx, (name, kind)) in self
                             .action_map
                             .get_action_by_id(&config.action_id)
                             .unwrap()
-                            .outputs
+                            .outputs()
                             .iter()
                             .enumerate()
                         {

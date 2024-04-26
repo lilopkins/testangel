@@ -12,7 +12,7 @@ required-features = [ "cli" ]
 
 [features]
 default = [ "ui" ]
-ui = [ "dep:relm4", "dep:relm4-icons", "dep:opener", "dep:fern", "dep:fluent", "dep:fluent-templates", "dep:once_cell", "dep:fuzzy-matcher", "dep:sys-locale", "dep:sourceview5" ]
+ui = [ "dep:relm4", "dep:relm4-icons", "dep:opener", "dep:fern", "dep:fluent", "dep:fluent-templates", "dep:once_cell", "dep:fuzzy-matcher", "dep:sys-locale", "dep:sourceview5", "dep:convert_case" ]
 cli = [ "dep:clap", "dep:pretty_env_logger" ]
 windows-keep-console-window = []
 
@@ -33,7 +33,7 @@ chrono = "0.4.26"
 base64 = "0.22.0"
 itertools = "0.12.1"
 opener = { version = "0.7.0", optional = true }
-octocrab = "0.36.0"
+octocrab = "0.38.0"
 semver = "1.0.19"
 relm4 = { version = "0.8", optional = true, features = [ "libadwaita", "gnome_44" ] }
 relm4-icons = { version = "0.8", optional = true }
@@ -43,3 +43,7 @@ fluent-templates = { version = "0.9.1", optional = true }
 fuzzy-matcher = { version = "0.3.7", optional = true }
 once_cell = { version = "1.18.0", optional = true }
 sys-locale = { version = "0.3.1", optional = true }
+mlua = { version = "0.9.7", features = [ "luau" ] }
+pest = "2.7.9"
+pest_derive = "2.7.9"
+convert_case = { version = "0.6.0", optional = true }

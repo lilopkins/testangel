@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use testangel_ipc::prelude::ParameterKind;
+use std::collections::HashMap;
 
-use crate::types::{InstructionConfiguration, InstructionParameterSource};
+use serde::{Deserialize, Serialize};
+use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionV1 {
@@ -24,7 +24,7 @@ pub struct ActionV1 {
     /// The outputs this action produces, with a friendly name
     pub outputs: Vec<(String, ParameterKind, InstructionParameterSource)>,
     /// The instructions called by this action
-    pub instructions: Vec<InstructionConfiguration>,
+    instructions: Vec<InstructionConfiguration>,
 }
 
 impl ActionV1 {
@@ -56,9 +56,25 @@ impl ActionV1 {
             author: self.author,
             visible: self.visible,
             script,
-            parameters: vec![],
-            outputs: vec![],
-            instructions: vec![],
+            required_instructions: Vec::new(), // this will be populated on save
         }
     }
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+struct InstructionConfiguration {
+    pub instruction_id: String,
+    pub comment: String,
+    /// Run If can depend on any boolean parameter, or if set to 'Literal' will always run.
+    pub run_if: InstructionParameterSource,
+    pub parameter_sources: HashMap<String, InstructionParameterSource>,
+    pub parameter_values: HashMap<String, ParameterValue>,
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum InstructionParameterSource {
+    #[default]
+    Literal,
+    FromParameter(usize),
+    FromOutput(usize, String),
 }

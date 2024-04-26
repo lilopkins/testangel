@@ -2,11 +2,14 @@ use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
-    adw, gtk, Component, ComponentController,
-    ComponentParts, ComponentSender, Controller, RelmWidgetExt,
+    adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
+    RelmWidgetExt,
 };
 use testangel::{
-    action_loader::ActionMap, ipc::EngineList, types::old_types::ActionV1, types::{Action, InstructionConfiguration, VersionedFile}
+    action_loader::ActionMap,
+    ipc::EngineList,
+    types::old_types::ActionV1,
+    types::{Action, VersionedFile},
 };
 
 use super::{file_filters, lang};
@@ -20,7 +23,7 @@ pub enum SaveOrOpenActionError {
     ParsingError(ron::error::SpannedError),
     SerializingError(ron::Error),
     ActionNotVersionCompatible,
-    MissingInstruction(usize, String),
+    MissingInstruction(String),
 }
 
 impl ToString for SaveOrOpenActionError {
@@ -48,10 +51,9 @@ impl ToString for SaveOrOpenActionError {
             Self::ActionNotVersionCompatible => {
                 lang::lookup("action-save-open-error-action-not-version-compatible")
             }
-            Self::MissingInstruction(step, e) => {
+            Self::MissingInstruction(e) => {
                 lang::lookup_with_args("action-save-open-error-missing-instruction", {
                     let mut map = HashMap::new();
-                    map.insert("step", (step + 1).into());
                     map.insert("error", e.to_string().into());
                     map
                 })
@@ -175,25 +177,18 @@ impl ActionsModel {
             let action_v1: ActionV1 =
                 ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
             let action_upgraded = action_v1.upgrade_action();
-            data = ron::to_string(&action_upgraded).map_err(SaveOrOpenActionError::SerializingError)?;
+            data = ron::to_string(&action_upgraded)
+                .map_err(SaveOrOpenActionError::SerializingError)?;
         } else if versioned_file.version() != 2 {
             return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }
 
-        let mut action: Action =
-                ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
-        for (step, ic) in action.instructions.iter_mut().enumerate() {
-            if self
-                .engine_list
-                .get_engine_by_instruction_id(&ic.instruction_id)
-                .is_none()
-            {
-                return Err(SaveOrOpenActionError::MissingInstruction(
-                    step,
-                    ic.instruction_id.clone(),
-                ));
-            }
-        }
+        let action: Action = ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
+        // Validate that all instructions used in the script are available, or return a MissingInstruction err
+        action
+            .check_instructions_available(self.engine_list.clone())
+            .map_err(|missing| SaveOrOpenActionError::MissingInstruction(missing[0].clone()))?;
+        self.source_view.buffer().set_text(&action.script);
 
         self.open_action = Some(action.clone());
         self.header
@@ -282,6 +277,27 @@ impl ActionsModel {
 
     /// Just save the action to disk with the current `open_path` as the destination
     fn save_action(&mut self) -> Result<(), SaveOrOpenActionError> {
+        // Get content
+        let buffer = self.source_view.buffer();
+        let script = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
+
+        // Update script
+        let action = self.open_action.as_mut().unwrap();
+        action.script = script.to_string();
+
+        // Loop through all possible instruction luanames in the environment, then save a vector of which are used by this action
+        action.required_instructions.clear();
+        for engine in self.engine_list.inner().clone() {
+            let engine_lua_name = engine.lua_name.clone();
+            for instruction in engine.instructions.clone() {
+                let instruction_lua_name = instruction.lua_name().clone();
+                let built_call = format!("{}.{}", engine_lua_name, instruction_lua_name);
+                if script.contains(&built_call) {
+                    action.required_instructions.push(instruction.id().clone());
+                }
+            }
+        }
+
         let save_path = self.open_path.as_ref().unwrap();
         let data = ron::to_string(self.open_action.as_ref().unwrap())
             .map_err(SaveOrOpenActionError::SerializingError)?;
@@ -382,10 +398,16 @@ impl Component for ActionsModel {
                 .show_right_margin(true)
                 .auto_indent(true)
                 .vexpand(true)
-                .buffer(&sourceview::Buffer::builder()
-                    .highlight_syntax(true)
-                    .language(&sourceview::LanguageManager::default().language("lua").unwrap())
-                    .build())
+                .buffer(
+                    &sourceview::Buffer::builder()
+                        .highlight_syntax(true)
+                        .language(
+                            &sourceview::LanguageManager::default()
+                                .language("lua")
+                                .unwrap(),
+                        )
+                        .build(),
+                )
                 .build(),
         };
 
@@ -542,15 +564,61 @@ impl Component for ActionsModel {
                     self.new_action();
                 }
 
-                // unwrap rationale: we've just guaranteed a flow is open
-                let action = self.open_action.as_mut().unwrap();
                 // unwrap rationale: the header can't ask to add an action that doesn't exist
-                action.instructions.push(InstructionConfiguration::from(
-                    self.engine_list.get_instruction_by_id(&step_id).unwrap(),
-                ));
+                let engine = self
+                    .engine_list
+                    .get_engine_by_instruction_id(&step_id)
+                    .unwrap();
+                let instruction = self.engine_list.get_instruction_by_id(&step_id).unwrap();
+                // Build LoC
+                let mut params = String::new();
+                for param_id in instruction.parameter_order() {
+                    use convert_case::{Case, Casing};
+
+                    let (param_name, _param_kind) = instruction.parameters().get(param_id).unwrap();
+                    params.push_str(&format!("{}, ", param_name.to_case(Case::Snake)));
+                }
+                // remove last ", "
+                let _ = params.pop();
+                let _ = params.pop();
+
+                let loc = if instruction.outputs().is_empty() {
+                    format!(
+                        "\n--> {}.{}({})",
+                        engine.lua_name,
+                        instruction.lua_name(),
+                        params
+                    )
+                } else {
+                    let mut returns = String::new();
+                    for return_id in instruction.output_order() {
+                        use convert_case::{Case, Casing};
+
+                        let (name, _kind) = instruction.outputs()[return_id].clone();
+                        returns.push_str(&format!("{}, ", name.to_case(Case::Snake)));
+                    }
+
+                    // Remove last ", "
+                    let _ = returns.pop();
+                    let _ = returns.pop();
+
+                    format!(
+                        "\n-- local {} = {}.{}({})",
+                        returns,
+                        engine.lua_name,
+                        instruction.lua_name(),
+                        params
+                    )
+                };
+                // Append LoC
+                let buffer = self.source_view.buffer();
+                let mut script = buffer
+                    .text(&buffer.start_iter(), &buffer.end_iter(), false)
+                    .to_string();
+                script.push_str(&loc);
+                buffer.set_text(&script);
+
                 self.needs_saving = true;
-                // Trigger UI steps refresh
-                sender.input(ActionInputs::UpdateSourceFromModel);
             }
 
             ActionInputs::UpdateSourceFromModel => {

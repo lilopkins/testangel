@@ -277,7 +277,7 @@ impl FactoryComponent for ActionComponent {
         {
             // initialise rows
             let mut variable_rows = self.variable_rows.guard();
-            for (idx, (name, kind)) in self.action.parameters.iter().enumerate() {
+            for (idx, (name, kind)) in self.action.parameters().iter().enumerate() {
                 let possible_sources = self
                     .possible_outputs
                     .iter()
