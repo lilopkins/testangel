@@ -33,13 +33,13 @@ jobs:
     needs: establish-version
 
     steps:
-      - name: Check
-        if: ${{ github.ref_name }} == 'main'
+      - name: Check only release version on the 'main' branch
+        if: github.ref == 'refs/heads/main'
         run: |
           [[ "${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}" == "true" ]] && exit 1
 
       - name: Check only pre-release version on the 'next' branch
-        if: ${{ github.ref_name }} == 'next'
+        if: github.ref == 'refs/heads/next'
         run: |
           [[ "${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}" == "false" ]] && exit 1
 
