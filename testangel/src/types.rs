@@ -8,6 +8,8 @@ use crate::{
     ipc::{self, EngineList, IpcError},
 };
 
+pub mod old_types;
+
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct VersionedFile {
     version: usize,
@@ -36,24 +38,30 @@ pub struct Action {
     pub author: String,
     /// Whether this action should be visible in the flow editor.
     pub visible: bool,
+    /// The Lua code driving this action.
+    pub script: String,
     /// The parameters this action takes, with a friendly name.
+    #[deprecated(since = "0.21.0", note = "Being upgraded to a Lua-based scripting engine. As a result, this field will no longer be supported.")]
     pub parameters: Vec<(String, ParameterKind)>,
     /// The outputs this action produces, with a friendly name
+    #[deprecated(since = "0.21.0", note = "Being upgraded to a Lua-based scripting engine. As a result, this field will no longer be supported.")]
     pub outputs: Vec<(String, ParameterKind, InstructionParameterSource)>,
     /// The instructions called by this action
+    #[deprecated(since = "0.21.0", note = "Being upgraded to a Lua-based scripting engine. As a result, this field will no longer be supported.")]
     pub instructions: Vec<InstructionConfiguration>,
 }
 
 impl Default for Action {
     fn default() -> Self {
         Self {
-            version: 1,
+            version: 2,
             id: uuid::Uuid::new_v4().to_string(),
             friendly_name: String::new(),
             description: String::new(),
             author: String::new(),
             visible: true,
             group: String::new(),
+            script: "--[[\n  Your New Action\n  Author: You <Your Email Address>\n  Technical Description:\n    This action is new and at the moment does nothing!\n--]]\nfunction run_action()\n  -- Your action can be built here!\nend\n".to_string(),
             parameters: Vec::new(),
             outputs: Vec::new(),
             instructions: Vec::new(),

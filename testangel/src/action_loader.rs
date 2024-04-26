@@ -48,7 +48,7 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
                 log::debug!("Detected possible action {str}");
                 if let Ok(res) = fs::read_to_string(path.path()) {
                     if let Ok(versioned_file) = ron::from_str::<VersionedFile>(&res) {
-                        if versioned_file.version() != 1 {
+                        if versioned_file.version() != 2 {
                             log::warn!("Action {str} uses an incompatible file version.");
                             continue 'action_loop;
                         }

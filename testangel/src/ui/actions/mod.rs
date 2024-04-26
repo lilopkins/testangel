@@ -1,26 +1,19 @@
-use std::{cmp::Ordering, collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
-    adw, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component, ComponentController,
+    adw, gtk, Component, ComponentController,
     ComponentParts, ComponentSender, Controller, RelmWidgetExt,
 };
 use testangel::{
-    action_loader::ActionMap,
-    ipc::EngineList,
-    types::{Action, InstructionConfiguration, InstructionParameterSource, VersionedFile},
+    action_loader::ActionMap, ipc::EngineList, types::old_types::ActionV1, types::{Action, InstructionConfiguration, VersionedFile}
 };
-use testangel_ipc::prelude::ParameterKind;
-
-use crate::ui::actions::instruction_component::InstructionComponentOutput;
 
 use super::{file_filters, lang};
+use sourceview5 as sourceview;
 
 pub mod header;
-mod instruction_component;
 mod metadata_component;
-mod outputs;
-mod params;
 
 pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
@@ -97,36 +90,10 @@ pub enum ActionInputs {
     _CloseAction,
     /// Add the step with the ID provided
     AddStep(String),
-    /// Update the UI steps from the open action. This will clear first and overwrite any changes!
-    UpdateStepsFromModel,
-    /// Remove the step with the provided index, resetting all references to it.
-    RemoveStep(DynamicIndex),
-    /// Remove the step with the provided index, but change references to it to a temporary value (`usize::MAX`)
-    /// that can be set again with [`ActionInputs::PasteStep`].
-    /// This doesn't refresh the UI until Paste is called.
-    CutStep(DynamicIndex),
-    /// Insert a step at the specified index and set references back to the correct step.
-    /// This refreshes the UI.
-    PasteStep(usize, InstructionConfiguration),
-    /// Move a step from the index to a position offset (param 3) from a new index (param 2).
-    MoveStep(DynamicIndex, DynamicIndex, isize),
-    /// The [`InstructionConfiguration`] has changed for the step indicated by the [`DynamicIndex`].
-    /// This does not refresh the UI.
-    ConfigUpdate(DynamicIndex, InstructionConfiguration),
+    /// Update the UI from the open action. This will clear first and overwrite any changes!
+    UpdateSourceFromModel,
     /// The metadata has been updated and the action should be updated to reflect that
     MetadataUpdated(metadata_component::MetadataOutput),
-    /// Set parameters
-    SetParameters(Vec<(String, ParameterKind)>),
-    /// Remove references to the provided index, or reduce any higher than.
-    ParamIndexRemoved(usize),
-    /// Swap references to the indexes provided
-    ParamIndexesSwapped(usize, usize),
-    /// Change the run condition of a step
-    ChangeRunCondition(DynamicIndex, InstructionParameterSource),
-    /// Set the outputs of an action
-    SetOutputs(Vec<(String, ParameterKind, InstructionParameterSource)>),
-    /// Set the commend on a step
-    SetComment(DynamicIndex, String),
 }
 #[derive(Clone, Debug)]
 pub enum ActionOutputs {
@@ -144,9 +111,7 @@ pub struct ActionsModel {
     needs_saving: bool,
     header: Rc<Controller<header::ActionsHeader>>,
     metadata: Controller<metadata_component::Metadata>,
-    parameters: Controller<params::ActionParams>,
-    outputs: Controller<outputs::ActionOutputs>,
-    live_instructions_list: FactoryVecDeque<instruction_component::InstructionComponent>,
+    source_view: sourceview::View,
 }
 
 impl ActionsModel {
@@ -196,27 +161,27 @@ impl ActionsModel {
             .emit(metadata_component::MetadataInput::ChangeAction(
                 Action::default(),
             ));
-        self.parameters
-            .emit(params::ActionParamsInput::ChangeAction(Action::default()));
-        self.outputs
-            .emit(outputs::ActionOutputsInput::ChangeAction(Action::default()));
     }
 
     /// Open an action. This does not ask to save first.
     fn open_action(&mut self, file: PathBuf) -> Result<(), SaveOrOpenActionError> {
-        let data = &fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?;
+        let mut data = fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?;
 
         let versioned_file: VersionedFile =
-            ron::from_str(data).map_err(SaveOrOpenActionError::ParsingError)?;
-        if versioned_file.version() != 1 {
+            ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
+        if versioned_file.version() == 1 {
+            // Upgrade from instruction list to lua script
+            // This doesn't save anything, just changes what loads to something compatible
+            let action_v1: ActionV1 =
+                ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
+            let action_upgraded = action_v1.upgrade_action();
+            data = ron::to_string(&action_upgraded).map_err(SaveOrOpenActionError::SerializingError)?;
+        } else if versioned_file.version() != 2 {
             return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }
 
         let mut action: Action =
-            ron::from_str(data).map_err(SaveOrOpenActionError::ParsingError)?;
-        if action.version() != 1 {
-            return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
-        }
+                ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
         for (step, ic) in action.instructions.iter_mut().enumerate() {
             if self
                 .engine_list
@@ -239,10 +204,6 @@ impl ActionsModel {
             .emit(metadata_component::MetadataInput::ChangeAction(
                 action.clone(),
             ));
-        self.parameters
-            .emit(params::ActionParamsInput::ChangeAction(action.clone()));
-        self.outputs
-            .emit(outputs::ActionOutputsInput::ChangeAction(action));
         self.open_path = Some(file);
         self.needs_saving = false;
         log::debug!("New action open.");
@@ -334,7 +295,6 @@ impl ActionsModel {
         self.open_action = None;
         self.open_path = None;
         self.needs_saving = false;
-        self.live_instructions_list.guard().clear();
         self.header
             .emit(header::ActionsHeaderInput::ChangeActionOpen(
                 self.open_action.is_some(),
@@ -375,23 +335,8 @@ impl Component for ActionsModel {
                             set_orientation: gtk::Orientation::Horizontal,
                         },
 
-                        model.parameters.widget(),
-
-                        gtk::Separator {
-                            set_orientation: gtk::Orientation::Horizontal,
-                        },
-
                         #[local_ref]
-                        live_instructions_list -> gtk::Box {
-                            set_orientation: gtk::Orientation::Vertical,
-                            set_spacing: 5,
-                        },
-
-                        gtk::Separator {
-                            set_orientation: gtk::Orientation::Horizontal,
-                        },
-
-                        model.outputs.widget(),
+                        source_view -> sourceview::View,
                     }
                 }
             },
@@ -423,66 +368,31 @@ impl Component for ActionsModel {
             open_path: None,
             needs_saving: false,
             header,
-            live_instructions_list: FactoryVecDeque::builder()
-                .launch(gtk::Box::default())
-                .forward(sender.input_sender(), |output| match output {
-                    InstructionComponentOutput::Remove(idx) => ActionInputs::RemoveStep(idx),
-                    InstructionComponentOutput::Cut(idx) => ActionInputs::CutStep(idx),
-                    InstructionComponentOutput::Paste(idx, step) => {
-                        ActionInputs::PasteStep(idx, step)
-                    }
-                    InstructionComponentOutput::ConfigUpdate(step, config) => {
-                        ActionInputs::ConfigUpdate(step, config)
-                    }
-                    InstructionComponentOutput::MoveStep(from, to, offset) => {
-                        ActionInputs::MoveStep(from, to, offset)
-                    }
-                    InstructionComponentOutput::ChangeRunCondition(step, new_condition) => {
-                        ActionInputs::ChangeRunCondition(step, new_condition)
-                    }
-                    InstructionComponentOutput::SetComment(idx, comment) => {
-                        ActionInputs::SetComment(idx, comment)
-                    }
-                }),
             metadata: metadata_component::Metadata::builder()
                 .launch(())
                 .forward(sender.input_sender(), |msg| {
                     ActionInputs::MetadataUpdated(msg)
                 }),
-            parameters: params::ActionParams::builder().launch(()).forward(
-                sender.input_sender(),
-                |msg| match msg {
-                    params::ActionParamsOutput::IndexRemoved(idx) => {
-                        ActionInputs::ParamIndexRemoved(idx)
-                    }
-                    params::ActionParamsOutput::IndexesSwapped(a, b) => {
-                        ActionInputs::ParamIndexesSwapped(a, b)
-                    }
-                    params::ActionParamsOutput::SetParameters(new_params) => {
-                        ActionInputs::SetParameters(new_params)
-                    }
-                },
-            ),
-            outputs: outputs::ActionOutputs::builder().launch(()).forward(
-                sender.input_sender(),
-                |msg| match msg {
-                    outputs::ActionOutputsOutput::IndexRemoved(idx) => {
-                        ActionInputs::ParamIndexRemoved(idx)
-                    }
-                    outputs::ActionOutputsOutput::IndexesSwapped(a, b) => {
-                        ActionInputs::ParamIndexesSwapped(a, b)
-                    }
-                    outputs::ActionOutputsOutput::SetOutputs(new_outputs) => {
-                        ActionInputs::SetOutputs(new_outputs)
-                    }
-                },
-            ),
+            source_view: sourceview::View::builder()
+                .show_line_numbers(true)
+                .monospace(true)
+                .indent_on_tab(true)
+                .indent_width(2)
+                .insert_spaces_instead_of_tabs(true)
+                .show_right_margin(true)
+                .auto_indent(true)
+                .vexpand(true)
+                .buffer(&sourceview::Buffer::builder()
+                    .highlight_syntax(true)
+                    .language(&sourceview::LanguageManager::default().language("lua").unwrap())
+                    .build())
+                .build(),
         };
 
         // Trigger update actions from model
-        sender.input(ActionInputs::UpdateStepsFromModel);
+        sender.input(ActionInputs::UpdateSourceFromModel);
 
-        let live_instructions_list = model.live_instructions_list.widget();
+        let source_view = &model.source_view;
         let widgets = view_output!();
 
         ComponentParts { model, widgets }
@@ -519,103 +429,18 @@ impl Component for ActionsModel {
                 }
             }
 
-            ActionInputs::SetComment(step, new_comment) => {
-                if let Some(action) = self.open_action.as_mut() {
-                    action.instructions[step.current_index()].comment = new_comment;
-                    self.needs_saving = true;
-                }
-            }
-
-            ActionInputs::ChangeRunCondition(step, new_condition) => {
-                if let Some(action) = self.open_action.as_mut() {
-                    action.instructions[step.current_index()].run_if = new_condition;
-                    self.needs_saving = true;
-                }
-            }
-
-            ActionInputs::SetParameters(new_params) => {
-                if let Some(action) = self.open_action.as_mut() {
-                    action.parameters = new_params;
-                    self.needs_saving = true;
-                    sender.input(ActionInputs::UpdateStepsFromModel);
-                }
-            }
-            ActionInputs::SetOutputs(new_outputs) => {
-                if let Some(action) = self.open_action.as_mut() {
-                    action.outputs = new_outputs;
-                    self.needs_saving = true;
-                    sender.input(ActionInputs::UpdateStepsFromModel);
-                }
-            }
-            ActionInputs::ParamIndexRemoved(idx) => {
-                if let Some(action) = self.open_action.as_mut() {
-                    for ic in action.instructions.iter_mut() {
-                        if let InstructionParameterSource::FromParameter(n) = &mut ic.run_if {
-                            match idx.cmp(n) {
-                                Ordering::Equal => ic.run_if = InstructionParameterSource::Literal,
-                                Ordering::Less => *n -= 1,
-                                _ => (),
-                            }
-                        }
-
-                        for (_, src) in ic.parameter_sources.iter_mut() {
-                            if let InstructionParameterSource::FromParameter(n) = src {
-                                match idx.cmp(n) {
-                                    Ordering::Equal => *src = InstructionParameterSource::Literal,
-                                    Ordering::Less => *n -= 1,
-                                    _ => (),
-                                }
-                            }
-                        }
-                    }
-                    self.needs_saving = true;
-                    sender.input(ActionInputs::UpdateStepsFromModel);
-                }
-            }
-            ActionInputs::ParamIndexesSwapped(a, b) => {
-                if let Some(action) = self.open_action.as_mut() {
-                    for ic in action.instructions.iter_mut() {
-                        if let InstructionParameterSource::FromParameter(n) = &mut ic.run_if {
-                            if *n == a {
-                                *n = b;
-                            } else if *n == b {
-                                *n = a;
-                            }
-                        }
-
-                        for (_, src) in ic.parameter_sources.iter_mut() {
-                            if let InstructionParameterSource::FromParameter(n) = src {
-                                if *n == a {
-                                    *n = b;
-                                } else if *n == b {
-                                    *n = a;
-                                }
-                            }
-                        }
-                    }
-                    self.needs_saving = true;
-                    sender.input(ActionInputs::UpdateStepsFromModel);
-                }
-            }
-
             ActionInputs::ActionsMapChanged(new_map) => {
                 self.action_map = new_map.clone();
                 self.header
                     .emit(header::ActionsHeaderInput::ActionsMapChanged(new_map));
             }
-            ActionInputs::ConfigUpdate(step, new_config) => {
-                // unwrap rationale: config updates can't happen if nothing is open
-                if let Some(action) = self.open_action.as_mut() {
-                    self.needs_saving = true;
-                    action.instructions[step.current_index()] = new_config;
-                }
-            }
+
             ActionInputs::NewAction => {
                 self.prompt_to_save(sender.input_sender(), ActionInputs::_NewAction);
             }
             ActionInputs::_NewAction => {
                 self.new_action();
-                sender.input(ActionInputs::UpdateStepsFromModel);
+                sender.input(ActionInputs::UpdateSourceFromModel);
             }
             ActionInputs::OpenAction => {
                 self.prompt_to_save(sender.input_sender(), ActionInputs::_OpenAction);
@@ -649,7 +474,7 @@ impl Component for ActionsModel {
                 match self.open_action(path) {
                     Ok(_) => {
                         // Reload UI
-                        sender.input(ActionInputs::UpdateStepsFromModel);
+                        sender.input(ActionInputs::UpdateSourceFromModel);
                     }
                     Err(e) => {
                         // Show error dialog
@@ -725,212 +550,13 @@ impl Component for ActionsModel {
                 ));
                 self.needs_saving = true;
                 // Trigger UI steps refresh
-                sender.input(ActionInputs::UpdateStepsFromModel);
+                sender.input(ActionInputs::UpdateSourceFromModel);
             }
 
-            ActionInputs::UpdateStepsFromModel => {
-                let mut live_list = self.live_instructions_list.guard();
-                live_list.clear();
+            ActionInputs::UpdateSourceFromModel => {
                 if let Some(action) = &self.open_action {
-                    let mut possible_outputs = vec![];
-                    // Populate possible outputs with parameters
-                    for (idx, (name, kind)) in action.parameters.iter().enumerate() {
-                        possible_outputs.push((
-                            lang::lookup_with_args("source-from-param", {
-                                let mut map = HashMap::new();
-                                map.insert("param", name.clone().into());
-                                map
-                            }),
-                            *kind,
-                            InstructionParameterSource::FromParameter(idx),
-                        ));
-                    }
-
-                    for (step, config) in action.instructions.iter().enumerate() {
-                        live_list.push_back(
-                            instruction_component::InstructionComponentInitialiser {
-                                possible_outputs: possible_outputs.clone(),
-                                config: config.clone(),
-                                instruction: self
-                                    .engine_list
-                                    .get_instruction_by_id(&config.instruction_id)
-                                    .unwrap(), // rationale: we have already checked the actions are here when the file is opened
-                            },
-                        );
-                        // add possible outputs to list AFTER processing this step
-                        // unwrap rationale: actions are check to exist prior to opening.
-                        for (output_id, (name, kind)) in self
-                            .engine_list
-                            .get_instruction_by_id(&config.instruction_id)
-                            .unwrap()
-                            .outputs()
-                            .iter()
-                        {
-                            possible_outputs.push((
-                                lang::lookup_with_args("source-from-step", {
-                                    let mut map = HashMap::new();
-                                    map.insert("step", (step + 1).into());
-                                    map.insert("name", name.clone().into());
-                                    map
-                                }),
-                                *kind,
-                                InstructionParameterSource::FromOutput(step, output_id.clone()),
-                            ));
-                        }
-                    }
-
-                    self.outputs
-                        .emit(outputs::ActionOutputsInput::SetPossibleSources(
-                            possible_outputs,
-                        ));
+                    self.source_view.buffer().set_text(&action.script);
                 }
-            }
-
-            ActionInputs::RemoveStep(step_idx) => {
-                let idx = step_idx.current_index();
-                let action = self.open_action.as_mut().unwrap();
-
-                // This is needed as sometimes, if a menu item lines up above the delete step button,
-                // they can both be simultaneously triggered.
-                if idx >= action.instructions.len() {
-                    log::warn!("Skipped running RemoveStep as the index was invalid.");
-                    return;
-                }
-
-                log::info!("Deleting step {}", idx + 1);
-
-                action.instructions.remove(idx);
-
-                // Remove references to step and renumber references above step to one less than they were
-                for step in action.instructions.iter_mut() {
-                    if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
-                        &mut step.run_if
-                    {
-                        match (*from_step).cmp(&idx) {
-                            std::cmp::Ordering::Equal => {
-                                step.run_if = InstructionParameterSource::Literal
-                            }
-                            std::cmp::Ordering::Greater => *from_step -= 1,
-                            _ => (),
-                        }
-                    }
-
-                    for (_step_idx, source) in step.parameter_sources.iter_mut() {
-                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
-                            source
-                        {
-                            match (*from_step).cmp(&idx) {
-                                std::cmp::Ordering::Equal => {
-                                    *source = InstructionParameterSource::Literal
-                                }
-                                std::cmp::Ordering::Greater => *from_step -= 1,
-                                _ => (),
-                            }
-                        }
-                    }
-                }
-
-                self.needs_saving = true;
-
-                // Trigger UI steps refresh
-                sender.input(ActionInputs::UpdateStepsFromModel);
-            }
-            ActionInputs::CutStep(step_idx) => {
-                let idx = step_idx.current_index();
-                let action = self.open_action.as_mut().unwrap();
-                log::info!("Cut step {}", idx + 1);
-
-                // This is needed as sometimes, if a menu item lines up above a button that triggers this,
-                // they can both be simultaneously triggered.
-                if idx >= action.instructions.len() {
-                    log::warn!("Skipped running CutStep as the index was invalid.");
-                    return;
-                }
-
-                action.instructions.remove(idx);
-
-                self.needs_saving = true;
-
-                // Remove references to step and renumber references above step to one less than they were
-                for step in action.instructions.iter_mut() {
-                    if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
-                        &mut step.run_if
-                    {
-                        match (*from_step).cmp(&idx) {
-                            std::cmp::Ordering::Equal => *from_step = usize::MAX,
-                            std::cmp::Ordering::Greater => *from_step -= 1,
-                            _ => (),
-                        }
-                    }
-
-                    for (_param_idx, source) in step.parameter_sources.iter_mut() {
-                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
-                            source
-                        {
-                            match (*from_step).cmp(&idx) {
-                                std::cmp::Ordering::Equal => *from_step = usize::MAX,
-                                std::cmp::Ordering::Greater => *from_step -= 1,
-                                _ => (),
-                            }
-                        }
-                    }
-                }
-            }
-            ActionInputs::PasteStep(idx, config) => {
-                let action = self.open_action.as_mut().unwrap();
-                let idx = idx.max(0).min(action.instructions.len());
-                log::info!("Pasting step to {}", idx + 1);
-                action.instructions.insert(idx, config);
-
-                // Remove references to step and renumber references above step to one less than they were
-                for (step_idx, step) in action.instructions.iter_mut().enumerate() {
-                    if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
-                        &mut step.run_if
-                    {
-                        if *from_step == usize::MAX {
-                            if step_idx < idx {
-                                // can't refer to it anymore
-                                step.run_if = InstructionParameterSource::Literal;
-                            } else {
-                                *from_step = idx;
-                            }
-                        } else if *from_step >= idx {
-                            *from_step += 1;
-                        }
-                    }
-
-                    for (_param_idx, source) in step.parameter_sources.iter_mut() {
-                        if let InstructionParameterSource::FromOutput(from_step, _output_idx) =
-                            source
-                        {
-                            if *from_step == usize::MAX {
-                                if step_idx < idx {
-                                    // can't refer to it anymore
-                                    *source = InstructionParameterSource::Literal;
-                                } else {
-                                    *from_step = idx;
-                                }
-                            } else if *from_step >= idx {
-                                *from_step += 1;
-                            }
-                        }
-                    }
-                }
-
-                self.needs_saving = true;
-
-                // Trigger UI steps refresh
-                sender.input(ActionInputs::UpdateStepsFromModel);
-            }
-            ActionInputs::MoveStep(from, to, offset) => {
-                let current_from = from.current_index();
-                let step = self.open_action.as_ref().unwrap().instructions[current_from].clone();
-                sender.input(ActionInputs::CutStep(from));
-                let mut to = (to.current_index() as isize + offset).max(0) as usize;
-                if to > current_from && to > 0 {
-                    to -= 1;
-                }
-                sender.input(ActionInputs::PasteStep(to, step));
             }
         }
         self.update_view(widgets, sender);

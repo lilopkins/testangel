@@ -92,7 +92,7 @@ action-save-open-error-action-not-version-compatible = Åtgärden du har öppnat
 action-save-open-error-missing-instruction = Instruktionen för steg { $step } (med internt identifierare: { $error }) i denna åtgärden saknas.
 
 action-metadata-label = Åtgärdsdata
-action-metadata-name = Åtgördsnamn
+action-metadata-name = Åtgärdsnamn
 action-metadata-group = Åtgärdsgrupp
 action-metadata-author = Skapare
 action-metadata-description = Beskrivning
