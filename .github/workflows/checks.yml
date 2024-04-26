@@ -30,6 +30,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: |
+          yum search sourceview
+          yum -y update && yum -y install atk-devel libadwaita-devel libgtksourceview-5-devel
+
       - name: Install latest Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
