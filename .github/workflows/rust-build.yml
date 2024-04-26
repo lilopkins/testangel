@@ -7,8 +7,8 @@ on:
       - next
 
 jobs:
-  create-release:
-    name: Create Release
+  establish-version:
+    name: Establish Version
     runs-on: ubuntu-latest
     permissions: write-all
 
@@ -26,19 +26,47 @@ jobs:
           export CARGO_PKG_PRERELEASE=$([[ $CARGO_PKG_VERSION =~ -[0-9A-Za-z]+ ]] && echo "true" || echo "false")
           echo "CARGO_PKG_VERSION=${CARGO_PKG_VERSION}" >> $GITHUB_OUTPUT
           echo "CARGO_PKG_PRERELEASE=${CARGO_PKG_PRERELEASE}" >> $GITHUB_OUTPUT
+
+  check-branch:
+    name: Check branch
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - name: Check
+        if: ${{ github.ref_name }} == 'main'
+        run: |
+          [[ "${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}" == "true" ]] && exit 1
+
+      - name: Check only pre-release version on the 'next' branch
+        if: ${{ github.ref_name }} == 'next'
+        run: |
+          [[ "${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}" == "false" ]] && exit 1
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs:
+      - establish-version
+      - check-branch
+    permissions: write-all
+
+    steps:
       - name: Create Tag and Release
         uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.version.outputs.CARGO_PKG_VERSION }}
-          release_name: v${{ steps.version.outputs.CARGO_PKG_VERSION }}
-          prerelease: ${{ steps.version.outputs.CARGO_PKG_PRERELEASE }}
+          tag_name: ${{ needs.establish-version.outputs.CARGO_PKG_VERSION }}
+          release_name: v${{ needs.establish-version.outputs.CARGO_PKG_VERSION }}
+          prerelease: ${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}
 
   build:
     name: Build for Linux
     runs-on: ubuntu-latest
-    needs: create-release
+    needs:
+      - establish-version
+      - create-release
     container:
       image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest
     permissions: write-all
@@ -102,13 +130,15 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: release-linux-amd64.tar.gz
-          tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
-          prerelease: ${{ needs.create-release.outputs.CARGO_PKG_PRERELEASE }}
+          tag_name: ${{ needs.establish-version.outputs.CARGO_PKG_VERSION }}
+          prerelease: ${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}
 
   build-win:
     name: Build for Windows
     runs-on: windows-latest
-    needs: create-release
+    needs:
+      - establish-version
+      - create-release
     permissions: write-all
 
     steps:
@@ -224,5 +254,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: release-win.zip
-          tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
-          prerelease: ${{ needs.create-release.outputs.CARGO_PKG_PRERELEASE }}
+          tag_name: ${{ needs.establish-version.outputs.CARGO_PKG_VERSION }}
+          prerelease: ${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}
