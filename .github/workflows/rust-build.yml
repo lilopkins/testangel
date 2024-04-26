@@ -61,7 +61,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install dependencies
-        run: yum -y update && yum -y install atk-devel libadwaita-devel
+        run: yum -y update && yum -y install atk-devel libadwaita-devel gtksourceview5-devel
 
       - name: Build
         run: |
@@ -247,86 +247,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: release-win.zip
-          tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
-          prerelease: ${{ needs.create-release.outputs.CARGO_PKG_PRERELEASE }}
-
-  build-mac:
-    name: Build for Mac
-    runs-on: macos-latest
-    needs: create-release
-    permissions: write-all
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v1
-
-      - name: Restore Cargo cache
-        uses: actions/cache/restore@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install dependencies
-        run: brew install gtk4 libadwaita
-
-      - name: Build for mac
-        run: |
-          # Build
-          cargo build -p testangel --bin testangel --release
-          cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
-          cargo build -p testangel-arithmetic --release
-          cargo build -p testangel-compare --release
-          cargo build -p testangel-convert --release
-          cargo build -p testangel-date --release
-          cargo build -p testangel-evidence --release
-          cargo build -p testangel-rand --release
-          cargo build -p testangel-regex --release
-          cargo build -p testangel-user-interaction --release
-          # Prepare output dir
-          mkdir -p build || exit 1
-          cp target/release/testangel build/
-          cp target/release/testangel-executor build/
-          # Prepare engines
-          mkdir -p build/engines || exit 1
-          cp target/release/libtestangel_arithmetic.dylib build/engines
-          cp target/release/libtestangel_compare.dylib build/engines
-          cp target/release/libtestangel_convert.dylib build/engines
-          cp target/release/libtestangel_date.dylib build/engines
-          cp target/release/libtestangel_evidence.dylib build/engines
-          cp target/release/libtestangel_rand.dylib build/engines
-          cp target/release/libtestangel_regex.dylib build/engines
-          cp target/release/libtestangel_user_interaction.dylib build/engines
-
-      - name: Save Cargo cache
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Archive Release
-        uses: thedoctor0/zip-release@0.7.1
-        with:
-          type: tar
-          path: build
-          filename: release-darwin.tar.gz
-
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: release-darwin.tar.gz
           tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
           prerelease: ${{ needs.create-release.outputs.CARGO_PKG_PRERELEASE }}
