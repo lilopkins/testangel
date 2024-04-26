@@ -73,7 +73,9 @@ pub fn save_report<P: AsRef<Path>>(
     for ev in &evidence {
         doc.push(elements::Paragraph::new(ev.label.clone()).padded((3, 0, 0, 0)));
         match &ev.content {
-            EvidenceContent::Textual(text) => doc.push(elements::Paragraph::new(text)),
+            EvidenceContent::Textual(text) => for para in text.split('\n') {
+                doc.push(elements::Paragraph::new(para));
+            },
             EvidenceContent::ImageAsPngBase64(base64) => {
                 let data = base64::engine::general_purpose::STANDARD
                     .decode(base64)
