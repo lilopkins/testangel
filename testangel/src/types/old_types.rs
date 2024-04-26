@@ -53,17 +53,11 @@ impl ActionV1 {
         // add steps
         for step in self.instructions {
             if !step.comment.is_empty() {
-                script.push_str(&format!(
-                    "  -- {}\n",
-                    step.comment,
-                ));
+                script.push_str(&format!("  -- {}\n", step.comment,));
             }
             script.push_str(&format!(
                 "  -- instr: {} | runif: {:?} | srcs: {:?} | vals: {:?}\n",
-                step.instruction_id,
-                step.run_if,
-                step.parameter_sources,
-                step.parameter_values,
+                step.instruction_id, step.run_if, step.parameter_sources, step.parameter_values,
             ));
         }
 
