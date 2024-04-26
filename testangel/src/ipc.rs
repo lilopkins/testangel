@@ -61,6 +61,7 @@ pub fn ipc_call(engine: &Engine, request: Request) -> Result<Response, IpcError>
 pub struct Engine {
     path: PathBuf,
     pub name: String,
+    pub lua_name: String,
     pub instructions: Vec<Instruction>,
     lib: Option<Arc<libloading::Library>>,
 }
@@ -118,6 +119,7 @@ pub fn get_engines() -> EngineList {
     let engine_dir = env::var("TA_ENGINE_DIR").unwrap_or("./engines".to_owned());
     fs::create_dir_all(engine_dir.clone()).unwrap();
     log::info!("Searching for engines in {engine_dir:?}");
+    let mut lua_names = vec![];
     for path in fs::read_dir(engine_dir).unwrap() {
         let path = path.unwrap();
         let basename = path.file_name();
@@ -144,17 +146,27 @@ pub fn get_engines() -> EngineList {
                                 Response::Instructions {
                                     friendly_name,
                                     engine_version,
+                                    engine_lua_name,
                                     ipc_version,
                                     instructions,
                                 } => {
-                                    if ipc_version == 1 {
+                                    if ipc_version == 2 {
+                                        if lua_names.contains(&engine_lua_name) {
+                                            log::warn!(
+                                                "Engine {friendly_name} (v{engine_version}) at {:?} uses a lua name that is already used by another engine!",
+                                                path.path()
+                                            );
+                                            continue;
+                                        }
                                         log::info!(
                                             "Discovered engine {friendly_name} (v{engine_version}) at {:?}",
                                             path.path()
                                         );
                                         engine.name = friendly_name.clone();
+                                        engine.lua_name = engine_lua_name.clone();
                                         engine.instructions = instructions;
                                         engines.push(engine);
+                                        lua_names.push(engine_lua_name);
                                     } else {
                                         log::warn!(
                                             "Engine {friendly_name} (v{engine_version}) at {:?} doesn't speak the right IPC version!",

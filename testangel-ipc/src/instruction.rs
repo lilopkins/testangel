@@ -12,6 +12,8 @@ use crate::{prelude::*, value::ParameterValue};
 pub struct Instruction {
     /// The internal ID of this instruction. Must be unique.
     id: String,
+    /// The lua name of this instruction. Must be a valid lua function name.
+    lua_name: String,
     /// The friendly name of this instruction.
     friendly_name: String,
     /// A description of this instruction.
@@ -26,12 +28,13 @@ pub struct Instruction {
 
 impl Instruction {
     /// Build a new instruction
-    pub fn new<S>(id: S, friendly_name: S, description: S) -> Self
+    pub fn new<S>(id: S, lua_name: S, friendly_name: S, description: S) -> Self
     where
         S: Into<String>,
     {
         Self {
             id: id.into(),
+            lua_name: lua_name.into(),
             friendly_name: friendly_name.into(),
             description: description.into(),
             parameters: HashMap::new(),
