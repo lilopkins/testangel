@@ -36,12 +36,12 @@ jobs:
       - name: Check only release version on the 'main' branch
         if: github.ref == 'refs/heads/main'
         run: |
-          [[ "${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}" == "true" ]] && exit 1
+          if [[ "${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}" == "true" ]]; then exit 1; fi
 
       - name: Check only pre-release version on the 'next' branch
         if: github.ref == 'refs/heads/next'
         run: |
-          [[ "${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}" == "false" ]] && exit 1
+          if [[ "${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}" == "false" ]]; then exit 1; fi
 
   create-release:
     name: Create Release
