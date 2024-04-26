@@ -12,7 +12,7 @@ required-features = [ "cli" ]
 
 [features]
 default = [ "ui" ]
-ui = [ "dep:relm4", "dep:relm4-icons", "dep:opener", "dep:fern", "dep:fluent", "dep:fluent-templates", "dep:once_cell", "dep:fuzzy-matcher", "dep:sys-locale", "dep:sourceview5", "dep:convert_case" ]
+ui = [ "dep:relm4", "dep:relm4-icons", "dep:opener", "dep:fern", "dep:fluent", "dep:fluent-templates", "dep:once_cell", "dep:fuzzy-matcher", "dep:sys-locale", "dep:sourceview5" ]
 cli = [ "dep:clap", "dep:pretty_env_logger" ]
 windows-keep-console-window = []
 
@@ -46,4 +46,4 @@ sys-locale = { version = "0.3.1", optional = true }
 mlua = { version = "0.9.7", features = [ "luau" ] }
 pest = "2.7.9"
 pest_derive = "2.7.9"
-convert_case = { version = "0.6.0", optional = true }
+convert_case = "0.6.0"
