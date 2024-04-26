@@ -4,10 +4,11 @@ on:
   push:
     branches:
       - main
+      - next
 
 jobs:
-  create-release:
-    name: Create Release
+  establish-version:
+    name: Establish Version
     runs-on: ubuntu-latest
     permissions: write-all
 
@@ -25,19 +26,47 @@ jobs:
           export CARGO_PKG_PRERELEASE=$([[ $CARGO_PKG_VERSION =~ -[0-9A-Za-z]+ ]] && echo "true" || echo "false")
           echo "CARGO_PKG_VERSION=${CARGO_PKG_VERSION}" >> $GITHUB_OUTPUT
           echo "CARGO_PKG_PRERELEASE=${CARGO_PKG_PRERELEASE}" >> $GITHUB_OUTPUT
+
+  check-branch:
+    name: Check branch
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - name: Check
+        if: ${{ github.ref_name }} == 'main'
+        run: |
+          [[ "${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}" == "true" ]] && exit 1
+
+      - name: Check only pre-release version on the 'next' branch
+        if: ${{ github.ref_name }} == 'next'
+        run: |
+          [[ "${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}" == "false" ]] && exit 1
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs:
+      - establish-version
+      - check-branch
+    permissions: write-all
+
+    steps:
       - name: Create Tag and Release
         uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.version.outputs.CARGO_PKG_VERSION }}
-          release_name: v${{ steps.version.outputs.CARGO_PKG_VERSION }}
-          prerelease: ${{ steps.version.outputs.CARGO_PKG_PRERELEASE }}
+          tag_name: ${{ needs.establish-version.outputs.CARGO_PKG_VERSION }}
+          release_name: v${{ needs.establish-version.outputs.CARGO_PKG_VERSION }}
+          prerelease: ${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}
 
   build:
     name: Build for Linux
     runs-on: ubuntu-latest
-    needs: create-release
+    needs:
+      - establish-version
+      - create-release
     container:
       image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest
     permissions: write-all
@@ -61,20 +90,14 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install dependencies
-        run: yum -y update && yum -y install atk-devel libadwaita-devel
+        run: yum -y update && yum -y install atk-devel libadwaita-devel gtksourceview5-devel
 
       - name: Build
         run: |
           # Build
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
-          cargo build -p testangel-arithmetic --release
-          cargo build -p testangel-compare --release
-          cargo build -p testangel-convert --release
-          cargo build -p testangel-date --release
           cargo build -p testangel-evidence --release
-          cargo build -p testangel-rand --release
-          cargo build -p testangel-regex --release
           cargo build -p testangel-user-interaction --release
           # Prepare output dir
           mkdir -p build || exit 1
@@ -82,13 +105,7 @@ jobs:
           cp target/release/testangel-executor build/
           # Prepare engines
           mkdir -p build/engines || exit 1
-          cp target/release/libtestangel_arithmetic.so build/engines
-          cp target/release/libtestangel_compare.so build/engines
-          cp target/release/libtestangel_convert.so build/engines
-          cp target/release/libtestangel_date.so build/engines
           cp target/release/libtestangel_evidence.so build/engines
-          cp target/release/libtestangel_rand.so build/engines
-          cp target/release/libtestangel_regex.so build/engines
           cp target/release/libtestangel_user_interaction.so build/engines
 
       - name: Save Cargo cache
@@ -113,13 +130,15 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: release-linux-amd64.tar.gz
-          tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
-          prerelease: ${{ needs.create-release.outputs.CARGO_PKG_PRERELEASE }}
+          tag_name: ${{ needs.establish-version.outputs.CARGO_PKG_VERSION }}
+          prerelease: ${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}
 
   build-win:
     name: Build for Windows
     runs-on: windows-latest
-    needs: create-release
+    needs:
+      - establish-version
+      - create-release
     permissions: write-all
 
     steps:
@@ -157,7 +176,7 @@ jobs:
           python -m pip install --user pipx
           python -m pipx ensurepath
           pipx install gvsbuild
-          gvsbuild build gtk4 libadwaita librsvg --ninja-opts -j2
+          gvsbuild build gtk4 libadwaita librsvg gtksourceview5 --ninja-opts -j2
 
       - name: Build GTK4 with known good gvsbuild (${{ vars.GVSBUILD_KNOWN_GOOD_VERSION }})
         if: steps.build-gtk4-fallible.outcome == 'failure'
@@ -165,7 +184,7 @@ jobs:
           python -m pip install --user pipx
           python -m pipx ensurepath
           pipx install --force gvsbuild==${{ vars.GVSBUILD_KNOWN_GOOD_VERSION }}
-          gvsbuild build gtk4 libadwaita librsvg --ninja-opts -j2
+          gvsbuild build gtk4 libadwaita librsvg gtksourceview5 --ninja-opts -j2
 
       - name: Restore git binary
         run: |
@@ -192,13 +211,7 @@ jobs:
 
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
-          cargo build -p testangel-arithmetic --release
-          cargo build -p testangel-compare --release
-          cargo build -p testangel-convert --release
-          cargo build -p testangel-date --release
           cargo build -p testangel-evidence --release
-          cargo build -p testangel-rand --release
-          cargo build -p testangel-regex --release
           cargo build -p testangel-user-interaction --release
           mkdir build
           copy target/release/testangel.exe build/
@@ -207,13 +220,7 @@ jobs:
           copy target/release/testangel-executor.exe build/
           copy C:\gtk-build\gtk\x64\release\bin\*.dll build/
           mkdir build/engines
-          copy target/release/testangel_arithmetic.dll build/engines/
-          copy target/release/testangel_compare.dll build/engines/
-          copy target/release/testangel_convert.dll build/engines/
-          copy target/release/testangel_date.dll build/engines/
           copy target/release/testangel_evidence.dll build/engines/
-          copy target/release/testangel_rand.dll build/engines/
-          copy target/release/testangel_regex.dll build/engines/
           copy target/release/testangel_user_interaction.dll build/engines/
 
           # GSchemas for FileChooser
@@ -247,86 +254,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: release-win.zip
-          tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
-          prerelease: ${{ needs.create-release.outputs.CARGO_PKG_PRERELEASE }}
-
-  build-mac:
-    name: Build for Mac
-    runs-on: macos-latest
-    needs: create-release
-    permissions: write-all
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v1
-
-      - name: Restore Cargo cache
-        uses: actions/cache/restore@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install dependencies
-        run: brew install gtk4 libadwaita
-
-      - name: Build for mac
-        run: |
-          # Build
-          cargo build -p testangel --bin testangel --release
-          cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
-          cargo build -p testangel-arithmetic --release
-          cargo build -p testangel-compare --release
-          cargo build -p testangel-convert --release
-          cargo build -p testangel-date --release
-          cargo build -p testangel-evidence --release
-          cargo build -p testangel-rand --release
-          cargo build -p testangel-regex --release
-          cargo build -p testangel-user-interaction --release
-          # Prepare output dir
-          mkdir -p build || exit 1
-          cp target/release/testangel build/
-          cp target/release/testangel-executor build/
-          # Prepare engines
-          mkdir -p build/engines || exit 1
-          cp target/release/libtestangel_arithmetic.dylib build/engines
-          cp target/release/libtestangel_compare.dylib build/engines
-          cp target/release/libtestangel_convert.dylib build/engines
-          cp target/release/libtestangel_date.dylib build/engines
-          cp target/release/libtestangel_evidence.dylib build/engines
-          cp target/release/libtestangel_rand.dylib build/engines
-          cp target/release/libtestangel_regex.dylib build/engines
-          cp target/release/libtestangel_user_interaction.dylib build/engines
-
-      - name: Save Cargo cache
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Archive Release
-        uses: thedoctor0/zip-release@0.7.1
-        with:
-          type: tar
-          path: build
-          filename: release-darwin.tar.gz
-
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: release-darwin.tar.gz
-          tag_name: ${{ needs.create-release.outputs.CARGO_PKG_VERSION }}
-          prerelease: ${{ needs.create-release.outputs.CARGO_PKG_PRERELEASE }}
+          tag_name: ${{ needs.establish-version.outputs.CARGO_PKG_VERSION }}
+          prerelease: ${{ needs.establish-version.outputs.CARGO_PKG_PRERELEASE }}

@@ -15,6 +15,7 @@ pub type FnEngineInstruction<'a, T> = dyn 'a
 pub struct Engine<'a, T: Default + Send + Sync> {
     name: String,
     version: String,
+    lua_name: String,
     instructions: Vec<Instruction>,
     functions: HashMap<String, Box<FnEngineInstruction<'a, T>>>,
     state: T,
@@ -22,10 +23,11 @@ pub struct Engine<'a, T: Default + Send + Sync> {
 
 impl<'a, T: Default + Send + Sync> Engine<'a, T> {
     /// Create a new engine with the given name
-    pub fn new<S: AsRef<str>>(name: S, version: S) -> Self {
+    pub fn new<S: AsRef<str>>(name: S, lua_name: S, version: S) -> Self {
         Self {
             name: name.as_ref().to_string(),
             version: version.as_ref().to_string(),
+            lua_name: lua_name.as_ref().to_string(),
             instructions: vec![],
             state: Default::default(),
             functions: HashMap::new(),
@@ -64,7 +66,8 @@ impl<'a, T: Default + Send + Sync> Engine<'a, T> {
                 Response::Instructions {
                     friendly_name: self.name.clone(),
                     engine_version: self.version.clone(),
-                    ipc_version: 1,
+                    engine_lua_name: self.lua_name.clone(),
+                    ipc_version: 2,
                     instructions: self.instructions.clone(),
                 }
             }

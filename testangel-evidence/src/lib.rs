@@ -4,10 +4,11 @@ use lazy_static::lazy_static;
 use testangel_engine::*;
 
 lazy_static! {
-    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Evidence", env!("CARGO_PKG_VERSION"))
+    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Evidence", "Evidence", env!("CARGO_PKG_VERSION"))
     .with_instruction(
         Instruction::new(
             "evidence-add-text",
+            "AddText",
             "Add Text-based Evidence",
             "Add text based evidence to the report.",
         )

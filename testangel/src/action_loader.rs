@@ -48,25 +48,23 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
                 log::debug!("Detected possible action {str}");
                 if let Ok(res) = fs::read_to_string(path.path()) {
                     if let Ok(versioned_file) = ron::from_str::<VersionedFile>(&res) {
-                        if versioned_file.version() != 1 {
+                        if versioned_file.version() != 2 {
                             log::warn!("Action {str} uses an incompatible file version.");
                             continue 'action_loop;
                         }
                     }
 
                     if let Ok(action) = ron::from_str::<Action>(&res) {
-                        for instruction_config in &action.instructions {
-                            if engine_list
-                                .get_instruction_by_id(&instruction_config.instruction_id)
-                                .is_none()
-                            {
-                                log::warn!(
-                                    "Couldn't load action {} because instruction {} isn't available.",
-                                    action.friendly_name,
-                                    instruction_config.instruction_id,
-                                );
-                                continue 'action_loop;
-                            }
+                        // Validate that all instructions are available for this action before loading
+                        if let Err(missing) =
+                            action.check_instructions_available(engine_list.clone())
+                        {
+                            log::warn!(
+                                "Couldn't load action {} because instructions {:?} aren't available.",
+                                action.friendly_name,
+                                missing,
+                            );
+                            continue 'action_loop;
                         }
 
                         log::info!(

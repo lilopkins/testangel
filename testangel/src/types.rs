@@ -1,12 +1,16 @@
 use std::{collections::HashMap, fmt, sync::Arc};
 
+use mlua::{Lua, TableExt};
 use serde::{Deserialize, Serialize};
 use testangel_ipc::prelude::*;
 
 use crate::{
     action_loader::ActionMap,
+    action_syntax::{Descriptor, DescriptorKind},
     ipc::{self, EngineList, IpcError},
 };
+
+pub mod old_types;
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct VersionedFile {
@@ -36,27 +40,24 @@ pub struct Action {
     pub author: String,
     /// Whether this action should be visible in the flow editor.
     pub visible: bool,
-    /// The parameters this action takes, with a friendly name.
-    pub parameters: Vec<(String, ParameterKind)>,
-    /// The outputs this action produces, with a friendly name
-    pub outputs: Vec<(String, ParameterKind, InstructionParameterSource)>,
-    /// The instructions called by this action
-    pub instructions: Vec<InstructionConfiguration>,
+    /// The Lua code driving this action.
+    pub script: String,
+    /// A vector of required instruction IDs for this action to work.
+    pub required_instructions: Vec<String>,
 }
 
 impl Default for Action {
     fn default() -> Self {
         Self {
-            version: 1,
+            version: 2,
             id: uuid::Uuid::new_v4().to_string(),
             friendly_name: String::new(),
             description: String::new(),
             author: String::new(),
             visible: true,
             group: String::new(),
-            parameters: Vec::new(),
-            outputs: Vec::new(),
-            instructions: Vec::new(),
+            script: "--: param Integer Example Parameter\n--: return String Some value to return\nfunction run_action(x)\n  -- Your action can be built here!\n  return 'Hello, world!'\nend\n".to_string(),
+            required_instructions: Vec::new(),
         }
     }
 }
@@ -71,112 +72,51 @@ impl Action {
     pub fn new_id(&mut self) {
         self.id = uuid::Uuid::new_v4().to_string();
     }
-}
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct InstructionConfiguration {
-    pub instruction_id: String,
-    pub comment: String,
-    /// Run If can depend on any boolean parameter, or if set to 'Literal' will always run.
-    pub run_if: InstructionParameterSource,
-    pub parameter_sources: HashMap<String, InstructionParameterSource>,
-    pub parameter_values: HashMap<String, ParameterValue>,
-}
-impl InstructionConfiguration {
-    pub fn execute(
+    /// Check that all the instructions this action uses are available. Returns
+    /// Ok if all instructions are available, otherwise returns a list of
+    /// missing instructions.
+    pub fn check_instructions_available(
         &self,
-        engine_map: Arc<EngineList>,
-        action_parameters: &HashMap<usize, ParameterValue>,
-        previous_outputs: Vec<HashMap<String, ParameterValue>>,
-    ) -> Result<(HashMap<String, ParameterValue>, Vec<Evidence>), FlowError> {
-        // Get instruction
-        let engine = engine_map
-            .get_engine_by_instruction_id(&self.instruction_id)
-            .unwrap();
-
-        // Build input parameters
-        let mut parameters = HashMap::new();
-        for (id, src) in &self.parameter_sources {
-            let value = match src {
-                InstructionParameterSource::Literal => {
-                    self.parameter_values.get(id).unwrap().clone()
-                }
-                InstructionParameterSource::FromOutput(step, id) => previous_outputs
-                    .get(*step)
-                    .unwrap()
-                    .get(id)
-                    .unwrap()
-                    .clone(),
-                InstructionParameterSource::FromParameter(id) => {
-                    action_parameters.get(id).unwrap().clone()
-                }
-            };
-            parameters.insert(id.clone(), value);
-        }
-
-        // Make IPC call
-        let response = ipc::ipc_call(
-            engine,
-            Request::RunInstructions {
-                instructions: vec![InstructionWithParameters {
-                    instruction: self.instruction_id.clone(),
-                    parameters,
-                }],
-            },
-        )
-        .map_err(FlowError::IPCFailure)?;
-
-        // Generate output table and return
-        match response {
-            Response::ExecutionOutput { output, evidence } => {
-                Ok((output[0].clone(), evidence[0].clone()))
+        engine_list: Arc<EngineList>,
+    ) -> Result<(), Vec<String>> {
+        let mut missing = vec![];
+        for instruction in &self.required_instructions {
+            if engine_list.get_instruction_by_id(instruction).is_none()
+                && !missing.contains(instruction)
+            {
+                missing.push(instruction.clone());
             }
-            Response::Error { kind, reason } => Err(FlowError::FromInstruction {
-                error_kind: kind,
-                reason,
-            }),
-            _ => unreachable!(),
+        }
+        if missing.is_empty() {
+            Ok(())
+        } else {
+            Err(missing)
         }
     }
-}
 
-impl From<Instruction> for InstructionConfiguration {
-    fn from(value: Instruction) -> Self {
-        let mut parameter_sources = HashMap::new();
-        let mut parameter_values = HashMap::new();
-        for (id, (_friendly_name, kind)) in value.parameters() {
-            parameter_sources.insert(id.clone(), InstructionParameterSource::Literal);
-            parameter_values.insert(id.clone(), kind.default_value());
+    /// Get a list of parameters that need to be provided to this action.
+    pub fn parameters(&self) -> Vec<(String, ParameterKind)> {
+        let descriptors = Descriptor::parse_all(&self.script);
+        let mut params = vec![];
+        for d in descriptors {
+            if d.descriptor_kind == DescriptorKind::Parameter {
+                params.push((d.name.clone(), d.kind));
+            }
         }
-        Self {
-            instruction_id: value.id().clone(),
-            run_if: InstructionParameterSource::Literal, // run always
-            comment: String::new(),
-            parameter_sources,
-            parameter_values,
-        }
+        params
     }
-}
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum InstructionParameterSource {
-    #[default]
-    Literal,
-    FromParameter(usize),
-    FromOutput(usize, String),
-}
-
-impl fmt::Display for InstructionParameterSource {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::FromOutput(step, id) => {
-                write!(f, "From Step {}: {}", step + 1, id)
+    /// Get a list of outputs provided by this action.
+    pub fn outputs(&self) -> Vec<(String, ParameterKind)> {
+        let descriptors = Descriptor::parse_all(&self.script);
+        let mut outputs = vec![];
+        for d in descriptors {
+            if d.descriptor_kind == DescriptorKind::Return {
+                outputs.push((d.name.clone(), d.kind));
             }
-            Self::FromParameter(id) => {
-                write!(f, "Parameter {id}")
-            }
-            Self::Literal => write!(f, "Literal"),
         }
+        outputs
     }
 }
 
@@ -186,16 +126,43 @@ pub enum FlowError {
         error_kind: ErrorKind,
         reason: String,
     },
+    Lua(mlua::Error),
     IPCFailure(IpcError),
+    ActionDidntReturnCorrectArgumentCount,
+    ActionDidntReturnValidArguments,
+    InstructionCalledWithUnsupportedVarType,
+    InstructionCalledWithWrongNumberOfParams,
+    InstructionCalledWithInvalidParamType,
 }
+
+impl std::error::Error for FlowError {}
 
 impl fmt::Display for FlowError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IPCFailure(e) => write!(f, "An IPC call failed ({e:?})."),
+            Self::Lua(e) => write!(f, "An action script error occurred:\n{}", e),
             Self::FromInstruction { error_kind, reason } => write!(
                 f,
                 "An instruction returned an error: {error_kind:?}: {reason}"
+            ),
+            Self::ActionDidntReturnCorrectArgumentCount => {
+                write!(f, "The action didn't return the correct amount of values.")
+            }
+            Self::ActionDidntReturnValidArguments => {
+                write!(f, "The action didn't return valid values.")
+            }
+            Self::InstructionCalledWithUnsupportedVarType => write!(
+                f,
+                "An instruction was called with an unsupported variable type."
+            ),
+            Self::InstructionCalledWithWrongNumberOfParams => write!(
+                f,
+                "An instruction was called with the wrong number of parameters."
+            ),
+            Self::InstructionCalledWithInvalidParamType => write!(
+                f,
+                "An instruction was called with the wrong parameter type."
             ),
         }
     }
@@ -255,7 +222,11 @@ impl ActionConfiguration {
             };
             action_parameters.insert(*id, value);
         }
-        Self::execute_directly(engine_map, &action, action_parameters).map_err(|(_step, err)| err)
+        let mut param_vec = vec![];
+        for i in 0..action_parameters.len() {
+            param_vec.push(action_parameters[&i].clone());
+        }
+        Self::execute_directly(engine_map, &action, param_vec)
     }
 
     #[allow(clippy::type_complexity)]
@@ -263,59 +234,174 @@ impl ActionConfiguration {
     pub fn execute_directly(
         engine_map: Arc<EngineList>,
         action: &Action,
-        action_parameters: HashMap<usize, ParameterValue>,
-    ) -> Result<(HashMap<usize, ParameterValue>, Vec<Evidence>), (usize, FlowError)> {
-        // Iterate through instructions
-        let mut instruction_outputs: Vec<HashMap<String, ParameterValue>> = Vec::new();
-        let mut evidence = Vec::new();
-        for (step, instruction_config) in action.instructions.iter().enumerate() {
-            // Check if we execute instruction
-            if !match &instruction_config.run_if {
-                InstructionParameterSource::Literal => true,
-                InstructionParameterSource::FromParameter(p_idx) => {
-                    action_parameters.get(p_idx).unwrap().value_bool()
-                }
-                InstructionParameterSource::FromOutput(step, output_name) => instruction_outputs
-                    .get(*step)
-                    .unwrap()
-                    .get(output_name)
-                    .unwrap()
-                    .value_bool(),
-            } {
-                log::debug!("Instruction skipped");
-                instruction_outputs.push(HashMap::new());
-                continue;
-            }
-
-            // Execute instruction
-            let (outputs, ev) = instruction_config
-                .execute(
-                    engine_map.clone(),
-                    &action_parameters,
-                    instruction_outputs.clone(),
-                )
-                .map_err(|err| (step, err))?;
-            instruction_outputs.push(outputs);
-            evidence = [evidence, ev].concat();
-        }
-
-        // Generate output map
+        action_parameters: Vec<ParameterValue>,
+    ) -> Result<(HashMap<usize, ParameterValue>, Vec<Evidence>), FlowError> {
         let mut output = HashMap::new();
-        for (index, (_friendly_name, kind, src)) in action.outputs.iter().enumerate() {
-            let value = match src {
-                InstructionParameterSource::Literal => panic!("Output set to literal."),
-                InstructionParameterSource::FromOutput(step, id) => instruction_outputs
-                    .get(*step)
-                    .unwrap()
-                    .get(id)
-                    .unwrap_or(&kind.default_value())
-                    .clone(),
-                InstructionParameterSource::FromParameter(id) => {
-                    action_parameters.get(id).unwrap().clone()
-                }
-            };
-            output.insert(index, value);
+
+        // Prepare Lua environment
+        let lua_env = Lua::new();
+        lua_env.set_app_data::<Vec<Evidence>>(vec![]);
+
+        // unwrap rationale: this will only fail under memory issues
+        for engine in engine_map.inner().clone() {
+            let engine_lua_name = engine.lua_name.clone();
+            let engine_tbl = lua_env.create_table().unwrap();
+            for instruction in engine.instructions.clone() {
+                let instruction_lua_name = instruction.lua_name().clone();
+                let engine = engine.clone();
+                let instruction_fn = lua_env
+                    .create_function(move |lua, args: mlua::MultiValue| {
+                        // Check we have the correct number of parameters.
+                        if args.len() != instruction.parameters().len() {
+                            return Err(mlua::Error::external(
+                                FlowError::InstructionCalledWithWrongNumberOfParams,
+                            ));
+                        }
+
+                        // Convert to TA params
+                        let mut params = vec![];
+                        for param in &args {
+                            match param {
+                                mlua::Value::Boolean(b) => params.push(ParameterValue::Boolean(*b)),
+                                mlua::Value::String(s) => params
+                                    .push(ParameterValue::String(s.to_str().unwrap().to_owned())),
+                                mlua::Value::Integer(i) => params.push(ParameterValue::Integer(*i)),
+                                mlua::Value::Number(n) => {
+                                    params.push(ParameterValue::Decimal(*n as f32))
+                                }
+                                _ => {
+                                    return Err(mlua::Error::external(
+                                        FlowError::InstructionCalledWithUnsupportedVarType,
+                                    ))
+                                }
+                            }
+                        }
+
+                        // Check we have the correct parameter types and convert to parameter map
+                        let mut param_map = HashMap::new();
+                        for (value, param_id) in
+                            std::iter::zip(params, instruction.parameter_order())
+                        {
+                            if let Some((_name, kind)) = instruction.parameters().get(param_id) {
+                                if *kind != value.kind() {
+                                    return Err(mlua::Error::external(
+                                        FlowError::InstructionCalledWithInvalidParamType,
+                                    ));
+                                }
+                                param_map.insert(param_id.clone(), value);
+                            }
+                        }
+
+                        // Trigger instruction behaviour
+                        let response = ipc::ipc_call(
+                            &engine,
+                            Request::RunInstructions {
+                                instructions: vec![InstructionWithParameters {
+                                    instruction: instruction.id().clone(),
+                                    parameters: param_map,
+                                }],
+                            },
+                        )
+                        .map_err(|e| mlua::Error::external(FlowError::IPCFailure(e)))?;
+
+                        match response {
+                            Response::ExecutionOutput { output, evidence } => {
+                                // Add evidence
+                                let mut ev = lua.app_data_mut::<Vec<Evidence>>().unwrap();
+                                for item in &evidence[0] {
+                                    ev.push(item.clone());
+                                }
+
+                                // Convert output back to Lua values
+                                let mut outputs = vec![];
+                                for output_id in instruction.output_order() {
+                                    let o = output[0][output_id].clone();
+                                    match o {
+                                        ParameterValue::Boolean(b) => {
+                                            outputs.push(mlua::Value::Boolean(b))
+                                        }
+                                        ParameterValue::String(s) => {
+                                            outputs.push(mlua::Value::String(lua.create_string(s)?))
+                                        }
+                                        ParameterValue::Integer(i) => {
+                                            outputs.push(mlua::Value::Integer(i))
+                                        }
+                                        ParameterValue::Decimal(n) => {
+                                            outputs.push(mlua::Value::Number(n as f64))
+                                        }
+                                    }
+                                }
+
+                                Ok(outputs)
+                            }
+                            Response::Error { kind, reason } => {
+                                Err(mlua::Error::external(FlowError::FromInstruction {
+                                    error_kind: kind,
+                                    reason,
+                                }))
+                            }
+                            _ => unreachable!(),
+                        }
+                    })
+                    .unwrap();
+                engine_tbl
+                    .set(instruction_lua_name.as_str(), instruction_fn)
+                    .unwrap();
+            }
+            lua_env
+                .globals()
+                .set(engine_lua_name.as_str(), engine_tbl)
+                .unwrap();
         }
+
+        // Execute Lua script
+        // Add parameters and get results
+        let mut params = vec![];
+        for param in action_parameters {
+            match param {
+                ParameterValue::Boolean(b) => params.push(mlua::Value::Boolean(b)),
+                ParameterValue::String(s) => params.push(mlua::Value::String(
+                    lua_env.create_string(s).map_err(FlowError::Lua)?,
+                )),
+                ParameterValue::Integer(i) => params.push(mlua::Value::Integer(i)),
+                ParameterValue::Decimal(n) => params.push(mlua::Value::Number(n as f64)),
+            }
+        }
+
+        lua_env
+            .load(&action.script)
+            .set_name(action.friendly_name.clone())
+            .exec()
+            .map_err(FlowError::Lua)?;
+
+        let res: mlua::MultiValue = lua_env
+            .globals()
+            .call_function("run_action", mlua::MultiValue::from_vec(params))
+            .map_err(FlowError::Lua)?;
+        let res = res.into_vec();
+
+        // Process return values
+        let ao = action.outputs();
+        if ao.len() != res.len() {
+            return Err(FlowError::ActionDidntReturnCorrectArgumentCount);
+        }
+        for i in 0..ao.len() {
+            let (_name, kind) = ao[i].clone();
+            let out = res[i].clone();
+            let ta_out = match out {
+                mlua::Value::Boolean(b) => ParameterValue::Boolean(b),
+                mlua::Value::String(s) => ParameterValue::String(s.to_str().unwrap().to_owned()),
+                mlua::Value::Integer(i) => ParameterValue::Integer(i),
+                mlua::Value::Number(n) => ParameterValue::Decimal(n as f32),
+                _ => return Err(FlowError::ActionDidntReturnValidArguments),
+            };
+            if ta_out.kind() != kind {
+                return Err(FlowError::ActionDidntReturnValidArguments);
+            }
+            output.insert(i, ta_out);
+        }
+
+        let evidence = lua_env.app_data_ref::<Vec<Evidence>>().unwrap().clone();
 
         Ok((output, evidence))
     }
@@ -329,13 +415,13 @@ impl ActionConfiguration {
         }
 
         // If number of parameters has changed
-        if self.parameter_sources.len() != action.parameters.len() {
+        if self.parameter_sources.len() != action.parameters().len() {
             *self = Self::from(action);
             return true;
         }
 
         for (n, value) in &self.parameter_values {
-            let (_, action_param_kind) = &action.parameters[*n];
+            let (_, action_param_kind) = &action.parameters()[*n];
             if value.kind() != *action_param_kind {
                 // Reset parameters
                 *self = Self::from(action);
@@ -351,7 +437,7 @@ impl From<Action> for ActionConfiguration {
     fn from(value: Action) -> Self {
         let mut parameter_sources = HashMap::new();
         let mut parameter_values = HashMap::new();
-        for (id, (_friendly_name, kind)) in value.parameters.iter().enumerate() {
+        for (id, (_friendly_name, kind)) in value.parameters().iter().enumerate() {
             parameter_sources.insert(id, ActionParameterSource::Literal);
             parameter_values.insert(id, kind.default_value());
         }

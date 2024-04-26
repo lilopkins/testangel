@@ -89,10 +89,10 @@ action-save-open-error-io-error = I/O fel: { $error }
 action-save-open-error-parsing-error = Felaktig åtgärdsfil: { $error }
 action-save-open-error-serializing-error = Det går inte att spara åtgärden på grund av ett internt fel i serialiseringen: { $error }
 action-save-open-error-action-not-version-compatible = Åtgärden du har öppnat är inte kompatibelt med den här versionen av { app-name }.
-action-save-open-error-missing-instruction = Instruktionen för steg { $step } (med internt identifierare: { $error }) i denna åtgärden saknas.
+action-save-open-error-missing-instruction = Instruktionen med internt identifierare: { $error } i denna åtgärden saknas.
 
 action-metadata-label = Åtgärdsdata
-action-metadata-name = Åtgördsnamn
+action-metadata-name = Åtgärdsnamn
 action-metadata-group = Åtgärdsgrupp
 action-metadata-author = Skapare
 action-metadata-description = Beskrivning

@@ -59,6 +59,8 @@ pub enum Response {
         friendly_name: String,
         /// The semver version of this engine
         engine_version: String,
+        /// The name of this engine in code.
+        engine_lua_name: String,
         /// The version of IPC language that this engine talks, currently must be 1.
         ipc_version: usize,
         /// The list of instructions this engine is capable of.
