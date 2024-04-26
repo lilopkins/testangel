@@ -82,7 +82,9 @@ impl Action {
     ) -> Result<(), Vec<String>> {
         let mut missing = vec![];
         for instruction in &self.required_instructions {
-            if engine_list.get_instruction_by_id(instruction).is_none() && !missing.contains(instruction) {
+            if engine_list.get_instruction_by_id(instruction).is_none()
+                && !missing.contains(instruction)
+            {
                 missing.push(instruction.clone());
             }
         }
