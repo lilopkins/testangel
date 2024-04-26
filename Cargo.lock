@@ -3531,7 +3531,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.20.8"
+version = "0.21.0"
 dependencies = [
  "base64 0.22.0",
  "chrono",
@@ -3567,7 +3567,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine"
-version = "0.20.8"
+version = "0.21.0"
 dependencies = [
  "testangel-engine-macros",
  "testangel-ipc",
@@ -3575,11 +3575,11 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine-macros"
-version = "0.20.8"
+version = "0.21.0"
 
 [[package]]
 name = "testangel-evidence"
-version = "0.20.8"
+version = "0.21.0"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3587,7 +3587,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.20.8"
+version = "0.21.0"
 dependencies = [
  "schemars",
  "serde",
@@ -3596,7 +3596,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-user-interaction"
-version = "0.20.8"
+version = "0.21.0"
 dependencies = [
  "lazy_static",
  "rfd",
