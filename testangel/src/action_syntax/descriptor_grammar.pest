@@ -16,7 +16,7 @@ DescriptorKind = @{
 }
 
 Kind = @{
-  "Integer" | "Decimal" | "Boolean" | "String"
+  "Integer" | "Decimal" | "Boolean" | "Text"
 }
 
 Name = {

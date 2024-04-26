@@ -58,7 +58,7 @@ impl Descriptor {
                         "Boolean" => ParameterKind::Boolean,
                         "Decimal" => ParameterKind::Decimal,
                         "Integer" => ParameterKind::Integer,
-                        "String" => ParameterKind::String,
+                        "Text" => ParameterKind::String,
                         _ => unreachable!(),
                     }
                 }

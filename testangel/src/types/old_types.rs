@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
@@ -29,24 +30,46 @@ pub struct ActionV1 {
 
 impl ActionV1 {
     pub fn upgrade_action(self) -> crate::types::Action {
-        let mut instruction_script = String::new();
-        for ins_cfg in self.instructions {
-            if !ins_cfg.comment.is_empty() {
-                instruction_script.push_str(&format!("  -- {}", ins_cfg.comment));
-            }
-            // TODO: need to load instruction and build lines here
-            todo!();
+        let mut script = String::new();
+
+        // Add descriptors
+        for (name, kind) in &self.parameters {
+            script.push_str(&format!("--: param {} {}\n", kind, name));
+        }
+        for (name, kind, _src) in self.outputs {
+            script.push_str(&format!("--: return {} {}\n", kind, name));
         }
 
-        let script = format!(
-            "--[[\n  {}\n  Author: {}\n  Description: {}\n--]]\nfunction run_action({})\n{}\n{}\nend",
-            self.friendly_name,
-            self.author,
-            self.description,
-            "params",
-            instruction_script,
-            "outputs",
-        );
+        // Add function signature
+        let mut params = String::new();
+        for (name, _kind) in self.parameters {
+            params.push_str(&format!("{}, ", name.to_case(Case::Snake)));
+        }
+        // remove the last ", "
+        let _ = params.pop();
+        let _ = params.pop();
+        script.push_str(&format!("function run_action({})\n", params));
+
+        // add steps
+        for step in self.instructions {
+            if !step.comment.is_empty() {
+                script.push_str(&format!(
+                    "  -- {}\n",
+                    step.comment,
+                ));
+            }
+            script.push_str(&format!(
+                "  -- instr: {} | runif: {:?} | srcs: {:?} | vals: {:?}\n",
+                step.instruction_id,
+                step.run_if,
+                step.parameter_sources,
+                step.parameter_values,
+            ));
+        }
+
+        // end function
+        script.push_str("end\n");
+
         crate::types::Action {
             version: 2,
             id: self.id,
