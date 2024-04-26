@@ -24,7 +24,6 @@ pub enum ReportGenerationError {
     PdfGeneration(#[from] genpdf::error::Error),
 }
 
-// TODO Remove so many assumptions
 pub fn save_report<P: AsRef<Path>>(
     to: P,
     evidence: Vec<Evidence>,

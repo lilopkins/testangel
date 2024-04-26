@@ -92,7 +92,7 @@ action-save-open-error-io-error = I/O error: { $error }
 action-save-open-error-parsing-error = The action file is corrupted: { $error }
 action-save-open-error-serializing-error = The action could not be saved due to an internal serialisation error: { $error }
 action-save-open-error-action-not-version-compatible = The action you tried to load is not compatible with this version of { app-name }.
-action-save-open-error-missing-instruction = The instruction for step { $step } (with internal ID: { $error }) in this action is missing.
+action-save-open-error-missing-instruction = The instruction with internal ID: { $error } in this action is missing.
 
 action-metadata-label = Action Metadata
 action-metadata-name = Action Name

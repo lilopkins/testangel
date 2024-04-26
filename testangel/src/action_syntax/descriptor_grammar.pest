@@ -1,0 +1,26 @@
+Line = {
+  SOI ~
+  Descriptor ~
+  EOI
+}
+
+Descriptor = {
+  "--:" ~
+  DescriptorKind ~
+  Kind ~
+  Name
+}
+
+DescriptorKind = @{
+  "param" | "return"
+}
+
+Kind = @{
+  "Integer" | "Decimal" | "Boolean" | "Text"
+}
+
+Name = {
+  (ASCII_ALPHANUMERIC | PUNCTUATION | SYMBOL | " ")+
+}
+
+WHITESPACE = _{ " " }

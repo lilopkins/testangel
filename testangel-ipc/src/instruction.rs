@@ -12,6 +12,8 @@ use crate::{prelude::*, value::ParameterValue};
 pub struct Instruction {
     /// The internal ID of this instruction. Must be unique.
     id: String,
+    /// The lua name of this instruction. Must be a valid lua function name.
+    lua_name: String,
     /// The friendly name of this instruction.
     friendly_name: String,
     /// A description of this instruction.
@@ -22,22 +24,31 @@ pub struct Instruction {
     parameter_order: Vec<String>,
     /// The outputs this instruction produces, with a friendly name
     outputs: HashMap<String, (String, ParameterKind)>,
+    /// The order of the outputs in the editor.
+    output_order: Vec<String>,
 }
 
 impl Instruction {
     /// Build a new instruction
-    pub fn new<S>(id: S, friendly_name: S, description: S) -> Self
+    pub fn new<S>(id: S, lua_name: S, friendly_name: S, description: S) -> Self
     where
         S: Into<String>,
     {
         Self {
             id: id.into(),
+            lua_name: lua_name.into(),
             friendly_name: friendly_name.into(),
             description: description.into(),
             parameters: HashMap::new(),
             parameter_order: Vec::new(),
             outputs: HashMap::new(),
+            output_order: Vec::new(),
         }
+    }
+
+    /// Get the lua name for this instruction
+    pub fn lua_name(&self) -> &String {
+        &self.lua_name
     }
 
     /// Get the friendly name of this instruction
@@ -62,7 +73,10 @@ impl Instruction {
     where
         S: Into<String>,
     {
-        self.outputs.insert(id.into(), (friendly_name.into(), kind));
+        let id = id.into();
+        self.outputs
+            .insert(id.clone(), (friendly_name.into(), kind));
+        self.output_order.push(id.clone());
         self
     }
 
@@ -112,6 +126,11 @@ impl Instruction {
     /// Get the outputs of this instruction
     pub fn outputs(&self) -> &HashMap<String, (String, ParameterKind)> {
         &self.outputs
+    }
+
+    /// Get the order of outputs of this instruction
+    pub fn output_order(&self) -> &Vec<String> {
+        &self.output_order
     }
 }
 
