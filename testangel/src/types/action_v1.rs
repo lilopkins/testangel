@@ -54,26 +54,40 @@ impl ActionV1 {
 
         // add steps
         for (idx, step) in self.instructions.iter().enumerate() {
-            script.push_str(&format!("  -- Step {}{}{}\n", idx + 1, if !step.comment.is_empty() { ": " } else { "" }, step.comment));
+            script.push_str(&format!(
+                "  -- Step {}{}{}\n",
+                idx + 1,
+                if !step.comment.is_empty() { ": " } else { "" },
+                step.comment
+            ));
 
             if let Some(instruction) = engine_list.get_instruction_by_id(&step.instruction_id) {
                 let mut line = "  ".to_string();
                 // Add conditional
                 line.push_str(&match &step.run_if {
                     InstructionParameterSource::Literal => String::new(),
-                    InstructionParameterSource::FromOutput(step, name) => format!("if s{step}_{} then ", name.to_case(Case::Snake)),
-                    InstructionParameterSource::FromParameter(param) => format!("if {} then ", self.parameters[*param].clone().0.to_case(Case::Snake)),
+                    InstructionParameterSource::FromOutput(step, name) => {
+                        format!("if s{step}_{} then ", name.to_case(Case::Snake))
+                    }
+                    InstructionParameterSource::FromParameter(param) => format!(
+                        "if {} then ",
+                        self.parameters[*param].clone().0.to_case(Case::Snake)
+                    ),
                 });
 
                 // Add outputs with predicatable names
-                if instruction.output_order().len() > 0 {
+                if !instruction.output_order().is_empty() {
                     line.push_str("local ");
                 }
                 for output in instruction.output_order() {
                     let (output_name, _kind) = instruction.outputs()[output].clone();
-                    line.push_str(&format!("{}, ", format!("s{}_{}", idx + 1, output_name.to_case(Case::Snake))));
+                    line.push_str(&format!(
+                        "s{}_{}, ",
+                        idx + 1,
+                        output_name.to_case(Case::Snake)
+                    ));
                 }
-                if instruction.output_order().len() > 0 {
+                if !instruction.output_order().is_empty() {
                     // Remove last ", "
                     let _ = line.pop();
                     let _ = line.pop();
@@ -85,14 +99,20 @@ impl ActionV1 {
                 for param_id in instruction.parameter_order() {
                     let src = &step.parameter_sources[param_id];
                     inst_params.push_str(&match src {
-                        InstructionParameterSource::Literal => match step.parameter_values.get(param_id).unwrap() {
-                            ParameterValue::Boolean(b) => format!("{b}"),
-                            ParameterValue::Decimal(d) => format!("{d}"),
-                            ParameterValue::Integer(i) => format!("{i}"),
-                            ParameterValue::String(s) => format!("'{s}'"),
-                        },
-                        InstructionParameterSource::FromOutput(step, name) => format!("s{}_{}", step + 1, name.to_case(Case::Snake)),
-                        InstructionParameterSource::FromParameter(param) => self.parameters[*param].clone().0.to_case(Case::Snake),
+                        InstructionParameterSource::Literal => {
+                            match step.parameter_values.get(param_id).unwrap() {
+                                ParameterValue::Boolean(b) => format!("{b}"),
+                                ParameterValue::Decimal(d) => format!("{d}"),
+                                ParameterValue::Integer(i) => format!("{i}"),
+                                ParameterValue::String(s) => format!("'{s}'"),
+                            }
+                        }
+                        InstructionParameterSource::FromOutput(step, name) => {
+                            format!("s{}_{}", step + 1, name.to_case(Case::Snake))
+                        }
+                        InstructionParameterSource::FromParameter(param) => {
+                            self.parameters[*param].clone().0.to_case(Case::Snake)
+                        }
                     });
                     inst_params.push_str(", ");
                 }
@@ -100,9 +120,15 @@ impl ActionV1 {
                 let _ = inst_params.pop();
                 let _ = inst_params.pop();
 
-                let engine_lua_name = &engine_list.get_engine_by_instruction_id(&step.instruction_id).unwrap().lua_name;
+                let engine_lua_name = &engine_list
+                    .get_engine_by_instruction_id(&step.instruction_id)
+                    .unwrap()
+                    .lua_name;
                 let instruction_lua_name = instruction.lua_name();
-                line.push_str(&format!("{}.{}({})", engine_lua_name, instruction_lua_name, inst_params));
+                line.push_str(&format!(
+                    "{}.{}({})",
+                    engine_lua_name, instruction_lua_name, inst_params
+                ));
 
                 line.push_str(match &step.run_if {
                     InstructionParameterSource::Literal => "",
@@ -115,11 +141,20 @@ impl ActionV1 {
                 // Improve parameter source and values output
                 let mut new_params: HashMap<String, String> = HashMap::new();
                 for (param_id, src) in &step.parameter_sources {
-                    new_params.insert(param_id.clone(), match src {
-                        InstructionParameterSource::Literal => format!("{}", step.parameter_values.get(param_id).unwrap()),
-                        InstructionParameterSource::FromOutput(step, name) => format!("s{}_{}", step + 1, name.to_case(Case::Snake)),
-                        InstructionParameterSource::FromParameter(param) => self.parameters[*param].clone().0.to_case(Case::Snake),
-                    });
+                    new_params.insert(
+                        param_id.clone(),
+                        match src {
+                            InstructionParameterSource::Literal => {
+                                format!("{}", step.parameter_values.get(param_id).unwrap())
+                            }
+                            InstructionParameterSource::FromOutput(step, name) => {
+                                format!("s{}_{}", step + 1, name.to_case(Case::Snake))
+                            }
+                            InstructionParameterSource::FromParameter(param) => {
+                                self.parameters[*param].clone().0.to_case(Case::Snake)
+                            }
+                        },
+                    );
                 }
                 script.push_str(&format!(
                     "  -- Instr: {} | RunIf: {:?} | Params: {:?}\n",
