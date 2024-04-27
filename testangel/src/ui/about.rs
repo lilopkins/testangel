@@ -44,11 +44,21 @@ impl SimpleComponent for AppAbout {
             add_legal_section: ("chrono",            None, gtk::License::MitX11,    None),
             add_legal_section: ("base64",            None, gtk::License::MitX11,    None),
             add_legal_section: ("itertools",         None, gtk::License::MitX11,    None),
+            add_legal_section: ("opener",            None, gtk::License::MitX11,    None),
             add_legal_section: ("octocrab",          None, gtk::License::MitX11,    None),
             add_legal_section: ("semver",            None, gtk::License::MitX11,    None),
             add_legal_section: ("relm4",             None, gtk::License::MitX11,    None),
             add_legal_section: ("relm4-icons",       None, gtk::License::MitX11,    None),
-            add_legal_section: ("rust-i18n",         None, gtk::License::MitX11,    None),
+            add_legal_section: ("sourceview5",       None, gtk::License::MitX11,    None),
+            add_legal_section: ("fluent",            None, gtk::License::MitX11,    None),
+            add_legal_section: ("fluent-templates",  None, gtk::License::MitX11,    None),
+            add_legal_section: ("fuzzy-matcher",     None, gtk::License::MitX11,    None),
+            add_legal_section: ("once_cell",         None, gtk::License::MitX11,    None),
+            add_legal_section: ("sys-locale",        None, gtk::License::MitX11,    None),
+            add_legal_section: ("mlua",              None, gtk::License::MitX11,    None),
+            add_legal_section: ("pest",              None, gtk::License::MitX11,    None),
+            add_legal_section: ("pest_derive",       None, gtk::License::MitX11,    None),
+            add_legal_section: ("convert_case",      None, gtk::License::MitX11,    None),
         }
     }
 
