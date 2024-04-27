@@ -584,12 +584,7 @@ impl Component for ActionsModel {
                 let _ = params.pop();
 
                 let loc = if instruction.outputs().is_empty() {
-                    format!(
-                        "{}.{}({})",
-                        engine.lua_name,
-                        instruction.lua_name(),
-                        params
-                    )
+                    format!("{}.{}({})", engine.lua_name, instruction.lua_name(), params)
                 } else {
                     let mut returns = String::new();
                     for return_id in instruction.output_order() {
@@ -613,12 +608,18 @@ impl Component for ActionsModel {
                 };
                 // Append LoC
                 let buffer = self.source_view.buffer();
-                let text = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false).to_string();
+                let text = buffer
+                    .text(&buffer.start_iter(), &buffer.end_iter(), false)
+                    .to_string();
                 let mut newline_after = true;
 
                 // Decide if cursor needs moving down a line (or into function)
                 let cursor_pos = buffer.cursor_position();
-                log::debug!("Inserting step, cursor pos: {} (text len: {})", cursor_pos, text.len());
+                log::debug!(
+                    "Inserting step, cursor pos: {} (text len: {})",
+                    cursor_pos,
+                    text.len()
+                );
                 if cursor_pos == 0 || cursor_pos == text.len() as i32 {
                     // Move cursor into function
                     log::debug!("Offsetting cursor into function");
@@ -653,8 +654,13 @@ impl Component for ActionsModel {
                     log::debug!("cursor on line: {:?}", line);
                     if !line.trim().is_empty() {
                         // Offset cursor to end of line
-                        log::debug!("Moving cursor to end of line {} (pos {})", line_num, line.len());
-                        if let Some(iter) = buffer.iter_at_line_offset(line_num, line.len() as i32) {
+                        log::debug!(
+                            "Moving cursor to end of line {} (pos {})",
+                            line_num,
+                            line.len()
+                        );
+                        if let Some(iter) = buffer.iter_at_line_offset(line_num, line.len() as i32)
+                        {
                             buffer.place_cursor(&iter);
                             buffer.insert_at_cursor("\n  ");
                             newline_after = false;
@@ -662,7 +668,10 @@ impl Component for ActionsModel {
                     }
                 }
 
-                buffer.insert_interactive_at_cursor(&format!("{}{}", loc, if newline_after { "\n  " } else { "" }), true);
+                buffer.insert_interactive_at_cursor(
+                    &format!("{}{}", loc, if newline_after { "\n  " } else { "" }),
+                    true,
+                );
 
                 self.needs_saving = true;
             }
