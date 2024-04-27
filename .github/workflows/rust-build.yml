@@ -239,7 +239,7 @@ jobs:
 
           # Language Spec
           mkdir -p build/language-specs
-          copy C:\gtk-build\gtksourceview5\data\language-specs\lua.lang build/language-specs
+          copy C:\gtk-build\build\x64\release\gtksourceview5\data\language-specs\lua.lang build/language-specs
 
       - name: Save Cargo cache
         uses: actions/cache/save@v3
