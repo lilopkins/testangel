@@ -232,6 +232,11 @@ jobs:
           copy C:\gtk-build\gtk\x64\release\lib\gdk-pixbuf-2.0\2.10.0\loaders.cache build/lib/gdk-pixbuf-2.0/2.10.0/
           copy C:\gtk-build\gtk\x64\release\lib\gdk-pixbuf-2.0\2.10.0\loaders\libpixbufloader-svg.dll build/lib/gdk-pixbuf-2.0/2.10.0/loaders/
 
+          # Language Spec
+          dir C:\gtk-build\gtksourceview5\
+          mkdir -p build/language-specs
+          copy C:\gtk-build\gtksourceview5\data\language-specs\lua.lang build/language-specs
+
       - name: Save Cargo cache
         uses: actions/cache/save@v3
         with:
