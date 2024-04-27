@@ -8,7 +8,7 @@ use relm4::{
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
-    types::old_types::ActionV1,
+    types::action_v1::ActionV1,
     types::{Action, VersionedFile},
 };
 
@@ -92,8 +92,6 @@ pub enum ActionInputs {
     _CloseAction,
     /// Add the step with the ID provided
     AddStep(String),
-    /// Update the UI from the open action. This will clear first and overwrite any changes!
-    UpdateSourceFromModel,
     /// The metadata has been updated and the action should be updated to reflect that
     MetadataUpdated(metadata_component::MetadataOutput),
 }
@@ -154,7 +152,9 @@ impl ActionsModel {
     fn new_action(&mut self) {
         self.open_path = None;
         self.needs_saving = true;
-        self.open_action = Some(Action::default());
+        let action = Action::default();
+        self.source_view.buffer().set_text(&action.script);
+        self.open_action = Some(action);
         self.header
             .emit(header::ActionsHeaderInput::ChangeActionOpen(
                 self.open_action.is_some(),
@@ -176,7 +176,7 @@ impl ActionsModel {
             // This doesn't save anything, just changes what loads to something compatible
             let action_v1: ActionV1 =
                 ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
-            let action_upgraded = action_v1.upgrade_action();
+            let action_upgraded = action_v1.upgrade_action(self.engine_list.clone());
             data = ron::to_string(&action_upgraded)
                 .map_err(SaveOrOpenActionError::SerializingError)?;
         } else if versioned_file.version() != 2 {
@@ -417,9 +417,6 @@ impl Component for ActionsModel {
                 .build(),
         };
 
-        // Trigger update actions from model
-        sender.input(ActionInputs::UpdateSourceFromModel);
-
         let source_view = &model.source_view;
         let widgets = view_output!();
 
@@ -468,7 +465,6 @@ impl Component for ActionsModel {
             }
             ActionInputs::_NewAction => {
                 self.new_action();
-                sender.input(ActionInputs::UpdateSourceFromModel);
             }
             ActionInputs::OpenAction => {
                 self.prompt_to_save(sender.input_sender(), ActionInputs::_OpenAction);
@@ -501,8 +497,7 @@ impl Component for ActionsModel {
             ActionInputs::__OpenAction(path) => {
                 match self.open_action(path) {
                     Ok(_) => {
-                        // Reload UI
-                        sender.input(ActionInputs::UpdateSourceFromModel);
+                        // Nothing more to do...
                     }
                     Err(e) => {
                         // Show error dialog
@@ -589,12 +584,7 @@ impl Component for ActionsModel {
                 let _ = params.pop();
 
                 let loc = if instruction.outputs().is_empty() {
-                    format!(
-                        "\n--> {}.{}({})",
-                        engine.lua_name,
-                        instruction.lua_name(),
-                        params
-                    )
+                    format!("{}.{}({})", engine.lua_name, instruction.lua_name(), params)
                 } else {
                     let mut returns = String::new();
                     for return_id in instruction.output_order() {
@@ -609,7 +599,7 @@ impl Component for ActionsModel {
                     let _ = returns.pop();
 
                     format!(
-                        "\n-- local {} = {}.{}({})",
+                        "local {} = {}.{}({})",
                         returns,
                         engine.lua_name,
                         instruction.lua_name(),
@@ -618,19 +608,72 @@ impl Component for ActionsModel {
                 };
                 // Append LoC
                 let buffer = self.source_view.buffer();
-                let mut script = buffer
+                let text = buffer
                     .text(&buffer.start_iter(), &buffer.end_iter(), false)
                     .to_string();
-                script.push_str(&loc);
-                buffer.set_text(&script);
+                let mut newline_after = true;
+
+                // Decide if cursor needs moving down a line (or into function)
+                let cursor_pos = buffer.cursor_position();
+                log::debug!(
+                    "Inserting step, cursor pos: {} (text len: {})",
+                    cursor_pos,
+                    text.len()
+                );
+                if cursor_pos == 0 || cursor_pos == text.len() as i32 {
+                    // Move cursor into function
+                    log::debug!("Offsetting cursor into function");
+                    for (i, l) in text.lines().enumerate() {
+                        if l.contains("function run_action") {
+                            log::debug!("Function on line {}", i);
+                            if let Some(text_iter) = buffer.iter_at_line_offset(i as i32 + 1, 2) {
+                                buffer.place_cursor(&text_iter);
+                            }
+                        }
+                    }
+                } else {
+                    // If line is not empty, add new line
+                    let mut line_starts_at = 0;
+                    let mut line_ends_at = text.len();
+                    let mut line_num = 0;
+
+                    for (idx, c) in text.char_indices() {
+                        if c == '\n' {
+                            if idx < cursor_pos as usize {
+                                line_starts_at = idx + 1;
+                                line_num += 1;
+                            } else {
+                                line_ends_at = idx;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Move cursor to end and insert newline if needed
+                    let line = &text[line_starts_at..line_ends_at];
+                    log::debug!("cursor on line: {:?}", line);
+                    if !line.trim().is_empty() {
+                        // Offset cursor to end of line
+                        log::debug!(
+                            "Moving cursor to end of line {} (pos {})",
+                            line_num,
+                            line.len()
+                        );
+                        if let Some(iter) = buffer.iter_at_line_offset(line_num, line.len() as i32)
+                        {
+                            buffer.place_cursor(&iter);
+                            buffer.insert_at_cursor("\n  ");
+                            newline_after = false;
+                        }
+                    }
+                }
+
+                buffer.insert_interactive_at_cursor(
+                    &format!("{}{}", loc, if newline_after { "\n  " } else { "" }),
+                    true,
+                );
 
                 self.needs_saving = true;
-            }
-
-            ActionInputs::UpdateSourceFromModel => {
-                if let Some(action) = &self.open_action {
-                    self.source_view.buffer().set_text(&action.script);
-                }
             }
         }
         self.update_view(widgets, sender);
