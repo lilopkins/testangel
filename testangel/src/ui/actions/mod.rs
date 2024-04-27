@@ -176,7 +176,7 @@ impl ActionsModel {
             // This doesn't save anything, just changes what loads to something compatible
             let action_v1: ActionV1 =
                 ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
-            let action_upgraded = action_v1.upgrade_action();
+            let action_upgraded = action_v1.upgrade_action(self.engine_list.clone());
             data = ron::to_string(&action_upgraded)
                 .map_err(SaveOrOpenActionError::SerializingError)?;
         } else if versioned_file.version() != 2 {
