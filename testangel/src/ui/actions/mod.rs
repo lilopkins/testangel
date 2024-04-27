@@ -402,9 +402,15 @@ impl Component for ActionsModel {
                     &sourceview::Buffer::builder()
                         .highlight_syntax(true)
                         .language(
-                            &sourceview::LanguageManager::default()
+                            &sourceview::LanguageManager::builder()
+                                .search_path(vec![
+                                    "language-specs",                                    // Windows and Local
+                                    "/usr/share/gtksourceview-5/language-specs/",        // Linux
+                                    &std::env::var("GTKSV_LANGSPEC").unwrap_or_default() // Other environments
+                                ])
+                                .build()
                                 .language("lua")
-                                .unwrap(),
+                                .expect("lua syntax highlighting not found - maybe use GTKSV_LANGSPEC to specify another search path?"),
                         )
                         .build(),
                 )
