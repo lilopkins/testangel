@@ -56,7 +56,7 @@ impl Default for Action {
             author: String::new(),
             visible: true,
             group: String::new(),
-            script: "--: param Integer Example Parameter\n--: return Text Some value to return\nfunction run_action(x)\n  -- Your action can be built here!\n  return 'Hello, world!'\nend\n".to_string(),
+            script: "--: param Integer Example Parameter\n--: return Text Some value to return\nfunction run_action(x)\n  \n  return 'Hello, world!'\nend\n".to_string(),
             required_instructions: Vec::new(),
         }
     }
