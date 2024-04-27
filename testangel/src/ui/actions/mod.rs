@@ -92,8 +92,6 @@ pub enum ActionInputs {
     _CloseAction,
     /// Add the step with the ID provided
     AddStep(String),
-    /// Update the UI from the open action. This will clear first and overwrite any changes!
-    UpdateSourceFromModel,
     /// The metadata has been updated and the action should be updated to reflect that
     MetadataUpdated(metadata_component::MetadataOutput),
 }
@@ -154,7 +152,9 @@ impl ActionsModel {
     fn new_action(&mut self) {
         self.open_path = None;
         self.needs_saving = true;
-        self.open_action = Some(Action::default());
+        let action = Action::default();
+        self.source_view.buffer().set_text(&action.script);
+        self.open_action = Some(action);
         self.header
             .emit(header::ActionsHeaderInput::ChangeActionOpen(
                 self.open_action.is_some(),
@@ -417,9 +417,6 @@ impl Component for ActionsModel {
                 .build(),
         };
 
-        // Trigger update actions from model
-        sender.input(ActionInputs::UpdateSourceFromModel);
-
         let source_view = &model.source_view;
         let widgets = view_output!();
 
@@ -468,7 +465,6 @@ impl Component for ActionsModel {
             }
             ActionInputs::_NewAction => {
                 self.new_action();
-                sender.input(ActionInputs::UpdateSourceFromModel);
             }
             ActionInputs::OpenAction => {
                 self.prompt_to_save(sender.input_sender(), ActionInputs::_OpenAction);
@@ -501,8 +497,7 @@ impl Component for ActionsModel {
             ActionInputs::__OpenAction(path) => {
                 match self.open_action(path) {
                     Ok(_) => {
-                        // Reload UI
-                        sender.input(ActionInputs::UpdateSourceFromModel);
+                        // Nothing more to do...
                     }
                     Err(e) => {
                         // Show error dialog
@@ -625,12 +620,6 @@ impl Component for ActionsModel {
                 buffer.set_text(&script);
 
                 self.needs_saving = true;
-            }
-
-            ActionInputs::UpdateSourceFromModel => {
-                if let Some(action) = &self.open_action {
-                    self.source_view.buffer().set_text(&action.script);
-                }
             }
         }
         self.update_view(widgets, sender);
