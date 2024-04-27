@@ -8,7 +8,7 @@ use relm4::{
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
-    types::old_types::ActionV1,
+    types::action_v1::ActionV1,
     types::{Action, VersionedFile},
 };
 
