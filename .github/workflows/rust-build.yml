@@ -98,6 +98,7 @@ jobs:
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-evidence --release
+          cargo build -p testangel-rand --release
           cargo build -p testangel-user-interaction --release
           # Prepare output dir
           mkdir -p build || exit 1
@@ -106,6 +107,7 @@ jobs:
           # Prepare engines
           mkdir -p build/engines || exit 1
           cp target/release/libtestangel_evidence.so build/engines
+          cp target/release/libtestangel_rand.so build/engines
           cp target/release/libtestangel_user_interaction.so build/engines
 
       - name: Save Cargo cache
@@ -217,6 +219,7 @@ jobs:
           cargo build -p testangel --bin testangel --release
           cargo build -p testangel --bin testangel-executor --no-default-features --features cli --release
           cargo build -p testangel-evidence --release
+          cargo build -p testangel-rand --release
           cargo build -p testangel-user-interaction --release
           mkdir build
           copy target/release/testangel.exe build/
@@ -226,6 +229,7 @@ jobs:
           copy C:\gtk-build\gtk\x64\release\bin\*.dll build/
           mkdir build/engines
           copy target/release/testangel_evidence.dll build/engines/
+          copy target/release/testangel_rand.dll build/engines/
           copy target/release/testangel_user_interaction.dll build/engines/
 
           # GSchemas for FileChooser

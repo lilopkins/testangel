@@ -9,6 +9,8 @@ members = [
     "testangel-engine",
     "testangel-engine-macros",
     "testangel-evidence",
+    "testangel-rand",
+    "testangel-time",
     "testangel-ipc",
     "testangel-user-interaction",
 ]

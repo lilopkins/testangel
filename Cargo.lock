@@ -2678,6 +2678,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_regex"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bfbd599a8c757f89100e3ae559fb1ef9efa1cfd9276136862e3089dec627b31"
+dependencies = [
+ "rand",
+ "regex-syntax",
+]
+
+[[package]]
 name = "raw-window-handle"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3521,6 +3531,26 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "testangel-rand"
+version = "0.21.0-pre.5"
+dependencies = [
+ "lazy_static",
+ "rand",
+ "rand_regex",
+ "testangel-engine",
+ "thiserror",
+]
+
+[[package]]
+name = "testangel-time"
+version = "0.21.0-pre.5"
+dependencies = [
+ "lazy_static",
+ "testangel-engine",
+ "thiserror",
 ]
 
 [[package]]
