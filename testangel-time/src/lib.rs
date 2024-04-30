@@ -19,7 +19,7 @@ lazy_static! {
                 "Wait",
                 "Wait for a specified number of milliseconds.",
             )
-            .with_parameter("duration", "Duration (ms)", ParameterKind::Decimal),
+            .with_parameter("duration", "Duration (ms)", ParameterKind::Integer),
             |_state, params, _output, _evidence| {
                 let duration = params["duration"].value_i32();
                 if duration < 0 {
