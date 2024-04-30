@@ -577,7 +577,14 @@ impl Component for ActionsModel {
                     use convert_case::{Case, Casing};
 
                     let (param_name, _param_kind) = instruction.parameters().get(param_id).unwrap();
-                    params.push_str(&format!("{}, ", param_name.to_case(Case::Snake)));
+                    // remove invalid chars
+                    let mut sanitised_name = String::new();
+                    for c in param_name.chars() {
+                        if c.is_ascii_alphanumeric() || c.is_ascii_whitespace() {
+                            sanitised_name.push(c);
+                        }
+                    }
+                    params.push_str(&format!("{}, ", sanitised_name.to_case(Case::Snake)));
                 }
                 // remove last ", "
                 let _ = params.pop();
