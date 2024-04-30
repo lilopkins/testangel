@@ -708,6 +708,8 @@ impl Component for FlowsModel {
                     }
                 }
 
+                log::debug!("After cut, flow is: {flow:?}");
+
                 self.needs_saving = true;
             }
             FlowInputs::PasteStep(idx, config) => {
@@ -733,6 +735,8 @@ impl Component for FlowsModel {
                         }
                     }
                 }
+
+                log::debug!("After paste, flow is: {flow:?}");
 
                 self.needs_saving = true;
 
