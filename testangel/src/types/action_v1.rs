@@ -67,7 +67,7 @@ impl ActionV1 {
                 line.push_str(&match &step.run_if {
                     InstructionParameterSource::Literal => String::new(),
                     InstructionParameterSource::FromOutput(step, name) => {
-                        format!("if s{step}_{} then ", name.to_case(Case::Snake))
+                        format!("if s{}_{} then ", step + 1, name.to_case(Case::Snake))
                     }
                     InstructionParameterSource::FromParameter(param) => format!(
                         "if {} then ",

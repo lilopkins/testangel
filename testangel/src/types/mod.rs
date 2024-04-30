@@ -130,7 +130,6 @@ pub enum FlowError {
     IPCFailure(IpcError),
     ActionDidntReturnCorrectArgumentCount,
     ActionDidntReturnValidArguments,
-    InstructionCalledWithUnsupportedVarType,
     InstructionCalledWithWrongNumberOfParams,
     InstructionCalledWithInvalidParamType,
 }
@@ -152,10 +151,6 @@ impl fmt::Display for FlowError {
             Self::ActionDidntReturnValidArguments => {
                 write!(f, "The action didn't return valid values.")
             }
-            Self::InstructionCalledWithUnsupportedVarType => write!(
-                f,
-                "An instruction was called with an unsupported variable type."
-            ),
             Self::InstructionCalledWithWrongNumberOfParams => write!(
                 f,
                 "An instruction was called with the wrong number of parameters."
@@ -258,37 +253,65 @@ impl ActionConfiguration {
                             ));
                         }
 
-                        // Convert to TA params
-                        let mut params = vec![];
-                        for param in &args {
-                            match param {
-                                mlua::Value::Boolean(b) => params.push(ParameterValue::Boolean(*b)),
-                                mlua::Value::String(s) => params
-                                    .push(ParameterValue::String(s.to_str().unwrap().to_owned())),
-                                mlua::Value::Integer(i) => params.push(ParameterValue::Integer(*i)),
-                                mlua::Value::Number(n) => {
-                                    params.push(ParameterValue::Decimal(*n as f32))
-                                }
-                                _ => {
-                                    return Err(mlua::Error::external(
-                                        FlowError::InstructionCalledWithUnsupportedVarType,
-                                    ))
-                                }
-                            }
-                        }
-
                         // Check we have the correct parameter types and convert to parameter map
                         let mut param_map = HashMap::new();
-                        for (value, param_id) in
-                            std::iter::zip(params, instruction.parameter_order())
-                        {
+                        for (idx, param_id) in instruction.parameter_order().iter().enumerate() {
                             if let Some((_name, kind)) = instruction.parameters().get(param_id) {
-                                if *kind != value.kind() {
-                                    return Err(mlua::Error::external(
-                                        FlowError::InstructionCalledWithInvalidParamType,
-                                    ));
+                                // Get argument and coerce
+                                let arg = args[idx].clone();
+                                match kind {
+                                    ParameterKind::Boolean => {
+                                        if let mlua::Value::Boolean(b) = arg {
+                                            param_map.insert(
+                                                param_id.clone(),
+                                                ParameterValue::Boolean(b),
+                                            );
+                                        } else {
+                                            return Err(mlua::Error::external(
+                                                FlowError::InstructionCalledWithInvalidParamType,
+                                            ));
+                                        }
+                                    }
+                                    ParameterKind::String => {
+                                        let maybe_str = lua.coerce_string(arg)?;
+                                        if let Some(s) = maybe_str {
+                                            param_map.insert(
+                                                param_id.clone(),
+                                                ParameterValue::String(s.to_str()?.to_string()),
+                                            );
+                                        } else {
+                                            return Err(mlua::Error::external(
+                                                FlowError::InstructionCalledWithInvalidParamType,
+                                            ));
+                                        }
+                                    }
+                                    ParameterKind::Decimal => {
+                                        let maybe_dec = lua.coerce_number(arg)?;
+                                        if let Some(d) = maybe_dec {
+                                            param_map.insert(
+                                                param_id.clone(),
+                                                ParameterValue::Decimal(d as f32),
+                                            );
+                                        } else {
+                                            return Err(mlua::Error::external(
+                                                FlowError::InstructionCalledWithInvalidParamType,
+                                            ));
+                                        }
+                                    }
+                                    ParameterKind::Integer => {
+                                        let maybe_int = lua.coerce_integer(arg)?;
+                                        if let Some(i) = maybe_int {
+                                            param_map.insert(
+                                                param_id.clone(),
+                                                ParameterValue::Integer(i),
+                                            );
+                                        } else {
+                                            return Err(mlua::Error::external(
+                                                FlowError::InstructionCalledWithInvalidParamType,
+                                            ));
+                                        }
+                                    }
                                 }
-                                param_map.insert(param_id.clone(), value);
                             }
                         }
 
@@ -318,21 +341,25 @@ impl ActionConfiguration {
                                     let o = output[0][output_id].clone();
                                     match o {
                                         ParameterValue::Boolean(b) => {
+                                            log::debug!("Boolean {b} returned to Lua");
                                             outputs.push(mlua::Value::Boolean(b))
                                         }
                                         ParameterValue::String(s) => {
+                                            log::debug!("String {s:?} returned to Lua");
                                             outputs.push(mlua::Value::String(lua.create_string(s)?))
                                         }
                                         ParameterValue::Integer(i) => {
+                                            log::debug!("Integer {i} returned to Lua");
                                             outputs.push(mlua::Value::Integer(i))
                                         }
                                         ParameterValue::Decimal(n) => {
+                                            log::debug!("Decimal {n} returned to Lua");
                                             outputs.push(mlua::Value::Number(n as f64))
                                         }
                                     }
                                 }
 
-                                Ok(outputs)
+                                Ok(mlua::MultiValue::from_vec(outputs))
                             }
                             Response::Error { kind, reason } => {
                                 Err(mlua::Error::external(FlowError::FromInstruction {

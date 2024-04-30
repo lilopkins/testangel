@@ -1,0 +1,18 @@
+[package]
+name = "testangel-rand"
+authors = ["Lily Hopkins <lily@hpkns.uk>"]
+description = "A randomisation engine plugin for testangel."
+version.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lazy_static = "1.4.0"
+rand = "0.8.5"
+rand_regex = "0.17.0"
+testangel-engine = { path = "../testangel-engine" }
+thiserror = "1.0"
