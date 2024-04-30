@@ -5,6 +5,7 @@ use relm4::{
     adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
     RelmWidgetExt,
 };
+use sourceview::StyleSchemeManager;
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
@@ -376,6 +377,9 @@ impl Component for ActionsModel {
                     header::ActionsHeaderOutput::AddStep(step) => ActionInputs::AddStep(step),
                 }),
         );
+
+        // Setup source view style manager
+        StyleSchemeManager::default().append_search_path("styles");
 
         let model = ActionsModel {
             action_map: init.0,
