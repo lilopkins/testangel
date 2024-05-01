@@ -712,9 +712,19 @@ impl Component for FlowsModel {
 
                 self.needs_saving = true;
             }
-            FlowInputs::PasteStep(idx, config) => {
+            FlowInputs::PasteStep(idx, mut config) => {
                 let flow = self.open_flow.as_mut().unwrap();
                 let idx = idx.max(0).min(flow.actions.len());
+
+                // Adjust step just about to paste
+                for (_param_idx, source) in config.parameter_sources.iter_mut() {
+                    if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
+                        if *from_step <= idx {
+                            *source = ActionParameterSource::Literal;
+                        }
+                    }
+                }
+
                 log::info!("Pasting step to {}", idx + 1);
                 flow.actions.insert(idx, config);
 
@@ -747,10 +757,13 @@ impl Component for FlowsModel {
                 let current_from = from.current_index();
                 let step = self.open_flow.as_ref().unwrap().actions[current_from].clone();
                 sender.input(FlowInputs::CutStep(from));
+
+                // Establish new position
                 let mut to = (to.current_index() as isize + offset).max(0) as usize;
                 if to > current_from && to > 0 {
                     to -= 1;
                 }
+
                 sender.input(FlowInputs::PasteStep(to, step));
             }
         }

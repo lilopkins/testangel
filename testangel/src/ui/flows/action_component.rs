@@ -191,7 +191,7 @@ impl FactoryComponent for ActionComponent {
                                 1
                             };
                             sender.output(ActionComponentOutput::MoveStep(*from, to, offset)).unwrap();
-                            sender.input(ActionComponentInput::ProposedDrop { above: false, below: false, });
+                            sender.input(ActionComponentInput::ProposedDrop { above: false, below: false });
                             return true;
                         }
                         false
