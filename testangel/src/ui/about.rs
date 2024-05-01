@@ -71,8 +71,14 @@ impl SimpleComponent for AppAbout {
 
         let engine_list = init.0;
         let action_map = init.1;
+        let mut env_var_data = String::new();
+        for (var, val) in std::env::vars() {
+            if var.starts_with("TA_") {
+                env_var_data.push_str(&format!("{var}={val}\n"));
+            }
+        }
         let log_data = format!(
-            "Debug data generated at: {}\nSoftware version: {}\nLocale: {} (system wanted: {:?})\n\nEngines:\n{:#?}\n\nActions:\n{:#?}",
+            "Debug data generated at: {}\nSoftware version: {}\nLocale: {} (system wanted: {:?})\n\nEnvironment:\n{env_var_data}\nEngines:\n{:#?}\n\nActions:\n{:#?}",
             chrono::Local::now(),
             env!("CARGO_PKG_VERSION"),
             lang::current_locale(),
