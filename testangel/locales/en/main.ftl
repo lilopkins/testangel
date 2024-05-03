@@ -2,6 +2,7 @@ app-name = TestAngel
 
 # Generic useful words and phrases
 ok = Ok
+copy-ok = Copy & Ok
 save = Save
 discard = Discard
 value = Value

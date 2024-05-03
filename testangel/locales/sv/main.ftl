@@ -2,6 +2,7 @@ app-name = TestAngel
 
 # Generic useful words and phrases
 ok = Okej
+copy-ok = Kopiera och Okej
 save = Spara
 discard = Kasta
 value = Värde

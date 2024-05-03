@@ -209,9 +209,6 @@ impl Component for ExecutionDialog {
 
             ExecutionDialogCommandOutput::Failed(step, reason, evidence) => {
                 log::warn!("Execution failed. Evidence: {evidence:?}");
-                if let Ok(mut cb) = Clipboard::new() {
-                    let _ = cb.set_text(reason.to_string());
-                }
                 let dialog = self.create_message_dialog(
                     lang::lookup("flow-execution-failed"),
                     lang::lookup_with_args("flow-execution-failed-message", {
@@ -226,11 +223,16 @@ impl Component for ExecutionDialog {
                     dialog
                         .add_response("save", &lang::lookup("flow-execution-save-evidence-anyway"));
                 }
+                dialog.add_response("copy", &lang::lookup("copy-ok"));
                 dialog.add_response("ok", &lang::lookup("ok"));
                 dialog.set_default_response(Some("ok"));
                 let sender_c = sender.clone();
                 dialog.connect_response(None, move |dlg, response| {
-                    if response == "save" {
+                    if response == "copy" {
+                        if let Ok(mut cb) = Clipboard::new() {
+                            let _ = cb.set_text(reason.to_string());
+                        }
+                    } else if response == "save" {
                         sender_c.input(ExecutionDialogInput::SaveEvidence(evidence.clone()));
                     }
                     sender_c.input(ExecutionDialogInput::Close);
