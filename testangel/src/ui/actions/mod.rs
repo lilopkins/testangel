@@ -264,7 +264,11 @@ impl ActionsModel {
                 move |res| {
                     if let Ok(file) = res {
                         let path = file.path().unwrap();
-                        sender_c.emit(ActionInputs::__SaveActionThen(true, path, Box::new(then.clone())));
+                        sender_c.emit(ActionInputs::__SaveActionThen(
+                            true,
+                            path,
+                            Box::new(then.clone()),
+                        ));
                     }
                 },
             );
