@@ -85,8 +85,8 @@ pub enum ActionInputs {
     SaveAsAction,
     /// Ask where to save if needed, then save
     _SaveActionThen(Box<ActionInputs>),
-    /// Actually write the action to disk, then emit then input
-    __SaveActionThen(PathBuf, Box<ActionInputs>),
+    /// Actually write the action to disk, then emit then input. First bool is whether a new ID should be used.
+    __SaveActionThen(bool, PathBuf, Box<ActionInputs>),
     /// Close the action, prompting if needing to save first
     CloseAction,
     /// Actually close the action
@@ -264,12 +264,17 @@ impl ActionsModel {
                 move |res| {
                     if let Ok(file) = res {
                         let path = file.path().unwrap();
-                        sender_c.emit(ActionInputs::__SaveActionThen(path, Box::new(then.clone())));
+                        sender_c.emit(ActionInputs::__SaveActionThen(
+                            true,
+                            path,
+                            Box::new(then.clone()),
+                        ));
                     }
                 },
             );
         } else {
             sender.emit(ActionInputs::__SaveActionThen(
+                false,
                 self.open_path.clone().unwrap(),
                 Box::new(then),
             ));
@@ -544,8 +549,13 @@ impl Component for ActionsModel {
                     *then,
                 );
             }
-            ActionInputs::__SaveActionThen(path, then) => {
+            ActionInputs::__SaveActionThen(new_id, path, then) => {
                 self.open_path = Some(path.with_extension("taaction"));
+                if new_id {
+                    if let Some(action) = &mut self.open_action {
+                        action.id = uuid::Uuid::new_v4().to_string();
+                    }
+                }
                 if let Err(e) = self.save_action() {
                     self.create_message_dialog(lang::lookup("action-error-saving"), e.to_string())
                         .set_visible(true);

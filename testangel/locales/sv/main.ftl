@@ -2,6 +2,7 @@ app-name = TestAngel
 
 # Generic useful words and phrases
 ok = Okej
+copy-ok = Kopiera och Okej
 save = Spara
 discard = Kasta
 value = Värde
@@ -69,7 +70,7 @@ flow-save-open-error-missing-action = Åtgärden för steg { $step } (med intern
 
 flow-execution-running = Flöde körs...
 flow-execution-failed = Flödet misslyckades.
-flow-execution-failed-message = Flödet misslyckades på steg { $step }: { $reason }
+flow-execution-failed-message = Flödet misslyckades på steg { $step }: { $reason }. Den här felorsak har kopierats.
 flow-execution-save-evidence-anyway = Spara bevis ändå
 
 flow-step-label = Steg { $step }: { $name }
