@@ -72,7 +72,7 @@ flow-save-open-error-missing-action = The action for step { $step } (with intern
 
 flow-execution-running = Flow running...
 flow-execution-failed = Flow failed.
-flow-execution-failed-message = Flow failed at step { $step }: { $reason }
+flow-execution-failed-message = Flow failed at step { $step }: { $reason }. This error has been copied.
 flow-execution-save-evidence-anyway = Save Evidence Anyway
 
 flow-step-label = Step { $step }: { $name }

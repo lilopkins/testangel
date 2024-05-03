@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use adw::prelude::*;
+use arboard::Clipboard;
 use relm4::{adw, gtk, Component, ComponentParts, RelmWidgetExt};
 use testangel::{
     action_loader::ActionMap,
@@ -208,6 +209,9 @@ impl Component for ExecutionDialog {
 
             ExecutionDialogCommandOutput::Failed(step, reason, evidence) => {
                 log::warn!("Execution failed. Evidence: {evidence:?}");
+                if let Ok(mut cb) = Clipboard::new() {
+                    let _ = cb.set_text(reason.to_string());
+                }
                 let dialog = self.create_message_dialog(
                     lang::lookup("flow-execution-failed"),
                     lang::lookup_with_args("flow-execution-failed-message", {
