@@ -12,11 +12,9 @@ In TestAngel, you start off creating a Test Flow. This will be the instructions 
 |:-----|:------------|
 |`testangel`|The main executable and UI that controls the platform ("the controller").|
 |`testangel-ipc`|The library that contains the serialisable messages that can be exchanged between the controller and the engine plugins.|
-|`testangel-arithmetic`|An arithmetic engine plugin.|
-|`testangel-compare`|A comparison engine plugin.|
-|`testangel-convert`|A conversion engine plugin.|
 |`testangel-evidence`|An evidence-producing engine plugin.|
-|`testangel-regex`|A regular expression processing engine plugin.|
+|`testangel-rand`|A randomness processing engine plugin.|
+|`testangel-time`|An engine plugin for working with time.|
 |`testangel-user-interaction`|A user interaction engine plugin.|
 
 ## Other Engines
@@ -26,6 +24,7 @@ You can install new engines simply by downloading them and dropping them in the 
 | Other engine | Description |
 |:-----|:------------|
 |[`testangel-browser`](https://github.com/lilopkins/testangel-browser)|An engine that can automate the web.|
+|[`testangel-oracle`](https://github.com/lilopkins/testangel-oracle)|An engine that can work with Oracle databases.|
 |[`testangel-sap`](https://github.com/lilopkins/testangel-sap)|An engine that interfaces with SAP GUI for Windows.|
 
 ## Environment Variables
