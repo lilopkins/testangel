@@ -2,8 +2,10 @@ use std::{rc::Rc, sync::Arc};
 
 use gtk::prelude::*;
 use relm4::{
-    actions::RelmActionGroup, adw, gtk::{self, ApplicationInhibitFlags}, Component, ComponentController, ComponentParts, Controller,
-    RelmApp,
+    actions::RelmActionGroup,
+    adw,
+    gtk::{self, ApplicationInhibitFlags},
+    Component, ComponentController, ComponentParts, Controller, RelmApp,
 };
 use testangel::{
     action_loader::{self, ActionMap},
@@ -250,9 +252,13 @@ impl Component for AppModel {
             AppInput::UpdateFlowOpen(open) => {
                 self.flow_open = open;
                 if self.flow_open || self.action_open {
-                    if let None = self.inhibit_cookie {
+                    if self.inhibit_cookie.is_none() {
                         // Needs inhibiting
-                        self.inhibit_cookie = Some(relm4::main_application().inhibit(None::<&relm4::gtk::Window>, ApplicationInhibitFlags::LOGOUT, Some(&lang::lookup("files-need-saving"))));
+                        self.inhibit_cookie = Some(relm4::main_application().inhibit(
+                            None::<&relm4::gtk::Window>,
+                            ApplicationInhibitFlags::LOGOUT,
+                            Some(&lang::lookup("files-need-saving")),
+                        ));
                     }
                 } else {
                     if let Some(cookie) = self.inhibit_cookie {
@@ -264,14 +270,25 @@ impl Component for AppModel {
                         relm4::main_application().quit();
                     }
                 }
-                log::debug!("Close inhibit cookie is {}!", if self.inhibit_cookie == None { "unset" } else { "set" });
+                log::debug!(
+                    "Close inhibit cookie is {}!",
+                    if self.inhibit_cookie.is_none() {
+                        "unset"
+                    } else {
+                        "set"
+                    }
+                );
             }
             AppInput::UpdateActionOpen(open) => {
                 self.action_open = open;
                 if self.flow_open || self.action_open {
-                    if let None = self.inhibit_cookie {
+                    if self.inhibit_cookie.is_none() {
                         // Needs inhibiting
-                        self.inhibit_cookie = Some(relm4::main_application().inhibit(None::<&relm4::gtk::Window>, ApplicationInhibitFlags::LOGOUT, Some(&lang::lookup("files-need-saving"))));
+                        self.inhibit_cookie = Some(relm4::main_application().inhibit(
+                            None::<&relm4::gtk::Window>,
+                            ApplicationInhibitFlags::LOGOUT,
+                            Some(&lang::lookup("files-need-saving")),
+                        ));
                     }
                 } else {
                     if let Some(cookie) = self.inhibit_cookie {
@@ -283,7 +300,14 @@ impl Component for AppModel {
                         relm4::main_application().quit();
                     }
                 }
-                log::debug!("Close inhibit cookie is {}!", if self.inhibit_cookie == None { "unset" } else { "set" });
+                log::debug!(
+                    "Close inhibit cookie is {}!",
+                    if self.inhibit_cookie.is_none() {
+                        "unset"
+                    } else {
+                        "set"
+                    }
+                );
             }
         }
     }

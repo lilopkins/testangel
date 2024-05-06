@@ -178,7 +178,11 @@ impl FlowsModel {
     }
 
     /// Open a flow. This does not ask to save first.
-    fn open_flow(&mut self, file: PathBuf, sender: &relm4::Sender<FlowOutputs>) -> Result<Vec<usize>, SaveOrOpenFlowError> {
+    fn open_flow(
+        &mut self,
+        file: PathBuf,
+        sender: &relm4::Sender<FlowOutputs>,
+    ) -> Result<Vec<usize>, SaveOrOpenFlowError> {
         let data = &fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?;
 
         let versioned_file: VersionedFile =

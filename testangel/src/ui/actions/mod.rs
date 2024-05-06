@@ -168,7 +168,11 @@ impl ActionsModel {
     }
 
     /// Open an action. This does not ask to save first.
-    fn open_action(&mut self, file: PathBuf, sender: &relm4::Sender<ActionOutputs>) -> Result<(), SaveOrOpenActionError> {
+    fn open_action(
+        &mut self,
+        file: PathBuf,
+        sender: &relm4::Sender<ActionOutputs>,
+    ) -> Result<(), SaveOrOpenActionError> {
         let mut data = fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?;
 
         let versioned_file: VersionedFile =
