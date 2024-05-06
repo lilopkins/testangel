@@ -568,6 +568,15 @@ impl Component for ActionsModel {
                 let _ = sender.output(ActionOutputs::ReloadActions);
             }
             ActionInputs::CloseAction => {
+                // Establish if needs_saving needs updating from text change
+                if let Some(action) = &self.open_action {
+                    let buf = self.source_view.buffer();
+                    if action.script != buf.text(&buf.start_iter(), &buf.end_iter(), false) {
+                        log::debug!("Needs saving due to text change.");
+                        self.needs_saving = true;
+                    }
+                }
+
                 self.prompt_to_save(sender.input_sender(), ActionInputs::_CloseAction);
             }
             ActionInputs::_CloseAction => {
