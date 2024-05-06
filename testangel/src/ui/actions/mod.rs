@@ -100,6 +100,8 @@ pub enum ActionInputs {
 pub enum ActionOutputs {
     /// Inform other parts that actions may have changed, reload them!
     ReloadActions,
+    /// Update other components about whether a file is open
+    FileState(bool),
 }
 
 #[derive(Debug)]
@@ -127,9 +129,7 @@ impl ActionsModel {
         S: AsRef<str>,
     {
         adw::MessageDialog::builder()
-            .transient_for(&self.header.widget().toplevel_window().expect(
-                "ActionsModel::create_message_dialog cannot be called until the header is attached",
-            ))
+            .transient_for(&relm4::main_application().windows()[0])
             .title(title.as_ref())
             .heading(title.as_ref())
             .body(message.as_ref())
@@ -150,7 +150,7 @@ impl ActionsModel {
     }
 
     /// Just open a brand new action
-    fn new_action(&mut self) {
+    fn new_action(&mut self, sender: &relm4::Sender<ActionOutputs>) {
         self.open_path = None;
         self.needs_saving = true;
         let action = Action::default();
@@ -164,10 +164,11 @@ impl ActionsModel {
             .emit(metadata_component::MetadataInput::ChangeAction(
                 Action::default(),
             ));
+        sender.emit(ActionOutputs::FileState(true));
     }
 
     /// Open an action. This does not ask to save first.
-    fn open_action(&mut self, file: PathBuf) -> Result<(), SaveOrOpenActionError> {
+    fn open_action(&mut self, file: PathBuf, sender: &relm4::Sender<ActionOutputs>) -> Result<(), SaveOrOpenActionError> {
         let mut data = fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?;
 
         let versioned_file: VersionedFile =
@@ -204,6 +205,7 @@ impl ActionsModel {
         self.needs_saving = false;
         log::debug!("New action open.");
         log::debug!("Action: {:?}", self.open_action);
+        sender.emit(ActionOutputs::FileState(true));
         Ok(())
     }
 
@@ -313,7 +315,7 @@ impl ActionsModel {
     }
 
     /// Close this action without checking first
-    fn close_action(&mut self) {
+    fn close_action(&mut self, sender: &relm4::Sender<ActionOutputs>) {
         self.open_action = None;
         self.open_path = None;
         self.needs_saving = false;
@@ -321,6 +323,7 @@ impl ActionsModel {
             .emit(header::ActionsHeaderInput::ChangeActionOpen(
                 self.open_action.is_some(),
             ));
+        sender.emit(ActionOutputs::FileState(false));
     }
 }
 
@@ -473,7 +476,7 @@ impl Component for ActionsModel {
                 self.prompt_to_save(sender.input_sender(), ActionInputs::_NewAction);
             }
             ActionInputs::_NewAction => {
-                self.new_action();
+                self.new_action(sender.output_sender());
             }
             ActionInputs::OpenAction => {
                 self.prompt_to_save(sender.input_sender(), ActionInputs::_OpenAction);
@@ -504,7 +507,7 @@ impl Component for ActionsModel {
                 );
             }
             ActionInputs::__OpenAction(path) => {
-                match self.open_action(path) {
+                match self.open_action(path, sender.output_sender()) {
                     Ok(_) => {
                         // Nothing more to do...
                     }
@@ -571,12 +574,12 @@ impl Component for ActionsModel {
                 self.prompt_to_save(sender.input_sender(), ActionInputs::_CloseAction);
             }
             ActionInputs::_CloseAction => {
-                self.close_action();
+                self.close_action(sender.output_sender());
             }
 
             ActionInputs::AddStep(step_id) => {
                 if self.open_action.is_none() {
-                    self.new_action();
+                    self.new_action(sender.output_sender());
                 }
 
                 // unwrap rationale: the header can't ask to add an action that doesn't exist

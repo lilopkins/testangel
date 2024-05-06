@@ -9,6 +9,8 @@ value = Värde
 nothing-open = Inget är öppet
 delete = Ta bort
 
+files-need-saving = Filen måste sparas innan programmet kan stängas.
+
 header-more = Mer...
 header-new = Ny
 header-open = Öppna...

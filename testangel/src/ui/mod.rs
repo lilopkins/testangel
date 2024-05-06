@@ -2,7 +2,7 @@ use std::{rc::Rc, sync::Arc};
 
 use gtk::prelude::*;
 use relm4::{
-    actions::RelmActionGroup, adw, gtk, Component, ComponentController, ComponentParts, Controller,
+    actions::RelmActionGroup, adw, gtk::{self, ApplicationInhibitFlags}, Component, ComponentController, ComponentParts, Controller,
     RelmApp,
 };
 use testangel::{
@@ -51,6 +51,14 @@ enum AppInput {
     AttachGeneralActionGroup(RelmActionGroup<header_bar::GeneralActionGroup>),
     /// Attach the action group to the window
     AttachFileActionGroup(RelmActionGroup<header_bar::FileActionGroup>),
+    /// Request that any open files are saved.
+    SafeCloseAllFiles,
+    /// Update whether a flow is currently open.
+    UpdateFlowOpen(bool),
+    /// Update whether an action is currently open.
+    UpdateActionOpen(bool),
+    /// Signal that this window should close ASAP.
+    CloseWhenAble,
 }
 
 #[derive(Debug)]
@@ -63,6 +71,11 @@ struct AppModel {
 
     engines_list: Arc<EngineList>,
     actions_map: Arc<ActionMap>,
+
+    close_when_able: bool,
+    flow_open: bool,
+    action_open: bool,
+    inhibit_cookie: Option<u32>,
 }
 
 #[relm4::component]
@@ -103,11 +116,14 @@ impl Component for AppModel {
         // Initialise the sub-components (pages)
         let flows = flows::FlowsModel::builder()
             .launch((init.actions.clone(), init.engines.clone()))
-            .forward(sender.input_sender(), |msg| match msg {});
+            .forward(sender.input_sender(), |msg| match msg {
+                flows::FlowOutputs::FileState(open) => AppInput::UpdateFlowOpen(open),
+            });
         let actions = actions::ActionsModel::builder()
             .launch((init.actions.clone(), init.engines.clone()))
             .forward(sender.input_sender(), |msg| match msg {
                 actions::ActionOutputs::ReloadActions => AppInput::ReloadActionsMap,
+                actions::ActionOutputs::FileState(open) => AppInput::UpdateActionOpen(open),
             });
 
         let stack = Rc::new(adw::ViewStack::new());
@@ -139,6 +155,10 @@ impl Component for AppModel {
             header,
             flows,
             actions,
+            close_when_able: false,
+            flow_open: false,
+            action_open: false,
+            inhibit_cookie: None,
         };
 
         // Render window parts
@@ -170,6 +190,22 @@ impl Component for AppModel {
         sender.input(AppInput::ChangedView(
             stack.visible_child_name().map(|s| s.into()),
         ));
+
+        // Track state to intervene on window close
+        let app = relm4::main_application();
+        app.set_register_session(true);
+        let sender_c = sender.clone();
+        app.connect_query_end(move |_app| {
+            // Ask everything to save. Will be inhibited if anything is open.
+            sender_c.input(AppInput::SafeCloseAllFiles);
+        });
+        let sender_c = sender.clone();
+        widgets.main_window.connect_close_request(move |_win| {
+            // Ask everything to save. Will be inhibited if anything is open.
+            sender_c.input(AppInput::SafeCloseAllFiles);
+            sender_c.input(AppInput::CloseWhenAble);
+            gtk::glib::Propagation::Stop
+        });
 
         ComponentParts { model, widgets }
     }
@@ -203,6 +239,51 @@ impl Component for AppModel {
                     .emit(header_bar::HeaderBarInput::ActionsMapChanged(
                         self.actions_map.clone(),
                     ))
+            }
+            AppInput::SafeCloseAllFiles => {
+                self.flows.emit(flows::FlowInputs::CloseFlow);
+                self.actions.emit(actions::ActionInputs::CloseAction);
+            }
+            AppInput::CloseWhenAble => {
+                self.close_when_able = true;
+            }
+            AppInput::UpdateFlowOpen(open) => {
+                self.flow_open = open;
+                if self.flow_open || self.action_open {
+                    if let None = self.inhibit_cookie {
+                        // Needs inhibiting
+                        self.inhibit_cookie = Some(relm4::main_application().inhibit(None::<&relm4::gtk::Window>, ApplicationInhibitFlags::LOGOUT, Some(&lang::lookup("files-need-saving"))));
+                    }
+                } else {
+                    if let Some(cookie) = self.inhibit_cookie {
+                        // Needs uninhibiting
+                        relm4::main_application().uninhibit(cookie);
+                    }
+                    if self.close_when_able {
+                        // Close now!
+                        relm4::main_application().quit();
+                    }
+                }
+                log::debug!("Close inhibit cookie is {}!", if self.inhibit_cookie == None { "unset" } else { "set" });
+            }
+            AppInput::UpdateActionOpen(open) => {
+                self.action_open = open;
+                if self.flow_open || self.action_open {
+                    if let None = self.inhibit_cookie {
+                        // Needs inhibiting
+                        self.inhibit_cookie = Some(relm4::main_application().inhibit(None::<&relm4::gtk::Window>, ApplicationInhibitFlags::LOGOUT, Some(&lang::lookup("files-need-saving"))));
+                    }
+                } else {
+                    if let Some(cookie) = self.inhibit_cookie {
+                        // Needs uninhibiting
+                        relm4::main_application().uninhibit(cookie);
+                    }
+                    if self.close_when_able {
+                        // Close now!
+                        relm4::main_application().quit();
+                    }
+                }
+                log::debug!("Close inhibit cookie is {}!", if self.inhibit_cookie == None { "unset" } else { "set" });
             }
         }
     }

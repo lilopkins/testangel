@@ -115,7 +115,10 @@ pub enum FlowInputs {
 }
 
 #[derive(Debug)]
-pub enum FlowOutputs {}
+pub enum FlowOutputs {
+    /// Update other components about whether a file is open
+    FileState(bool),
+}
 
 #[derive(Debug)]
 pub struct FlowsModel {
@@ -143,9 +146,7 @@ impl FlowsModel {
         S: AsRef<str>,
     {
         adw::MessageDialog::builder()
-            .transient_for(&self.header.widget().toplevel_window().expect(
-                "FlowsModel::create_message_dialog cannot be called until the header is attached",
-            ))
+            .transient_for(&relm4::main_application().windows()[0])
             .title(title.as_ref())
             .heading(title.as_ref())
             .body(message.as_ref())
@@ -166,17 +167,18 @@ impl FlowsModel {
     }
 
     /// Just open a brand new flow
-    fn new_flow(&mut self) {
+    fn new_flow(&mut self, sender: &relm4::Sender<FlowOutputs>) {
         self.open_path = None;
         self.needs_saving = true;
         self.open_flow = Some(AutomationFlow::default());
         self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
             self.open_flow.is_some(),
         ));
+        sender.emit(FlowOutputs::FileState(true));
     }
 
     /// Open a flow. This does not ask to save first.
-    fn open_flow(&mut self, file: PathBuf) -> Result<Vec<usize>, SaveOrOpenFlowError> {
+    fn open_flow(&mut self, file: PathBuf, sender: &relm4::Sender<FlowOutputs>) -> Result<Vec<usize>, SaveOrOpenFlowError> {
         let data = &fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?;
 
         let versioned_file: VersionedFile =
@@ -215,6 +217,7 @@ impl FlowsModel {
         self.needs_saving = false;
         log::debug!("New flow open.");
         log::debug!("Flow: {:?}", self.open_flow);
+        sender.emit(FlowOutputs::FileState(true));
         Ok(steps_reset)
     }
 
@@ -298,7 +301,7 @@ impl FlowsModel {
     }
 
     /// Close this flow without checking first
-    fn close_flow(&mut self) {
+    fn close_flow(&mut self, sender: &relm4::Sender<FlowOutputs>) {
         self.open_flow = None;
         self.open_path = None;
         self.needs_saving = false;
@@ -306,6 +309,7 @@ impl FlowsModel {
         self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
             self.open_flow.is_some(),
         ));
+        sender.emit(FlowOutputs::FileState(false));
     }
 }
 
@@ -450,7 +454,7 @@ impl Component for FlowsModel {
                     widgets.toast_target.add_toast(toast);
                 }
                 if close_flow {
-                    self.close_flow();
+                    self.close_flow(sender.output_sender());
                 }
             }
             FlowInputs::ConfigUpdate(step, new_config) => {
@@ -463,7 +467,7 @@ impl Component for FlowsModel {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
             }
             FlowInputs::_NewFlow => {
-                self.new_flow();
+                self.new_flow(sender.output_sender());
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
             FlowInputs::OpenFlow => {
@@ -495,7 +499,7 @@ impl Component for FlowsModel {
                 );
             }
             FlowInputs::__OpenFlow(path) => {
-                match self.open_flow(path) {
+                match self.open_flow(path, sender.output_sender()) {
                     Ok(changes) => {
                         // Reload UI
                         sender.input(FlowInputs::UpdateStepsFromModel);
@@ -575,7 +579,7 @@ impl Component for FlowsModel {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_CloseFlow);
             }
             FlowInputs::_CloseFlow => {
-                self.close_flow();
+                self.close_flow(sender.output_sender());
             }
 
             FlowInputs::RunFlow => {
@@ -596,7 +600,7 @@ impl Component for FlowsModel {
 
             FlowInputs::AddStep(step_id) => {
                 if self.open_flow.is_none() {
-                    self.new_flow();
+                    self.new_flow(sender.output_sender());
                 }
 
                 // unwrap rationale: we've just guaranteed a flow is open
