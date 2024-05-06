@@ -289,12 +289,33 @@ impl ActionsModel {
 
     /// Just save the action to disk with the current `open_path` as the destination
     fn save_action(&mut self) -> Result<(), SaveOrOpenActionError> {
+        let action = self.open_action.as_mut().unwrap();
+        // Validate metadata and set if not already.
+        let mut meta_changed = false;
+        if action.friendly_name.trim().is_empty() {
+            action.friendly_name = lang::lookup("action-default-name");
+            meta_changed = true;
+        }
+        if action.author.trim().is_empty() {
+            action.author = lang::lookup("action-default-author");
+            meta_changed = true;
+        }
+        if action.group.trim().is_empty() {
+            action.group = lang::lookup("action-default-group");
+            meta_changed = true;
+        }
+        if meta_changed {
+            self.metadata
+                .emit(metadata_component::MetadataInput::ChangeAction(
+                    action.clone(),
+                ));
+        }
+
         // Get content
         let buffer = self.source_view.buffer();
         let script = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
 
         // Update script
-        let action = self.open_action.as_mut().unwrap();
         action.script = script.to_string();
 
         // Loop through all possible instruction luanames in the environment, then save a vector of which are used by this action

@@ -91,6 +91,10 @@ action-saved = Action saved
 action-error-saving = Error saving action
 action-error-opening = Error opening action
 
+action-default-name = Unnamed Action
+action-default-author = Anonymous
+action-default-group = Miscellaneous
+
 action-save-open-error-io-error = I/O error: { $error }
 action-save-open-error-parsing-error = The action file is corrupted: { $error }
 action-save-open-error-serializing-error = The action could not be saved due to an internal serialisation error: { $error }

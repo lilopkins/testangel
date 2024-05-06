@@ -88,6 +88,10 @@ action-saved = Åtgärden har sparats.
 action-error-saving = Fel vid sparning av åtgärden.
 action-error-opening = Fel vid öppning av åtgärden.
 
+action-default-name = Namnlös Åtgärd
+action-default-author = Namnlös
+action-default-group = Diverse
+
 action-save-open-error-io-error = I/O fel: { $error }
 action-save-open-error-parsing-error = Felaktig åtgärdsfil: { $error }
 action-save-open-error-serializing-error = Det går inte att spara åtgärden på grund av ett internt fel i serialiseringen: { $error }
