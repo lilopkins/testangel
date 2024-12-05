@@ -91,7 +91,7 @@ impl Component for Metadata {
                             new_visible: Some(state),
                             ..Default::default()
                         });
-                        gtk::glib::signal::Propagation::Stop
+                        gtk::glib::signal::Propagation::Proceed
                     },
                 },
 
