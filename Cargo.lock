@@ -3493,7 +3493,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.21.0-rc.11"
+version = "0.21.0-rc.12"
 dependencies = [
  "arboard",
  "base64 0.22.1",
@@ -3530,7 +3530,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine"
-version = "0.21.0-rc.11"
+version = "0.21.0-rc.12"
 dependencies = [
  "testangel-engine-macros",
  "testangel-ipc",
@@ -3538,11 +3538,11 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine-macros"
-version = "0.21.0-rc.11"
+version = "0.21.0-rc.12"
 
 [[package]]
 name = "testangel-evidence"
-version = "0.21.0-rc.11"
+version = "0.21.0-rc.12"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3550,7 +3550,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.21.0-rc.11"
+version = "0.21.0-rc.12"
 dependencies = [
  "schemars",
  "serde",
@@ -3559,7 +3559,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-rand"
-version = "0.21.0-rc.11"
+version = "0.21.0-rc.12"
 dependencies = [
  "lazy_static",
  "rand",
@@ -3570,7 +3570,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-time"
-version = "0.21.0-rc.11"
+version = "0.21.0-rc.12"
 dependencies = [
  "lazy_static",
  "testangel-engine",
@@ -3579,7 +3579,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-user-interaction"
-version = "0.21.0-rc.11"
+version = "0.21.0-rc.12"
 dependencies = [
  "lazy_static",
  "rfd",
