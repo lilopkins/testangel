@@ -274,16 +274,19 @@ impl Component for ExecutionDialog {
                 dialog.add_response("ok", &lang::lookup("ok"));
                 dialog.set_default_response(Some("ok"));
                 let sender_c = sender.clone();
-                dialog.connect_response(None, move |dlg, response| {
-                    if response == "copy" {
+                dialog.connect_response(None, move |dlg, response| match response {
+                    "copy" => {
                         if let Ok(mut cb) = Clipboard::new() {
                             let _ = cb.set_text(reason.to_string());
                         }
-                    } else if response == "save" {
+                    }
+                    "save" => {
                         sender_c.input(ExecutionDialogInput::SaveEvidence(evidence.clone()));
                     }
-                    sender_c.input(ExecutionDialogInput::Close);
-                    dlg.close();
+                    _ => {
+                        sender_c.input(ExecutionDialogInput::Close);
+                        dlg.close();
+                    }
                 });
                 dialog.set_visible(true);
             }

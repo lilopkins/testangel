@@ -56,7 +56,7 @@ fn main() {
         match action_config.execute(action_map.clone(), engine_map.clone(), outputs.clone()) {
             Ok((output, ev)) => {
                 outputs.push(output);
-                evidence = vec![evidence, ev].concat();
+                evidence = [evidence, ev].concat();
             }
             Err(e) => {
                 panic!("Failed to execute: {e}");
