@@ -275,15 +275,20 @@ impl Component for ExecutionDialog {
                 dialog.set_default_response(Some("ok"));
                 let sender_c = sender.clone();
                 dialog.connect_response(None, move |dlg, response| {
-                    if response == "copy" {
-                        if let Ok(mut cb) = Clipboard::new() {
-                            let _ = cb.set_text(reason.to_string());
-                        }
-                    } else if response == "save" {
-                        sender_c.input(ExecutionDialogInput::SaveEvidence(evidence.clone()));
+                    match response {
+                        "copy" => {
+                            if let Ok(mut cb) = Clipboard::new() {
+                                let _ = cb.set_text(reason.to_string());
+                            }
+                        },
+                        "save" => {
+                            sender_c.input(ExecutionDialogInput::SaveEvidence(evidence.clone()));
+                        },
+                        _ => {
+                            sender_c.input(ExecutionDialogInput::Close);
+                            dlg.close();
+                        },
                     }
-                    sender_c.input(ExecutionDialogInput::Close);
-                    dlg.close();
                 });
                 dialog.set_visible(true);
             }
