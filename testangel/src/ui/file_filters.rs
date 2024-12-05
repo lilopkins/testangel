@@ -29,10 +29,10 @@ pub fn actions() -> FileFilter {
 }
 
 /// Get a [`FileFilter`] tuned to PDFs.
-pub fn pdfs() -> FileFilter {
+pub fn evps() -> FileFilter {
     let filter = gtk::FileFilter::new();
-    filter.set_name(Some(&lang::lookup("filetype-pdf")));
-    filter.add_suffix("pdf");
+    filter.set_name(Some(&lang::lookup("filetype-evp")));
+    filter.add_suffix("evp");
     filter
 }
 
