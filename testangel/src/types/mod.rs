@@ -388,7 +388,9 @@ impl ActionConfiguration {
             match param {
                 ParameterValue::Boolean(b) => params.push(mlua::Value::Boolean(b)),
                 ParameterValue::String(s) => params.push(mlua::Value::String(
-                    lua_env.create_string(s).map_err(|e| FlowError::Lua(e.to_string()))?,
+                    lua_env
+                        .create_string(s)
+                        .map_err(|e| FlowError::Lua(e.to_string()))?,
                 )),
                 ParameterValue::Integer(i) => params.push(mlua::Value::Integer(i)),
                 ParameterValue::Decimal(n) => params.push(mlua::Value::Number(n as f64)),

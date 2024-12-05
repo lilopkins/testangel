@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{collections::HashMap, fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
@@ -27,9 +27,9 @@ pub enum SaveOrOpenActionError {
     MissingInstruction(String),
 }
 
-impl ToString for SaveOrOpenActionError {
-    fn to_string(&self) -> String {
-        match self {
+impl fmt::Display for SaveOrOpenActionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match self {
             Self::IoError(e) => lang::lookup_with_args("action-save-open-error-io-error", {
                 let mut map = HashMap::new();
                 map.insert("error", e.to_string().into());
@@ -59,7 +59,7 @@ impl ToString for SaveOrOpenActionError {
                     map
                 })
             }
-        }
+        })
     }
 }
 

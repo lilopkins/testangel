@@ -71,7 +71,11 @@ fn main() {
                 EvidencePackage::open(cli.output)
             } else {
                 // Create
-                EvidencePackage::new(cli.output, "TestAngel Evidence".to_string(), vec![Author::new("Anonymous Author")])
+                EvidencePackage::new(
+                    cli.output,
+                    "TestAngel Evidence".to_string(),
+                    vec![Author::new("Anonymous Author")],
+                )
             };
 
             if let Err(e) = &evp {
@@ -83,7 +87,7 @@ fn main() {
             if let Err(e) = add_evidence(evp, evidence) {
                 eprintln!("Failed to write evidence: {e}");
             }
-        },
+        }
         Err(e) => eprintln!("Failed to check if output file exists: {e}"),
     }
 }
@@ -94,8 +98,18 @@ fn add_evidence(mut evp: EvidencePackage, evidence: Vec<Evidence>) -> evidencean
     for ev in evidence {
         let Evidence { label, content } = ev;
         let mut ea_ev = match content {
-            EvidenceContent::Textual(text) => evidenceangel::Evidence::new(evidenceangel::EvidenceKind::Text, evidenceangel::EvidenceData::Text { content: text }),
-            EvidenceContent::ImageAsPngBase64(base64) => evidenceangel::Evidence::new(evidenceangel::EvidenceKind::Image, evidenceangel::EvidenceData::Base64 { data: BASE64_STANDARD.decode(base64).map_err(|e| evidenceangel::Error::OtherExportError(Box::new(e)))? }),
+            EvidenceContent::Textual(text) => evidenceangel::Evidence::new(
+                evidenceangel::EvidenceKind::Text,
+                evidenceangel::EvidenceData::Text { content: text },
+            ),
+            EvidenceContent::ImageAsPngBase64(base64) => evidenceangel::Evidence::new(
+                evidenceangel::EvidenceKind::Image,
+                evidenceangel::EvidenceData::Base64 {
+                    data: BASE64_STANDARD
+                        .decode(base64)
+                        .map_err(|e| evidenceangel::Error::OtherExportError(Box::new(e)))?,
+                },
+            ),
         };
         if !label.is_empty() {
             ea_ev.set_caption(Some(label));

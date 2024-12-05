@@ -61,8 +61,18 @@ fn add_evidence(mut evp: EvidencePackage, evidence: Vec<Evidence>) -> evidencean
     for ev in evidence {
         let Evidence { label, content } = ev;
         let mut ea_ev = match content {
-            EvidenceContent::Textual(text) => evidenceangel::Evidence::new(evidenceangel::EvidenceKind::Text, evidenceangel::EvidenceData::Text { content: text }),
-            EvidenceContent::ImageAsPngBase64(base64) => evidenceangel::Evidence::new(evidenceangel::EvidenceKind::Image, evidenceangel::EvidenceData::Base64 { data: BASE64_STANDARD.decode(base64).map_err(|e| evidenceangel::Error::OtherExportError(Box::new(e)))? }),
+            EvidenceContent::Textual(text) => evidenceangel::Evidence::new(
+                evidenceangel::EvidenceKind::Text,
+                evidenceangel::EvidenceData::Text { content: text },
+            ),
+            EvidenceContent::ImageAsPngBase64(base64) => evidenceangel::Evidence::new(
+                evidenceangel::EvidenceKind::Image,
+                evidenceangel::EvidenceData::Base64 {
+                    data: BASE64_STANDARD
+                        .decode(base64)
+                        .map_err(|e| evidenceangel::Error::OtherExportError(Box::new(e)))?,
+                },
+            ),
         };
         if !label.is_empty() {
             ea_ev.set_caption(Some(label));
@@ -203,7 +213,11 @@ impl Component for ExecutionDialog {
                                         EvidencePackage::open(path)
                                     } else {
                                         // Create
-                                        EvidencePackage::new(path, "TestAngel Evidence".to_string(), vec![Author::new("Anonymous Author")])
+                                        EvidencePackage::new(
+                                            path,
+                                            "TestAngel Evidence".to_string(),
+                                            vec![Author::new("Anonymous Author")],
+                                        )
                                     };
 
                                     if let Err(e) = &evp {
@@ -213,9 +227,11 @@ impl Component for ExecutionDialog {
 
                                     // Append new TC
                                     if let Err(e) = add_evidence(evp, evidence.clone()) {
-                                        sender_c.input(ExecutionDialogInput::FailedToGenerateEvidence(e));
+                                        sender_c.input(
+                                            ExecutionDialogInput::FailedToGenerateEvidence(e),
+                                        );
                                     }
-                                },
+                                }
                                 Err(e) => log::warn!("Failed to check if output file exists: {e}"),
                             }
                         }

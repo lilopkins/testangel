@@ -12,6 +12,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 lazy_static = "1.4.0"
-rfd = { version = "0.15.1", default-features = false, features = [ "xdg-portal" ] }
+rfd = "0.15.1"
 testangel-engine = { path = "../testangel-engine" }
 thiserror = "2.0.4"
