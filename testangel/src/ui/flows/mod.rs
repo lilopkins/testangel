@@ -278,7 +278,8 @@ impl FlowsModel {
                 Some(&relm4::gtk::gio::Cancellable::new()),
                 move |res| {
                     if let Ok(file) = res {
-                        let path = file.path().unwrap();
+                        let mut path = file.path().unwrap();
+                        path.set_extension("taflow");
                         sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
                     }
                 },
