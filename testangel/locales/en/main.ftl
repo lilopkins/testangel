@@ -45,7 +45,7 @@ source-from-param = From Parameter: { $param }
 filetype-all = All files
 filetype-flow = { app-name } Flow file
 filetype-action = { app-name } Action file
-filetype-pdf = PDF files
+filetype-evp = Evidence Packages
 
 # Flows
 
@@ -73,7 +73,7 @@ flow-save-open-error-missing-action = The action for step { $step } (with intern
 
 flow-execution-running = Flow running...
 flow-execution-failed = Flow failed.
-flow-execution-failed-message = Flow failed at step { $step }: { $reason }. This error has been copied.
+flow-execution-failed-message = Flow failed at step { $step }: { $reason }.
 flow-execution-save-evidence-anyway = Save Evidence Anyway
 
 flow-step-label = Step { $step }: { $name }
@@ -114,7 +114,7 @@ action-condition-run-condition = Runs if: { $cond }
 
 # Execution
 
-report-failed = Failed to produce report
-report-failed-message = Failed to produce: { $reason }
-report-save-title = Save evidence...
-report-default-name = report.pdf
+evidence-failed = Failed to save evidence
+evidence-failed-message = Failed to save: { $reason }
+evidence-save-title = Save evidence...
+evidence-default-name = evidence.evp

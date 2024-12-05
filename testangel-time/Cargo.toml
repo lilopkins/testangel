@@ -13,4 +13,4 @@ crate-type = ["cdylib"]
 [dependencies]
 lazy_static = "1.4.0"
 testangel-engine = { path = "../testangel-engine" }
-thiserror = "1.0"
+thiserror = "2.0.4"

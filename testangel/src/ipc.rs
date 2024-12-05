@@ -120,17 +120,34 @@ pub fn get_engines() -> EngineList {
     fs::create_dir_all(engine_dir.clone()).unwrap();
     log::info!("Searching for engines in {engine_dir:?}");
     let mut lua_names = vec![];
+    search_engine_dir(engine_dir, &mut engines, &mut lua_names);
+    EngineList(engines)
+}
+
+fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &mut Vec<String>) {
     for path in fs::read_dir(engine_dir).unwrap() {
         let path = path.unwrap();
         let basename = path.file_name();
         if let Ok(meta) = path.metadata() {
             if meta.is_dir() {
+                // Search subdir
+                search_engine_dir(
+                    path.path()
+                        .canonicalize()
+                        .unwrap()
+                        .as_os_str()
+                        .to_os_string()
+                        .into_string()
+                        .unwrap(),
+                    engines,
+                    lua_names,
+                );
                 continue;
             }
         }
 
         if let Ok(str) = basename.into_string() {
-            log::debug!("Found {str}");
+            log::debug!("Found {:?}", path.path());
             if str.ends_with(".so") || str.ends_with(".dll") || str.ends_with(".dylib") {
                 log::debug!("Detected possible engine {str}");
                 match unsafe { libloading::Library::new(path.path()) } {
@@ -184,5 +201,4 @@ pub fn get_engines() -> EngineList {
             }
         }
     }
-    EngineList(engines)
 }

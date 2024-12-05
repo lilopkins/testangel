@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{collections::HashMap, fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
@@ -27,40 +27,44 @@ pub enum SaveOrOpenFlowError {
     MissingAction(usize, String),
 }
 
-impl ToString for SaveOrOpenFlowError {
-    fn to_string(&self) -> String {
-        match self {
-            Self::IoError(e) => lang::lookup_with_args("flow-save-open-error-io-error", {
-                let mut map = HashMap::new();
-                map.insert("error", e.to_string().into());
-                map
-            }),
-            Self::ParsingError(e) => {
-                lang::lookup_with_args("flow-save-open-error-parsing-error", {
+impl fmt::Display for SaveOrOpenFlowError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::IoError(e) => lang::lookup_with_args("flow-save-open-error-io-error", {
                     let mut map = HashMap::new();
                     map.insert("error", e.to_string().into());
                     map
-                })
+                }),
+                Self::ParsingError(e) => {
+                    lang::lookup_with_args("flow-save-open-error-parsing-error", {
+                        let mut map = HashMap::new();
+                        map.insert("error", e.to_string().into());
+                        map
+                    })
+                }
+                Self::SerializingError(e) => {
+                    lang::lookup_with_args("flow-save-open-error-serializing-error", {
+                        let mut map = HashMap::new();
+                        map.insert("error", e.to_string().into());
+                        map
+                    })
+                }
+                Self::FlowNotVersionCompatible => {
+                    lang::lookup("flow-save-open-error-flow-not-version-compatible")
+                }
+                Self::MissingAction(step, e) => {
+                    lang::lookup_with_args("flow-save-open-error-missing-action", {
+                        let mut map = HashMap::new();
+                        map.insert("step", (step + 1).into());
+                        map.insert("error", e.to_string().into());
+                        map
+                    })
+                }
             }
-            Self::SerializingError(e) => {
-                lang::lookup_with_args("flow-save-open-error-serializing-error", {
-                    let mut map = HashMap::new();
-                    map.insert("error", e.to_string().into());
-                    map
-                })
-            }
-            Self::FlowNotVersionCompatible => {
-                lang::lookup("flow-save-open-error-flow-not-version-compatible")
-            }
-            Self::MissingAction(step, e) => {
-                lang::lookup_with_args("flow-save-open-error-missing-action", {
-                    let mut map = HashMap::new();
-                    map.insert("step", (step + 1).into());
-                    map.insert("error", e.to_string().into());
-                    map
-                })
-            }
-        }
+        )
     }
 }
 

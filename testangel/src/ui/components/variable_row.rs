@@ -43,12 +43,7 @@ where
     pub potential_sources: Vec<(String, PS)>,
 }
 
-pub trait VariableRowParentInput<T, PS> {
-    /// Replace the value of the source with the index `idx`
-    fn new_source_for(idx: T, new_source: PS) -> Self;
-    /// Replace the value of the variable with the index `idx`
-    fn new_value_for(idx: T, new_value: ParameterValue) -> Self;
-}
+pub trait VariableRowParentInput<T, PS> {}
 
 pub trait ParameterSourceTrait {
     fn literal() -> Self;

@@ -1,15 +1,17 @@
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
+use base64::{prelude::BASE64_STANDARD, Engine};
 use clap::{arg, Parser};
+use evidenceangel::{Author, EvidencePackage};
 use testangel::{types::AutomationFlow, *};
 use testangel_ipc::prelude::*;
 
 #[derive(Parser)]
 
 struct Cli {
-    /// The output for the report.
-    #[arg(short, long, default_value = "report.pdf")]
-    report: PathBuf,
+    /// The output file for evidence. If this already exists then it will be appended.
+    #[arg(short, long, default_value = "evidence.evp")]
+    output: PathBuf,
 
     /// The flow file to execute.
     #[arg(index = 1)]
@@ -62,7 +64,58 @@ fn main() {
         }
     }
 
-    if let Err(e) = report_generation::save_report(cli.report, evidence) {
-        eprintln!("Failed to generate report: {e}");
+    match fs::exists(&cli.output) {
+        Ok(exists) => {
+            let evp = if exists {
+                // Open
+                EvidencePackage::open(cli.output)
+            } else {
+                // Create
+                EvidencePackage::new(
+                    cli.output,
+                    "TestAngel Evidence".to_string(),
+                    vec![Author::new("Anonymous Author")],
+                )
+            };
+
+            if let Err(e) = &evp {
+                eprintln!("Failed to create/open output file: {e}");
+            }
+            let evp = evp.unwrap();
+
+            // Append new TC
+            if let Err(e) = add_evidence(evp, evidence) {
+                eprintln!("Failed to write evidence: {e}");
+            }
+        }
+        Err(e) => eprintln!("Failed to check if output file exists: {e}"),
     }
+}
+
+fn add_evidence(mut evp: EvidencePackage, evidence: Vec<Evidence>) -> evidenceangel::Result<()> {
+    let tc = evp.create_test_case("TestAngel Test Case")?;
+    let tc_evidence = tc.evidence_mut();
+    for ev in evidence {
+        let Evidence { label, content } = ev;
+        let mut ea_ev = match content {
+            EvidenceContent::Textual(text) => evidenceangel::Evidence::new(
+                evidenceangel::EvidenceKind::Text,
+                evidenceangel::EvidenceData::Text { content: text },
+            ),
+            EvidenceContent::ImageAsPngBase64(base64) => evidenceangel::Evidence::new(
+                evidenceangel::EvidenceKind::Image,
+                evidenceangel::EvidenceData::Base64 {
+                    data: BASE64_STANDARD
+                        .decode(base64)
+                        .map_err(|e| evidenceangel::Error::OtherExportError(Box::new(e)))?,
+                },
+            ),
+        };
+        if !label.is_empty() {
+            ea_ev.set_caption(Some(label));
+        }
+        tc_evidence.push(ea_ev);
+    }
+    evp.save()?;
+    Ok(())
 }

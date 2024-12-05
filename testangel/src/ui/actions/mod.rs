@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{collections::HashMap, fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
@@ -27,39 +27,43 @@ pub enum SaveOrOpenActionError {
     MissingInstruction(String),
 }
 
-impl ToString for SaveOrOpenActionError {
-    fn to_string(&self) -> String {
-        match self {
-            Self::IoError(e) => lang::lookup_with_args("action-save-open-error-io-error", {
-                let mut map = HashMap::new();
-                map.insert("error", e.to_string().into());
-                map
-            }),
-            Self::ParsingError(e) => {
-                lang::lookup_with_args("action-save-open-error-parsing-error", {
+impl fmt::Display for SaveOrOpenActionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::IoError(e) => lang::lookup_with_args("action-save-open-error-io-error", {
                     let mut map = HashMap::new();
                     map.insert("error", e.to_string().into());
                     map
-                })
+                }),
+                Self::ParsingError(e) => {
+                    lang::lookup_with_args("action-save-open-error-parsing-error", {
+                        let mut map = HashMap::new();
+                        map.insert("error", e.to_string().into());
+                        map
+                    })
+                }
+                Self::SerializingError(e) => {
+                    lang::lookup_with_args("action-save-open-error-serializing-error", {
+                        let mut map = HashMap::new();
+                        map.insert("error", e.to_string().into());
+                        map
+                    })
+                }
+                Self::ActionNotVersionCompatible => {
+                    lang::lookup("action-save-open-error-action-not-version-compatible")
+                }
+                Self::MissingInstruction(e) => {
+                    lang::lookup_with_args("action-save-open-error-missing-instruction", {
+                        let mut map = HashMap::new();
+                        map.insert("error", e.to_string().into());
+                        map
+                    })
+                }
             }
-            Self::SerializingError(e) => {
-                lang::lookup_with_args("action-save-open-error-serializing-error", {
-                    let mut map = HashMap::new();
-                    map.insert("error", e.to_string().into());
-                    map
-                })
-            }
-            Self::ActionNotVersionCompatible => {
-                lang::lookup("action-save-open-error-action-not-version-compatible")
-            }
-            Self::MissingInstruction(e) => {
-                lang::lookup_with_args("action-save-open-error-missing-instruction", {
-                    let mut map = HashMap::new();
-                    map.insert("error", e.to_string().into());
-                    map
-                })
-            }
-        }
+        )
     }
 }
 

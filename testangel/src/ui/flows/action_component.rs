@@ -50,15 +50,7 @@ pub enum ActionComponentInput {
     ProposedDrop { above: bool, below: bool },
 }
 
-impl VariableRowParentInput<usize, ActionParameterSource> for ActionComponentInput {
-    fn new_source_for(idx: usize, new_source: ActionParameterSource) -> Self {
-        Self::NewSourceFor(idx, new_source)
-    }
-
-    fn new_value_for(idx: usize, new_value: ParameterValue) -> Self {
-        Self::NewValueFor(idx, new_value)
-    }
-}
+impl VariableRowParentInput<usize, ActionParameterSource> for ActionComponentInput {}
 
 impl ParameterSourceTrait for ActionParameterSource {
     fn literal() -> Self {
@@ -184,7 +176,7 @@ impl FactoryComponent for ActionComponent {
                             };
                             let to = index.clone();
 
-                            let half = drop.widget().height() as f64 / 2.0;
+                            let half = drop.widget().map(|w| w.height()).unwrap_or(0) as f64 / 2.0;
                             let offset = if y < half {
                                 -1
                             } else {
@@ -198,7 +190,7 @@ impl FactoryComponent for ActionComponent {
                     },
 
                     connect_enter[sender] => move |drop, _x, y| {
-                        let half = drop.widget().height() as f64 / 2.0;
+                        let half = drop.widget().map(|w| w.height()).unwrap_or(0) as f64 / 2.0;
                         if y < half {
                             // top half
                             sender.input(ActionComponentInput::ProposedDrop { above: true, below: false, });
@@ -210,7 +202,7 @@ impl FactoryComponent for ActionComponent {
                     },
 
                     connect_motion[sender] => move |drop, _x, y| {
-                        let half = drop.widget().height() as f64 / 2.0;
+                        let half = drop.widget().map(|w| w.height()).unwrap_or(0) as f64 / 2.0;
                         if y < half {
                             // top half
                             sender.input(ActionComponentInput::ProposedDrop { above: true, below: false, });

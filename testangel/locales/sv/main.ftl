@@ -45,7 +45,7 @@ source-from-param = Från parameter: { $param }
 filetype-all = Alla filer
 filetype-flow = { app-name } flödefil
 filetype-action = { app-name } Action file
-filetype-pdf = PDF-filer
+filetype-evp = Bevispaket-filer
 
 # Flows
 
@@ -70,7 +70,7 @@ flow-save-open-error-missing-action = Åtgärden för steg { $step } (med intern
 
 flow-execution-running = Flöde körs...
 flow-execution-failed = Flödet misslyckades.
-flow-execution-failed-message = Flödet misslyckades på steg { $step }: { $reason }. Den här felorsak har kopierats.
+flow-execution-failed-message = Flödet misslyckades på steg { $step }: { $reason }.
 flow-execution-save-evidence-anyway = Spara bevis ändå
 
 flow-step-label = Steg { $step }: { $name }
@@ -111,7 +111,7 @@ action-condition-run-condition = Kör ifall: { $cond }
 
 # Execution
 
-report-failed = Det gick inte att generera rapport
-report-failed-message = Det gick inte att generera rapporten: { $reason }
-report-save-title = Spara rapport...
-report-default-name = rapport.pdf
+evidence-failed = Det gick inte att spara bevis
+evidence-failed-message = Det gick inte att spara: { $reason }
+evidence-save-title = Spara bebis...
+evidence-default-name = bevis.evp
