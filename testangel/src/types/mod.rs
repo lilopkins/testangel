@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt, sync::Arc};
 
-use mlua::{Lua, TableExt};
+use mlua::{Lua, ObjectLike};
 use serde::{Deserialize, Serialize};
 use testangel_ipc::prelude::*;
 
@@ -126,7 +126,7 @@ pub enum FlowError {
         error_kind: ErrorKind,
         reason: String,
     },
-    Lua(mlua::Error),
+    Lua(String),
     IPCFailure(IpcError),
     ActionDidntReturnCorrectArgumentCount,
     ActionDidntReturnValidArguments,
@@ -388,7 +388,7 @@ impl ActionConfiguration {
             match param {
                 ParameterValue::Boolean(b) => params.push(mlua::Value::Boolean(b)),
                 ParameterValue::String(s) => params.push(mlua::Value::String(
-                    lua_env.create_string(s).map_err(FlowError::Lua)?,
+                    lua_env.create_string(s).map_err(|e| FlowError::Lua(e.to_string()))?,
                 )),
                 ParameterValue::Integer(i) => params.push(mlua::Value::Integer(i)),
                 ParameterValue::Decimal(n) => params.push(mlua::Value::Number(n as f64)),
@@ -399,12 +399,12 @@ impl ActionConfiguration {
             .load(&action.script)
             .set_name(action.friendly_name.clone())
             .exec()
-            .map_err(FlowError::Lua)?;
+            .map_err(|e| FlowError::Lua(e.to_string()))?;
 
         let res: mlua::MultiValue = lua_env
             .globals()
             .call_function("run_action", mlua::MultiValue::from_vec(params))
-            .map_err(FlowError::Lua)?;
+            .map_err(|e| FlowError::Lua(e.to_string()))?;
         let res = res.into_vec();
 
         // Process return values
