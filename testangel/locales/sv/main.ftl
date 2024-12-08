@@ -16,6 +16,7 @@ header-save = Spara
 header-save-as = Spara som...
 header-close = Stäng
 header-about = Om { app-name }
+acknowledgements-code-title = Kod
 acknowledgements-testing-title = Programtestning
 acknowledgements-translations-title = Översättningar
 
