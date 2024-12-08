@@ -3,11 +3,13 @@ use std::sync::Arc;
 use adw::prelude::*;
 use relm4::{
     adw, factory::FactoryVecDeque, gtk, Component, ComponentParts, ComponentSender, RelmWidgetExt,
+    Sender,
 };
 use testangel::action_loader::ActionMap;
 
 use crate::ui::{
     components::add_step_factory::{AddStepInit, AddStepResult},
+    header_bar::HeaderBarInput,
     lang,
 };
 
@@ -17,6 +19,7 @@ pub struct FlowsHeader {
     add_button: gtk::MenuButton,
     flow_open: bool,
     search_results: FactoryVecDeque<AddStepResult>,
+    generic_sender: Option<Sender<HeaderBarInput>>,
 }
 
 #[derive(Debug)]
@@ -43,6 +46,8 @@ pub enum FlowsHeaderInput {
     ChangeFlowOpen(bool),
     /// Ask this to output the provided event
     PleaseOutput(FlowsHeaderOutput),
+    /// Provide this actions header with a sender to update the generic header bar
+    SetGenericHeaderBarSender(Sender<HeaderBarInput>),
 }
 
 #[relm4::component(pub)]
@@ -122,6 +127,7 @@ impl Component for FlowsHeader {
             search_results: FactoryVecDeque::builder()
                 .launch(gtk::Box::default())
                 .forward(sender.input_sender(), FlowsHeaderInput::AddStep),
+            generic_sender: None,
         };
         // Reset search results
         sender.input(FlowsHeaderInput::SearchForSteps(String::new()));
@@ -146,10 +152,16 @@ impl Component for FlowsHeader {
             }
             FlowsHeaderInput::ChangeFlowOpen(now) => {
                 self.flow_open = now;
+                if let Some(gs) = &self.generic_sender {
+                    gs.send(HeaderBarInput::FlowOpened(now)).unwrap();
+                }
             }
             FlowsHeaderInput::ActionsMapChanged(new_map) => {
                 self.action_map = new_map;
                 sender.input(FlowsHeaderInput::SearchForSteps(String::new()));
+            }
+            FlowsHeaderInput::SetGenericHeaderBarSender(generic_sender) => {
+                self.generic_sender = Some(generic_sender);
             }
             FlowsHeaderInput::AddStep(step_id) => {
                 // close popover
