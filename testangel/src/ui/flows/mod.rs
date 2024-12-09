@@ -434,7 +434,9 @@ impl Component for FlowsModel {
 
                                 // Check that the references from this AC to another don't now violate types
                                 for (p_id, src) in &mut ac.parameter_sources {
-                                    if let ActionParameterSource::FromOutput(other_step, output) = src {
+                                    if let ActionParameterSource::FromOutput(other_step, output) =
+                                        src
+                                    {
                                         let (_name, kind) = &action.parameters()[*p_id];
                                         // Check that parameter from step->output is of type kind
                                         if let Some(other_ac) = actions_clone.get(*other_step) {
