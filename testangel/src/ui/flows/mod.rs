@@ -420,6 +420,7 @@ impl Component for FlowsModel {
                 let mut close_flow = false;
                 let mut steps_reset = vec![];
                 if let Some(flow) = &mut self.open_flow {
+                    let actions_clone = flow.actions.clone();
                     for (step, ac) in flow.actions.iter_mut().enumerate() {
                         match self.action_map.get_action_by_id(&ac.action_id) {
                             None => {
@@ -427,8 +428,31 @@ impl Component for FlowsModel {
                             }
                             Some(action) => {
                                 // Check that action parameters haven't changed. If they have, reset values.
-                                if ac.update(action) {
+                                if ac.update(action.clone()) {
                                     steps_reset.push(step);
+                                }
+
+                                // Check that the references from this AC to another don't now violate types
+                                for (p_id, src) in &mut ac.parameter_sources {
+                                    match src {
+                                        ActionParameterSource::FromOutput(other_step, output) => {
+                                            let (_name, kind) = &action.parameters()[*p_id];
+                                            // Check that parameter from step->output is of type kind
+                                            if let Some(other_ac) = actions_clone.get(*other_step) {
+                                                if let Some(other_action) = &self.action_map.get_action_by_id(&other_ac.action_id) {
+                                                    if let Some((_name, other_output_kind)) = other_action.outputs().get(*output) {
+                                                        if kind != other_output_kind {
+                                                            // Reset to literal
+                                                            steps_reset.push(step);
+                                                            *src = ActionParameterSource::Literal;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            // If any of these if's fail, then the main loop will catch and fail later.
+                                        },
+                                        _ => (),
+                                    }
                                 }
                             }
                         }
