@@ -434,29 +434,26 @@ impl Component for FlowsModel {
 
                                 // Check that the references from this AC to another don't now violate types
                                 for (p_id, src) in &mut ac.parameter_sources {
-                                    match src {
-                                        ActionParameterSource::FromOutput(other_step, output) => {
-                                            let (_name, kind) = &action.parameters()[*p_id];
-                                            // Check that parameter from step->output is of type kind
-                                            if let Some(other_ac) = actions_clone.get(*other_step) {
-                                                if let Some(other_action) = &self
-                                                    .action_map
-                                                    .get_action_by_id(&other_ac.action_id)
+                                    if let ActionParameterSource::FromOutput(other_step, output) = src {
+                                        let (_name, kind) = &action.parameters()[*p_id];
+                                        // Check that parameter from step->output is of type kind
+                                        if let Some(other_ac) = actions_clone.get(*other_step) {
+                                            if let Some(other_action) = &self
+                                                .action_map
+                                                .get_action_by_id(&other_ac.action_id)
+                                            {
+                                                if let Some((_name, other_output_kind)) =
+                                                    other_action.outputs().get(*output)
                                                 {
-                                                    if let Some((_name, other_output_kind)) =
-                                                        other_action.outputs().get(*output)
-                                                    {
-                                                        if kind != other_output_kind {
-                                                            // Reset to literal
-                                                            steps_reset.push(step);
-                                                            *src = ActionParameterSource::Literal;
-                                                        }
+                                                    if kind != other_output_kind {
+                                                        // Reset to literal
+                                                        steps_reset.push(step);
+                                                        *src = ActionParameterSource::Literal;
                                                     }
                                                 }
                                             }
-                                            // If any of these if's fail, then the main loop will catch and fail later.
                                         }
-                                        _ => (),
+                                        // If any of these if's fail, then the main loop will catch and fail later.
                                     }
                                 }
                             }
