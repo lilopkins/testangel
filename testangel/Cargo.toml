@@ -2,6 +2,10 @@
 name = "testangel"
 version.workspace = true
 edition.workspace = true
+authors = [
+    "Lily Hopkins <lily@hpkns.uk>",
+    "Eden Turner <somebirb7190@gmail.com>",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

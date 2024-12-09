@@ -33,7 +33,14 @@ impl ActionMap {
 pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
     let mut actions = HashMap::new();
     let action_dir = env::var("TA_ACTION_DIR").unwrap_or("./actions".to_owned());
-    fs::create_dir_all(action_dir.clone()).unwrap();
+    if let Ok(exists) = fs::exists(&action_dir) {
+        if !exists {
+            fs::create_dir_all(action_dir.clone()).unwrap();
+            let mut path = PathBuf::from(&action_dir);
+            path.push("example.taaction");
+            let _ = fs::write(path, include_str!("demo_action.taaction"));
+        }
+    }
     'action_loop: for path in fs::read_dir(action_dir).unwrap() {
         let path = path.unwrap();
         let filename = path.file_name();

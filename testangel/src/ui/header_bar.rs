@@ -25,6 +25,8 @@ pub enum HeaderBarInput {
     SaveFile,
     SaveAsFile,
     CloseFile,
+    ActionOpened(bool),
+    FlowOpened(bool),
 }
 
 #[derive(Debug)]
@@ -47,6 +49,11 @@ pub struct HeaderBarModel {
     action_map: Arc<ActionMap>,
     action_header_rc: Rc<Controller<ActionsHeader>>,
     flow_header_rc: Rc<Controller<FlowsHeader>>,
+    action_save: RelmAction<FileSaveAction>,
+    action_save_as: RelmAction<FileSaveAsAction>,
+    action_close: RelmAction<FileCloseAction>,
+    is_action_open: bool,
+    is_flow_open: bool,
 }
 
 impl HeaderBarModel {
@@ -115,17 +122,6 @@ impl Component for HeaderBarModel {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = HeaderBarModel {
-            currently_menu_target: MenuTarget::Nothing,
-            action_header_rc: init.0,
-            flow_header_rc: init.1,
-            engine_list: init.3,
-            action_map: init.4,
-        };
-
-        let stack = &*init.2;
-        let widgets = view_output!();
-
         let sender_c = sender.clone();
         let new_action: RelmAction<FileNewAction> = RelmAction::new_stateless(move |_| {
             // unwrap rationale: receiver will never be disconnected
@@ -145,6 +141,7 @@ impl Component for HeaderBarModel {
             // unwrap rationale: receiver will never be disconnected
             sender_c.input(HeaderBarInput::SaveFile);
         });
+        save_action.set_enabled(false);
         relm4::main_application().set_accelerators_for_action::<FileSaveAction>(&["<primary>S"]);
 
         let sender_c = sender.clone();
@@ -152,6 +149,7 @@ impl Component for HeaderBarModel {
             // unwrap rationale: receiver will never be disconnected
             sender_c.input(HeaderBarInput::SaveAsFile);
         });
+        save_as_action.set_enabled(false);
         relm4::main_application()
             .set_accelerators_for_action::<FileSaveAsAction>(&["<primary><shift>S"]);
 
@@ -160,6 +158,7 @@ impl Component for HeaderBarModel {
             // unwrap rationale: receiver will never be disconnected
             sender_c.input(HeaderBarInput::CloseFile);
         });
+        close_action.set_enabled(false);
         relm4::main_application().set_accelerators_for_action::<FileCloseAction>(&["<primary>W"]);
 
         let sender_c = sender.clone();
@@ -171,14 +170,39 @@ impl Component for HeaderBarModel {
         let mut group = RelmActionGroup::<FileActionGroup>::new();
         group.add_action(new_action);
         group.add_action(open_action);
-        group.add_action(save_action);
-        group.add_action(save_as_action);
-        group.add_action(close_action);
+        group.add_action(save_action.clone());
+        group.add_action(save_as_action.clone());
+        group.add_action(close_action.clone());
         let _ = sender.output(HeaderBarOutput::AttachFileActionGroup(group));
 
         let mut group = RelmActionGroup::<GeneralActionGroup>::new();
         group.add_action(about_action);
         let _ = sender.output(HeaderBarOutput::AttachGeneralActionGroup(group));
+
+        let model = HeaderBarModel {
+            currently_menu_target: MenuTarget::Nothing,
+            action_header_rc: init.0,
+            flow_header_rc: init.1,
+            engine_list: init.3,
+            action_map: init.4,
+            action_save: save_action,
+            action_save_as: save_as_action,
+            action_close: close_action,
+            is_action_open: false,
+            is_flow_open: false,
+        };
+        model
+            .action_header_rc
+            .emit(ActionsHeaderInput::SetGenericHeaderBarSender(
+                sender.input_sender().clone(),
+            ));
+        model
+            .flow_header_rc
+            .emit(FlowsHeaderInput::SetGenericHeaderBarSender(
+                sender.input_sender().clone(),
+            ));
+        let stack = &*init.2;
+        let widgets = view_output!();
 
         ComponentParts { model, widgets }
     }
@@ -204,13 +228,22 @@ impl Component for HeaderBarModel {
                     let rc_clone = self.flow_header_rc.clone();
                     self.swap_content(&widgets.start_box, &rc_clone.widgets().start);
                     self.currently_menu_target = MenuTarget::Flows;
+                    self.action_save.set_enabled(self.is_flow_open);
+                    self.action_save_as.set_enabled(self.is_flow_open);
+                    self.action_close.set_enabled(self.is_flow_open);
                 } else if new_view == "actions" {
                     let rc_clone = self.action_header_rc.clone();
                     self.swap_content(&widgets.start_box, &rc_clone.widgets().start);
                     self.currently_menu_target = MenuTarget::Actions;
+                    self.action_save.set_enabled(self.is_action_open);
+                    self.action_save_as.set_enabled(self.is_action_open);
+                    self.action_close.set_enabled(self.is_action_open);
                 } else {
                     self.swap_content(&widgets.start_box, &gtk::Box::builder().build());
                     self.currently_menu_target = MenuTarget::Nothing;
+                    self.action_save.set_enabled(false);
+                    self.action_save_as.set_enabled(false);
+                    self.action_close.set_enabled(false);
                 }
             }
             HeaderBarInput::NewFile => match self.currently_menu_target {
@@ -278,6 +311,18 @@ impl Component for HeaderBarModel {
                     ));
                 }
             },
+            HeaderBarInput::ActionOpened(is_open) => {
+                self.action_save.set_enabled(is_open);
+                self.action_save_as.set_enabled(is_open);
+                self.action_close.set_enabled(is_open);
+                self.is_action_open = is_open;
+            }
+            HeaderBarInput::FlowOpened(is_open) => {
+                self.action_save.set_enabled(is_open);
+                self.action_save_as.set_enabled(is_open);
+                self.action_close.set_enabled(is_open);
+                self.is_flow_open = is_open;
+            }
         }
         self.update_view(widgets, sender);
     }

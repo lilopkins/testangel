@@ -16,6 +16,7 @@ header-save = Save
 header-save-as = Save as...
 header-close = Close
 header-about = About { app-name }
+acknowledgements-code-title = Code
 acknowledgements-testing-title = Software Testing
 acknowledgements-translations-title = Translations
 
