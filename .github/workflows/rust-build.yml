@@ -161,7 +161,6 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Get latest Win-GTK4 build
-        if: matrix.platform.os_name == 'Windows'
         id: wingtk-install
         shell: bash
         run: |
