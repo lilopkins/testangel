@@ -229,7 +229,7 @@ jobs:
           cp target/release/testangel_user_interaction.dll build/engines/
 
           rm -rf ${{ steps.wingtk-install.outputs.BASE_DIR }}/include
-          cp -r ${{ steps.wingtk-install.outputs.BASE_DIR }}/* bundle/
+          cp -r ${{ steps.wingtk-install.outputs.BASE_DIR }}/* build/
 
       - name: Save Cargo cache
         uses: actions/cache/save@v3
