@@ -223,10 +223,10 @@ jobs:
           cp target/release/testangel-executor.exe build/
 
           mkdir build/engines
-          copy target/release/testangel_evidence.dll build/engines/
-          copy target/release/testangel_rand.dll build/engines/
-          copy target/release/testangel_time.dll build/engines/
-          copy target/release/testangel_user_interaction.dll build/engines/
+          cp target/release/testangel_evidence.dll build/engines/
+          cp target/release/testangel_rand.dll build/engines/
+          cp target/release/testangel_time.dll build/engines/
+          cp target/release/testangel_user_interaction.dll build/engines/
 
           rm -rf ${{ steps.wingtk-install.outputs.BASE_DIR }}/include
           cp -r ${{ steps.wingtk-install.outputs.BASE_DIR }}/* bundle/
