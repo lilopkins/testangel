@@ -417,7 +417,7 @@ impl Component for ActionsModel {
                         .language(
                             &sourceview::LanguageManager::builder()
                                 .search_path(vec![
-                                    "language-specs",                                    // Windows and Local
+                                    "share/gtksourceview-5/language-specs/",             // Windows and Local
                                     "/usr/share/gtksourceview-5/language-specs/",        // Linux
                                     &std::env::var("GTKSV_LANGSPEC").unwrap_or_default() // Other environments
                                 ])
