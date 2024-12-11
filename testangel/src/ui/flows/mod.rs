@@ -452,6 +452,10 @@ impl Component for FlowsModel {
                                                         steps_reset.push(step);
                                                         *src = ActionParameterSource::Literal;
                                                     }
+                                                } else {
+                                                    // Step output no longer exists
+                                                    steps_reset.push(step);
+                                                    *src = ActionParameterSource::Literal;
                                                 }
                                             }
                                         }
