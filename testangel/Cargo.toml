@@ -52,4 +52,4 @@ mlua = { version = "0.10.2", features = [ "luau" ] }
 pest = "2.7.9"
 pest_derive = "2.7.9"
 convert_case = "0.6.0"
-evidenceangel = { git = "https://github.com/lilopkins/evidenceangel.git", version = "1.0" }
+evidenceangel = { git = "https://github.com/lilopkins/evidenceangel.git" }
