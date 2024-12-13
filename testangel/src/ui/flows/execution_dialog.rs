@@ -279,6 +279,8 @@ impl Component for ExecutionDialog {
                         if let Ok(mut cb) = Clipboard::new() {
                             let _ = cb.set_text(reason.to_string());
                         }
+                        sender_c.input(ExecutionDialogInput::Close);
+                        dlg.close();
                     }
                     "save" => {
                         sender_c.input(ExecutionDialogInput::SaveEvidence(evidence.clone()));
