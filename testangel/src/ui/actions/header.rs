@@ -3,11 +3,13 @@ use std::sync::Arc;
 use adw::prelude::*;
 use relm4::{
     adw, factory::FactoryVecDeque, gtk, Component, ComponentParts, ComponentSender, RelmWidgetExt,
+    Sender,
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
 use crate::ui::{
     components::add_step_factory::{AddStepInit, AddStepResult},
+    header_bar::HeaderBarInput,
     lang,
 };
 
@@ -18,6 +20,7 @@ pub struct ActionsHeader {
     add_button: gtk::MenuButton,
     action_open: bool,
     search_results: FactoryVecDeque<AddStepResult>,
+    generic_sender: Option<Sender<HeaderBarInput>>,
 }
 
 #[derive(Debug)]
@@ -43,6 +46,8 @@ pub enum ActionsHeaderInput {
     ChangeActionOpen(bool),
     /// Ask this to output the provided event
     PleaseOutput(ActionsHeaderOutput),
+    /// Provide this actions header with a sender to update the generic header bar
+    SetGenericHeaderBarSender(Sender<HeaderBarInput>),
 }
 
 #[relm4::component(pub)]
@@ -113,6 +118,7 @@ impl Component for ActionsHeader {
             search_results: FactoryVecDeque::builder()
                 .launch(gtk::Box::default())
                 .forward(sender.input_sender(), ActionsHeaderInput::AddStep),
+            generic_sender: None,
         };
         // Reset search results
         sender.input(ActionsHeaderInput::SearchForSteps(String::new()));
@@ -137,9 +143,15 @@ impl Component for ActionsHeader {
             }
             ActionsHeaderInput::ChangeActionOpen(now) => {
                 self.action_open = now;
+                if let Some(gs) = &self.generic_sender {
+                    gs.send(HeaderBarInput::ActionOpened(now)).unwrap();
+                }
             }
             ActionsHeaderInput::ActionsMapChanged(new_map) => {
                 self.action_map = new_map;
+            }
+            ActionsHeaderInput::SetGenericHeaderBarSender(generic_sender) => {
+                self.generic_sender = Some(generic_sender);
             }
             ActionsHeaderInput::AddStep(step_id) => {
                 // close popover

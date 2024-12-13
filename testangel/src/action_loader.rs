@@ -33,7 +33,14 @@ impl ActionMap {
 pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
     let mut actions = HashMap::new();
     let action_dir = env::var("TA_ACTION_DIR").unwrap_or("./actions".to_owned());
-    fs::create_dir_all(action_dir.clone()).unwrap();
+    if let Ok(exists) = fs::exists(&action_dir) {
+        if !exists {
+            fs::create_dir_all(action_dir.clone()).unwrap();
+            let mut path = PathBuf::from(&action_dir);
+            path.push("example.taaction");
+            let _ = fs::write(path, include_str!("demo_action.taaction"));
+        }
+    }
     'action_loop: for path in fs::read_dir(action_dir).unwrap() {
         let path = path.unwrap();
         let filename = path.file_name();
@@ -48,25 +55,23 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
                 log::debug!("Detected possible action {str}");
                 if let Ok(res) = fs::read_to_string(path.path()) {
                     if let Ok(versioned_file) = ron::from_str::<VersionedFile>(&res) {
-                        if versioned_file.version() != 1 {
+                        if versioned_file.version() != 2 {
                             log::warn!("Action {str} uses an incompatible file version.");
                             continue 'action_loop;
                         }
                     }
 
                     if let Ok(action) = ron::from_str::<Action>(&res) {
-                        for instruction_config in &action.instructions {
-                            if engine_list
-                                .get_instruction_by_id(&instruction_config.instruction_id)
-                                .is_none()
-                            {
-                                log::warn!(
-                                    "Couldn't load action {} because instruction {} isn't available.",
-                                    action.friendly_name,
-                                    instruction_config.instruction_id,
-                                );
-                                continue 'action_loop;
-                            }
+                        // Validate that all instructions are available for this action before loading
+                        if let Err(missing) =
+                            action.check_instructions_available(engine_list.clone())
+                        {
+                            log::warn!(
+                                "Couldn't load action {} because instructions {:?} aren't available.",
+                                action.friendly_name,
+                                missing,
+                            );
+                            continue 'action_loop;
                         }
 
                         log::info!(

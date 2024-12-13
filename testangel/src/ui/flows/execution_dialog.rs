@@ -1,11 +1,13 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, fs, sync::Arc};
 
 use adw::prelude::*;
+use arboard::Clipboard;
+use base64::{prelude::BASE64_STANDARD, Engine};
+use evidenceangel::{Author, EvidencePackage};
 use relm4::{adw, gtk, Component, ComponentParts, RelmWidgetExt};
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
-    report_generation::{self, ReportGenerationError},
     types::{AutomationFlow, FlowError},
 };
 use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterValue};
@@ -31,7 +33,7 @@ pub struct ExecutionDialogInit {
 #[derive(Debug)]
 pub enum ExecutionDialogInput {
     Close,
-    FailedToGenerateReport(ReportGenerationError),
+    FailedToGenerateEvidence(evidenceangel::Error),
     SaveEvidence(Vec<Evidence>),
 }
 
@@ -51,6 +53,34 @@ impl ExecutionDialog {
             .modal(true)
             .build()
     }
+}
+
+fn add_evidence(mut evp: EvidencePackage, evidence: Vec<Evidence>) -> evidenceangel::Result<()> {
+    let tc = evp.create_test_case("TestAngel Test Case")?;
+    let tc_evidence = tc.evidence_mut();
+    for ev in evidence {
+        let Evidence { label, content } = ev;
+        let mut ea_ev = match content {
+            EvidenceContent::Textual(text) => evidenceangel::Evidence::new(
+                evidenceangel::EvidenceKind::Text,
+                evidenceangel::EvidenceData::Text { content: text },
+            ),
+            EvidenceContent::ImageAsPngBase64(base64) => evidenceangel::Evidence::new(
+                evidenceangel::EvidenceKind::Image,
+                evidenceangel::EvidenceData::Base64 {
+                    data: BASE64_STANDARD
+                        .decode(base64)
+                        .map_err(|e| evidenceangel::Error::OtherExportError(Box::new(e)))?,
+                },
+            ),
+        };
+        if !label.is_empty() {
+            ea_ev.set_caption(Some(label));
+        }
+        tc_evidence.push(ea_ev);
+    }
+    evp.save()?;
+    Ok(())
 }
 
 #[relm4::component(pub)]
@@ -138,10 +168,10 @@ impl Component for ExecutionDialog {
     ) {
         match message {
             ExecutionDialogInput::Close => root.destroy(),
-            ExecutionDialogInput::FailedToGenerateReport(reason) => {
+            ExecutionDialogInput::FailedToGenerateEvidence(reason) => {
                 let dialog = self.create_message_dialog(
-                    lang::lookup("report-failed"),
-                    lang::lookup_with_args("report-failed-message", {
+                    lang::lookup("evidence-failed"),
+                    lang::lookup_with_args("evidence-failed-message", {
                         let mut map = HashMap::new();
                         map.insert("reason", reason.to_string().into());
                         map
@@ -161,10 +191,10 @@ impl Component for ExecutionDialog {
                 // Present save dialog
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
-                    .title(lang::lookup("report-save-title"))
-                    .initial_name(lang::lookup("report-default-name"))
+                    .title(lang::lookup("evidence-save-title"))
+                    .initial_name(lang::lookup("evidence-default-name"))
                     .filters(&file_filters::filter_list(vec![
-                        file_filters::pdfs(),
+                        file_filters::evps(),
                         file_filters::all(),
                     ]))
                     .build();
@@ -175,16 +205,34 @@ impl Component for ExecutionDialog {
                     Some(&relm4::gtk::gio::Cancellable::new()),
                     move |res| {
                         if let Ok(file) = res {
-                            let path = file.path().unwrap();
-                            if let Err(e) = report_generation::save_report(
-                                path.with_extension("pdf"),
-                                evidence.clone(),
-                            ) {
-                                // Failed to generate report
-                                sender_c.input(ExecutionDialogInput::FailedToGenerateReport(e));
-                                return;
-                            } else if let Err(e) = opener::open(path.with_extension("pdf")) {
-                                log::warn!("Failed to open evidence: {e}");
+                            let path = file.path().unwrap().with_extension("evp");
+                            match fs::exists(&path) {
+                                Ok(exists) => {
+                                    let evp = if exists {
+                                        // Open
+                                        EvidencePackage::open(path)
+                                    } else {
+                                        // Create
+                                        EvidencePackage::new(
+                                            path,
+                                            "TestAngel Evidence".to_string(),
+                                            vec![Author::new("Anonymous Author")],
+                                        )
+                                    };
+
+                                    if let Err(e) = &evp {
+                                        log::warn!("Failed to create/open output file: {e}");
+                                    }
+                                    let evp = evp.unwrap();
+
+                                    // Append new TC
+                                    if let Err(e) = add_evidence(evp, evidence.clone()) {
+                                        sender_c.input(
+                                            ExecutionDialogInput::FailedToGenerateEvidence(e),
+                                        );
+                                    }
+                                }
+                                Err(e) => log::warn!("Failed to check if output file exists: {e}"),
                             }
                         }
                         sender_c.input(ExecutionDialogInput::Close);
@@ -222,15 +270,25 @@ impl Component for ExecutionDialog {
                     dialog
                         .add_response("save", &lang::lookup("flow-execution-save-evidence-anyway"));
                 }
+                dialog.add_response("copy", &lang::lookup("copy-ok"));
                 dialog.add_response("ok", &lang::lookup("ok"));
                 dialog.set_default_response(Some("ok"));
                 let sender_c = sender.clone();
-                dialog.connect_response(None, move |dlg, response| {
-                    if response == "save" {
+                dialog.connect_response(None, move |dlg, response| match response {
+                    "copy" => {
+                        if let Ok(mut cb) = Clipboard::new() {
+                            let _ = cb.set_text(reason.to_string());
+                        }
+                        sender_c.input(ExecutionDialogInput::Close);
+                        dlg.close();
+                    }
+                    "save" => {
                         sender_c.input(ExecutionDialogInput::SaveEvidence(evidence.clone()));
                     }
-                    sender_c.input(ExecutionDialogInput::Close);
-                    dlg.close();
+                    _ => {
+                        sender_c.input(ExecutionDialogInput::Close);
+                        dlg.close();
+                    }
                 });
                 dialog.set_visible(true);
             }

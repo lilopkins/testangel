@@ -2,6 +2,7 @@ app-name = TestAngel
 
 # Generic useful words and phrases
 ok = Ok
+copy-ok = Copy & Ok
 save = Save
 discard = Discard
 value = Value
@@ -15,6 +16,7 @@ header-save = Save
 header-save-as = Save as...
 header-close = Close
 header-about = About { app-name }
+acknowledgements-code-title = Code
 acknowledgements-testing-title = Software Testing
 acknowledgements-translations-title = Translations
 
@@ -44,7 +46,7 @@ source-from-param = From Parameter: { $param }
 filetype-all = All files
 filetype-flow = { app-name } Flow file
 filetype-action = { app-name } Action file
-filetype-pdf = PDF files
+filetype-evp = Evidence Packages
 
 # Flows
 
@@ -72,7 +74,7 @@ flow-save-open-error-missing-action = The action for step { $step } (with intern
 
 flow-execution-running = Flow running...
 flow-execution-failed = Flow failed.
-flow-execution-failed-message = Flow failed at step { $step }: { $reason }
+flow-execution-failed-message = Flow failed at step { $step }: { $reason }.
 flow-execution-save-evidence-anyway = Save Evidence Anyway
 
 flow-step-label = Step { $step }: { $name }
@@ -92,7 +94,7 @@ action-save-open-error-io-error = I/O error: { $error }
 action-save-open-error-parsing-error = The action file is corrupted: { $error }
 action-save-open-error-serializing-error = The action could not be saved due to an internal serialisation error: { $error }
 action-save-open-error-action-not-version-compatible = The action you tried to load is not compatible with this version of { app-name }.
-action-save-open-error-missing-instruction = The instruction for step { $step } (with internal ID: { $error }) in this action is missing.
+action-save-open-error-missing-instruction = The instruction with internal ID: { $error } in this action is missing.
 
 action-metadata-label = Action Metadata
 action-metadata-name = Action Name
@@ -113,7 +115,7 @@ action-condition-run-condition = Runs if: { $cond }
 
 # Execution
 
-report-failed = Failed to produce report
-report-failed-message = Failed to produce: { $reason }
-report-save-title = Save evidence...
-report-default-name = report.pdf
+evidence-failed = Failed to save evidence
+evidence-failed-message = Failed to save: { $reason }
+evidence-save-title = Save evidence...
+evidence-default-name = evidence.evp

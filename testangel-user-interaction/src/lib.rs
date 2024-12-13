@@ -13,10 +13,11 @@ pub enum FlowTermination {
 }
 
 lazy_static! {
-    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("User Interaction", env!("CARGO_PKG_VERSION"))
+    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("User Interaction", "Interaction", env!("CARGO_PKG_VERSION"))
     .with_instruction(
         Instruction::new(
             "user-interaction-wait",
+            "WaitForOK",
             "Wait for OK",
             "Display a message dialog and don't continue running the test flow until the user presses 'OK'.",
         )
@@ -35,6 +36,7 @@ lazy_static! {
     .with_instruction(
         Instruction::new(
             "user-interaction-ask",
+            "AskYesNo",
             "Yes/No Question",
             "Returns a boolean if the input text matches a regular expression.",
         )
@@ -59,6 +61,7 @@ lazy_static! {
     .with_instruction(
         Instruction::new(
             "user-interaction-ask-continue",
+            "AskToContinue",
             "Ask to Continue Flow",
             "Ask the user if they want to continue the automation flow.",
         )
@@ -80,6 +83,7 @@ lazy_static! {
     .with_instruction(
         Instruction::new(
             "user-interaction-terminate-flow",
+            "TerminateFlow",
             "Terminate Flow",
             "Let the user know that the flow has been stopped for a reason.",
         )

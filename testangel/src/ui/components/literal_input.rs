@@ -18,10 +18,10 @@ pub enum LiteralInputOutput {
 
 #[derive(Debug)]
 pub enum LiteralInputWidgets {
-    String { entry: gtk::Entry },
-    Integer { entry: gtk::SpinButton },
-    Decimal { entry: gtk::SpinButton },
-    Boolean { entry: gtk::CheckButton },
+    String,
+    Integer,
+    Decimal,
+    Boolean,
 }
 
 impl SimpleComponent for LiteralInput {
@@ -55,7 +55,7 @@ impl SimpleComponent for LiteralInput {
                     ));
                 });
                 root.set_child(Some(&entry));
-                LiteralInputWidgets::String { entry }
+                LiteralInputWidgets::String
             }
             ParameterValue::Integer(val) => {
                 let entry = gtk::SpinButton::builder()
@@ -80,7 +80,7 @@ impl SimpleComponent for LiteralInput {
                     ));
                 });
                 root.set_child(Some(&entry));
-                LiteralInputWidgets::Integer { entry }
+                LiteralInputWidgets::Integer
             }
             ParameterValue::Decimal(val) => {
                 let entry = gtk::SpinButton::builder()
@@ -104,7 +104,7 @@ impl SimpleComponent for LiteralInput {
                     ));
                 });
                 root.set_child(Some(&entry));
-                LiteralInputWidgets::Decimal { entry }
+                LiteralInputWidgets::Decimal
             }
             ParameterValue::Boolean(val) => {
                 let entry = gtk::CheckButton::builder()
@@ -118,7 +118,7 @@ impl SimpleComponent for LiteralInput {
                     ));
                 });
                 root.set_child(Some(&entry));
-                LiteralInputWidgets::Boolean { entry }
+                LiteralInputWidgets::Boolean
             }
         };
 

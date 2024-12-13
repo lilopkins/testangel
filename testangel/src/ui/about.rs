@@ -26,6 +26,7 @@ impl SimpleComponent for AppAbout {
             set_developer_name: "Lily Hopkins",
             set_debug_info: &log_data,
 
+            add_acknowledgement_section: (Some(&lang::lookup("acknowledgements-code-title")), &["Lily Hopkins", "Eden Turner"]),
             add_acknowledgement_section: (Some(&lang::lookup("acknowledgements-testing-title")), &["John Chander", "Eden Turner"]),
             add_acknowledgement_section: (Some(&lang::lookup("acknowledgements-translations-title")), &["Lily Hopkins"]),
             add_legal_section: ("GTK",               None, gtk::License::Gpl20Only, None),
@@ -44,11 +45,21 @@ impl SimpleComponent for AppAbout {
             add_legal_section: ("chrono",            None, gtk::License::MitX11,    None),
             add_legal_section: ("base64",            None, gtk::License::MitX11,    None),
             add_legal_section: ("itertools",         None, gtk::License::MitX11,    None),
+            add_legal_section: ("opener",            None, gtk::License::MitX11,    None),
             add_legal_section: ("octocrab",          None, gtk::License::MitX11,    None),
             add_legal_section: ("semver",            None, gtk::License::MitX11,    None),
             add_legal_section: ("relm4",             None, gtk::License::MitX11,    None),
             add_legal_section: ("relm4-icons",       None, gtk::License::MitX11,    None),
-            add_legal_section: ("rust-i18n",         None, gtk::License::MitX11,    None),
+            add_legal_section: ("sourceview5",       None, gtk::License::MitX11,    None),
+            add_legal_section: ("fluent",            None, gtk::License::MitX11,    None),
+            add_legal_section: ("fluent-templates",  None, gtk::License::MitX11,    None),
+            add_legal_section: ("fuzzy-matcher",     None, gtk::License::MitX11,    None),
+            add_legal_section: ("once_cell",         None, gtk::License::MitX11,    None),
+            add_legal_section: ("sys-locale",        None, gtk::License::MitX11,    None),
+            add_legal_section: ("mlua",              None, gtk::License::MitX11,    None),
+            add_legal_section: ("pest",              None, gtk::License::MitX11,    None),
+            add_legal_section: ("pest_derive",       None, gtk::License::MitX11,    None),
+            add_legal_section: ("convert_case",      None, gtk::License::MitX11,    None),
         }
     }
 
@@ -61,8 +72,14 @@ impl SimpleComponent for AppAbout {
 
         let engine_list = init.0;
         let action_map = init.1;
+        let mut env_var_data = String::new();
+        for (var, val) in std::env::vars() {
+            if var.starts_with("TA_") {
+                env_var_data.push_str(&format!("{var}={val}\n"));
+            }
+        }
         let log_data = format!(
-            "Debug data generated at: {}\nSoftware version: {}\nLocale: {} (system wanted: {:?})\n\nEngines:\n{:#?}\n\nActions:\n{:#?}",
+            "Debug data generated at: {}\nSoftware version: {}\nLocale: {} (system wanted: {:?})\n\nEnvironment:\n{env_var_data}\nEngines:\n{:#?}\n\nActions:\n{:#?}",
             chrono::Local::now(),
             env!("CARGO_PKG_VERSION"),
             lang::current_locale(),

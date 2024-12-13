@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{collections::HashMap, fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
@@ -27,40 +27,44 @@ pub enum SaveOrOpenFlowError {
     MissingAction(usize, String),
 }
 
-impl ToString for SaveOrOpenFlowError {
-    fn to_string(&self) -> String {
-        match self {
-            Self::IoError(e) => lang::lookup_with_args("flow-save-open-error-io-error", {
-                let mut map = HashMap::new();
-                map.insert("error", e.to_string().into());
-                map
-            }),
-            Self::ParsingError(e) => {
-                lang::lookup_with_args("flow-save-open-error-parsing-error", {
+impl fmt::Display for SaveOrOpenFlowError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::IoError(e) => lang::lookup_with_args("flow-save-open-error-io-error", {
                     let mut map = HashMap::new();
                     map.insert("error", e.to_string().into());
                     map
-                })
+                }),
+                Self::ParsingError(e) => {
+                    lang::lookup_with_args("flow-save-open-error-parsing-error", {
+                        let mut map = HashMap::new();
+                        map.insert("error", e.to_string().into());
+                        map
+                    })
+                }
+                Self::SerializingError(e) => {
+                    lang::lookup_with_args("flow-save-open-error-serializing-error", {
+                        let mut map = HashMap::new();
+                        map.insert("error", e.to_string().into());
+                        map
+                    })
+                }
+                Self::FlowNotVersionCompatible => {
+                    lang::lookup("flow-save-open-error-flow-not-version-compatible")
+                }
+                Self::MissingAction(step, e) => {
+                    lang::lookup_with_args("flow-save-open-error-missing-action", {
+                        let mut map = HashMap::new();
+                        map.insert("step", (step + 1).into());
+                        map.insert("error", e.to_string().into());
+                        map
+                    })
+                }
             }
-            Self::SerializingError(e) => {
-                lang::lookup_with_args("flow-save-open-error-serializing-error", {
-                    let mut map = HashMap::new();
-                    map.insert("error", e.to_string().into());
-                    map
-                })
-            }
-            Self::FlowNotVersionCompatible => {
-                lang::lookup("flow-save-open-error-flow-not-version-compatible")
-            }
-            Self::MissingAction(step, e) => {
-                lang::lookup_with_args("flow-save-open-error-missing-action", {
-                    let mut map = HashMap::new();
-                    map.insert("step", (step + 1).into());
-                    map.insert("error", e.to_string().into());
-                    map
-                })
-            }
-        }
+        )
     }
 }
 
@@ -274,7 +278,8 @@ impl FlowsModel {
                 Some(&relm4::gtk::gio::Cancellable::new()),
                 move |res| {
                     if let Ok(file) = res {
-                        let path = file.path().unwrap();
+                        let mut path = file.path().unwrap();
+                        path.set_extension("taflow");
                         sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
                     }
                 },
@@ -415,6 +420,7 @@ impl Component for FlowsModel {
                 let mut close_flow = false;
                 let mut steps_reset = vec![];
                 if let Some(flow) = &mut self.open_flow {
+                    let actions_clone = flow.actions.clone();
                     for (step, ac) in flow.actions.iter_mut().enumerate() {
                         match self.action_map.get_action_by_id(&ac.action_id) {
                             None => {
@@ -422,8 +428,39 @@ impl Component for FlowsModel {
                             }
                             Some(action) => {
                                 // Check that action parameters haven't changed. If they have, reset values.
-                                if ac.update(action) {
+                                if ac.update(action.clone()) {
                                     steps_reset.push(step);
+                                }
+
+                                // Check that the references from this AC to another don't now violate types
+                                for (p_id, src) in &mut ac.parameter_sources {
+                                    if let ActionParameterSource::FromOutput(other_step, output) =
+                                        src
+                                    {
+                                        let (_name, kind) = &action.parameters()[*p_id];
+                                        // Check that parameter from step->output is of type kind
+                                        if let Some(other_ac) = actions_clone.get(*other_step) {
+                                            if let Some(other_action) = &self
+                                                .action_map
+                                                .get_action_by_id(&other_ac.action_id)
+                                            {
+                                                if let Some((_name, other_output_kind)) =
+                                                    other_action.outputs().get(*output)
+                                                {
+                                                    if kind != other_output_kind {
+                                                        // Reset to literal
+                                                        steps_reset.push(step);
+                                                        *src = ActionParameterSource::Literal;
+                                                    }
+                                                } else {
+                                                    // Step output no longer exists
+                                                    steps_reset.push(step);
+                                                    *src = ActionParameterSource::Literal;
+                                                }
+                                            }
+                                        }
+                                        // If any of these if's fail, then the main loop will catch and fail later.
+                                    }
                                 }
                             }
                         }
@@ -623,11 +660,11 @@ impl Component for FlowsModel {
                         });
                         // add possible outputs to list AFTER processing this step
                         // unwrap rationale: actions are check to exist prior to opening.
-                        for (output_idx, (name, kind, _)) in self
+                        for (output_idx, (name, kind)) in self
                             .action_map
                             .get_action_by_id(&config.action_id)
                             .unwrap()
-                            .outputs
+                            .outputs()
                             .iter()
                             .enumerate()
                         {
@@ -708,11 +745,23 @@ impl Component for FlowsModel {
                     }
                 }
 
+                log::debug!("After cut, flow is: {flow:?}");
+
                 self.needs_saving = true;
             }
-            FlowInputs::PasteStep(idx, config) => {
+            FlowInputs::PasteStep(idx, mut config) => {
                 let flow = self.open_flow.as_mut().unwrap();
                 let idx = idx.max(0).min(flow.actions.len());
+
+                // Adjust step just about to paste
+                for (_param_idx, source) in config.parameter_sources.iter_mut() {
+                    if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
+                        if *from_step <= idx {
+                            *source = ActionParameterSource::Literal;
+                        }
+                    }
+                }
+
                 log::info!("Pasting step to {}", idx + 1);
                 flow.actions.insert(idx, config);
 
@@ -734,6 +783,8 @@ impl Component for FlowsModel {
                     }
                 }
 
+                log::debug!("After paste, flow is: {flow:?}");
+
                 self.needs_saving = true;
 
                 // Trigger UI steps refresh
@@ -743,10 +794,13 @@ impl Component for FlowsModel {
                 let current_from = from.current_index();
                 let step = self.open_flow.as_ref().unwrap().actions[current_from].clone();
                 sender.input(FlowInputs::CutStep(from));
+
+                // Establish new position
                 let mut to = (to.current_index() as isize + offset).max(0) as usize;
                 if to > current_from && to > 0 {
                     to -= 1;
                 }
+
                 sender.input(FlowInputs::PasteStep(to, step));
             }
         }

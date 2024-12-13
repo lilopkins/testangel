@@ -61,6 +61,7 @@ pub fn ipc_call(engine: &Engine, request: Request) -> Result<Response, IpcError>
 pub struct Engine {
     path: PathBuf,
     pub name: String,
+    pub lua_name: String,
     pub instructions: Vec<Instruction>,
     lib: Option<Arc<libloading::Library>>,
 }
@@ -118,17 +119,35 @@ pub fn get_engines() -> EngineList {
     let engine_dir = env::var("TA_ENGINE_DIR").unwrap_or("./engines".to_owned());
     fs::create_dir_all(engine_dir.clone()).unwrap();
     log::info!("Searching for engines in {engine_dir:?}");
+    let mut lua_names = vec![];
+    search_engine_dir(engine_dir, &mut engines, &mut lua_names);
+    EngineList(engines)
+}
+
+fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &mut Vec<String>) {
     for path in fs::read_dir(engine_dir).unwrap() {
         let path = path.unwrap();
         let basename = path.file_name();
         if let Ok(meta) = path.metadata() {
             if meta.is_dir() {
+                // Search subdir
+                search_engine_dir(
+                    path.path()
+                        .canonicalize()
+                        .unwrap()
+                        .as_os_str()
+                        .to_os_string()
+                        .into_string()
+                        .unwrap(),
+                    engines,
+                    lua_names,
+                );
                 continue;
             }
         }
 
         if let Ok(str) = basename.into_string() {
-            log::debug!("Found {str}");
+            log::debug!("Found {:?}", path.path());
             if str.ends_with(".so") || str.ends_with(".dll") || str.ends_with(".dylib") {
                 log::debug!("Detected possible engine {str}");
                 match unsafe { libloading::Library::new(path.path()) } {
@@ -144,17 +163,27 @@ pub fn get_engines() -> EngineList {
                                 Response::Instructions {
                                     friendly_name,
                                     engine_version,
+                                    engine_lua_name,
                                     ipc_version,
                                     instructions,
                                 } => {
-                                    if ipc_version == 1 {
+                                    if ipc_version == 2 {
+                                        if lua_names.contains(&engine_lua_name) {
+                                            log::warn!(
+                                                "Engine {friendly_name} (v{engine_version}) at {:?} uses a lua name that is already used by another engine!",
+                                                path.path()
+                                            );
+                                            continue;
+                                        }
                                         log::info!(
                                             "Discovered engine {friendly_name} (v{engine_version}) at {:?}",
                                             path.path()
                                         );
                                         engine.name = friendly_name.clone();
+                                        engine.lua_name = engine_lua_name.clone();
                                         engine.instructions = instructions;
                                         engines.push(engine);
+                                        lua_names.push(engine_lua_name);
                                     } else {
                                         log::warn!(
                                             "Engine {friendly_name} (v{engine_version}) at {:?} doesn't speak the right IPC version!",
@@ -172,5 +201,4 @@ pub fn get_engines() -> EngineList {
             }
         }
     }
-    EngineList(engines)
 }
