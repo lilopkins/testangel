@@ -4,10 +4,13 @@ Line = {
   EOI
 }
 
-Descriptor = {
+Descriptor = ${
   "--:" ~
+  (" ")* ~
   DescriptorKind ~
+  (" ")+ ~
   Kind ~
+  (" ")+ ~
   Name
 }
 
