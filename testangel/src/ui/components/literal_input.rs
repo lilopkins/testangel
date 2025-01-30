@@ -100,7 +100,7 @@ impl SimpleComponent for LiteralInput {
                 let sender_c = sender.clone();
                 entry.connect_value_changed(move |spn| {
                     let _ = sender_c.clone().output(LiteralInputOutput::ValueChanged(
-                        ParameterValue::Decimal(spn.value() as f32),
+                        ParameterValue::Decimal(spn.value()),
                     ));
                 });
                 root.set_child(Some(&entry));

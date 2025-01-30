@@ -48,8 +48,8 @@ impl fmt::Display for ParameterKind {
 pub enum ParameterValue {
     /// A string type.
     String(String),
-    /// An integer, stored as a 64-bit signed integer.
-    Integer(i64),
+    /// An integer, stored as a 32-bit signed integer.
+    Integer(i32),
     /// A decimal number, stored as a 64-bit float.
     Decimal(f64),
     /// A boolean value
@@ -70,16 +70,16 @@ impl ParameterValue {
         }
     }
 
-    /// Returns the value as an i64.
+    /// Returns the value as an i32.
     ///
     /// # Panics
     ///
-    /// Panics if the value is not an i64.
+    /// Panics if the value is not an i32.
     #[must_use]
-    pub fn value_i64(&self) -> i64 {
+    pub fn value_i32(&self) -> i32 {
         match self {
             Self::Integer(v) => *v,
-            _ => panic!("value isn't an i64"),
+            _ => panic!("value isn't an i32"),
         }
     }
 
@@ -124,9 +124,9 @@ impl ParameterValue {
     ///
     /// # Panics
     ///
-    /// Panics if the value is not an i64.
+    /// Panics if the value is not an i32.
     #[must_use]
-    pub fn i64_mut(&mut self) -> &mut i64 {
+    pub fn i32_mut(&mut self) -> &mut i32 {
         match self {
             Self::Integer(a) => a,
             _ => panic!("value isn't an i32"),

@@ -290,7 +290,7 @@ impl ActionConfiguration {
                                         if let Some(d) = maybe_dec {
                                             param_map.insert(
                                                 param_id.clone(),
-                                                ParameterValue::Decimal(d as f32),
+                                                ParameterValue::Decimal(d),
                                             );
                                         } else {
                                             return Err(mlua::Error::external(
@@ -354,7 +354,7 @@ impl ActionConfiguration {
                                         }
                                         ParameterValue::Decimal(n) => {
                                             log::debug!("Decimal {n} returned to Lua");
-                                            outputs.push(mlua::Value::Number(n as f64))
+                                            outputs.push(mlua::Value::Number(n))
                                         }
                                     }
                                 }
@@ -393,7 +393,7 @@ impl ActionConfiguration {
                         .map_err(|e| FlowError::Lua(e.to_string()))?,
                 )),
                 ParameterValue::Integer(i) => params.push(mlua::Value::Integer(i)),
-                ParameterValue::Decimal(n) => params.push(mlua::Value::Number(n as f64)),
+                ParameterValue::Decimal(n) => params.push(mlua::Value::Number(n)),
             }
         }
 
@@ -421,7 +421,7 @@ impl ActionConfiguration {
                 mlua::Value::Boolean(b) => ParameterValue::Boolean(b),
                 mlua::Value::String(s) => ParameterValue::String(s.to_str().unwrap().to_owned()),
                 mlua::Value::Integer(i) => ParameterValue::Integer(i),
-                mlua::Value::Number(n) => ParameterValue::Decimal(n as f32),
+                mlua::Value::Number(n) => ParameterValue::Decimal(n),
                 _ => return Err(FlowError::ActionDidntReturnValidArguments),
             };
             if ta_out.kind() != kind {
