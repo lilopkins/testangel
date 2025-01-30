@@ -31,12 +31,15 @@ pub fn ipc_call(engine: &Engine, request: Request) -> Result<Response, IpcError>
     let response = unsafe {
         let lib = engine.lib.clone().ok_or(IpcError::EngineNotStarted)?;
 
-        let res = lib.ta_call(c_request.as_ptr()).map_err(|_| IpcError::EngineNotCompliant)?;
+        let res = lib
+            .ta_call(c_request.as_ptr())
+            .map_err(|_| IpcError::EngineNotCompliant)?;
         let res = CStr::from_ptr(res);
         let string = String::from_utf8_lossy(res.to_bytes()).to_string();
 
         // release string
-        lib.ta_release(res.as_ptr()).map_err(|_| IpcError::EngineNotCompliant)?;
+        lib.ta_release(res.as_ptr())
+            .map_err(|_| IpcError::EngineNotCompliant)?;
 
         string
     };
@@ -196,7 +199,7 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
                             },
                             Err(e) => log::warn!("IPC error: {e:?}"),
                         }
-                    },
+                    }
                     Err(e) => log::warn!("Failed to load engine {str}: {e}"),
                 }
             }
