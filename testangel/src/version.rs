@@ -4,8 +4,7 @@ pub async fn check_is_latest() -> bool {
     log::debug!("Checking version");
     if env::var("TA_SKIP_VERSION_CHECK")
         .unwrap_or("no".to_string())
-        .to_ascii_lowercase()
-        == "yes"
+        .eq_ignore_ascii_case("yes")
     {
         // Skip check.
         log::info!(
