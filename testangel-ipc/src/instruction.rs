@@ -30,6 +30,7 @@ pub struct Instruction {
 
 impl Instruction {
     /// Build a new instruction
+    #[must_use]
     pub fn new<S>(id: S, lua_name: S, friendly_name: S, description: S) -> Self
     where
         S: Into<String>,
@@ -47,16 +48,19 @@ impl Instruction {
     }
 
     /// Get the lua name for this instruction
+    #[must_use]
     pub fn lua_name(&self) -> &String {
         &self.lua_name
     }
 
     /// Get the friendly name of this instruction
+    #[must_use]
     pub fn friendly_name(&self) -> &String {
         &self.friendly_name
     }
 
     /// Add a parameter to this instruction.
+    #[must_use]
     pub fn with_parameter<S>(mut self, id: S, friendly_name: S, kind: ParameterKind) -> Self
     where
         S: Into<String>,
@@ -69,6 +73,7 @@ impl Instruction {
     }
 
     /// Add a output to this instruction.
+    #[must_use]
     pub fn with_output<S>(mut self, id: S, friendly_name: S, kind: ParameterKind) -> Self
     where
         S: Into<String>,
@@ -80,6 +85,14 @@ impl Instruction {
         self
     }
 
+    /// Validate that the provided [`InstructionWithParameters`] matches the
+    /// requirements for this instruction.
+    ///
+    /// # Errors
+    ///
+    /// - [`ErrorKind::MissingParameter`] if a parameter isn't provided
+    /// - [`ErrorKind::InvalidParameterType`] is the type of a provided
+    ///   parameter doesn't match
     pub fn validate(&self, iwp: &InstructionWithParameters) -> Result<(), (ErrorKind, String)> {
         for (id, (_, kind)) in &self.parameters {
             if !iwp.parameters.contains_key(id) {
@@ -104,31 +117,37 @@ impl Instruction {
     }
 
     /// Get the ID of this instruction
+    #[must_use]
     pub fn id(&self) -> &String {
         &self.id
     }
 
     /// Get the description of this instruction
+    #[must_use]
     pub fn description(&self) -> &String {
         &self.description
     }
 
     /// Get the parameters of this instruction
+    #[must_use]
     pub fn parameters(&self) -> &HashMap<String, (String, ParameterKind)> {
         &self.parameters
     }
 
     /// Get the order of parameters of this instruction
+    #[must_use]
     pub fn parameter_order(&self) -> &Vec<String> {
         &self.parameter_order
     }
 
     /// Get the outputs of this instruction
+    #[must_use]
     pub fn outputs(&self) -> &HashMap<String, (String, ParameterKind)> {
         &self.outputs
     }
 
     /// Get the order of outputs of this instruction
+    #[must_use]
     pub fn output_order(&self) -> &Vec<String> {
         &self.output_order
     }

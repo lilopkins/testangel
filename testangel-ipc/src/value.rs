@@ -19,6 +19,7 @@ pub enum ParameterKind {
     Boolean,
 }
 impl ParameterKind {
+    #[must_use]
     pub fn default_value(&self) -> ParameterValue {
         match self {
             Self::String => ParameterValue::String(String::new()),
@@ -47,16 +48,21 @@ impl fmt::Display for ParameterKind {
 pub enum ParameterValue {
     /// A string type.
     String(String),
-    /// An integer, stored as a 32-bit signed integer.
-    Integer(i32),
-    /// A decimal number, stored as a 32-bit float.
-    Decimal(f32),
+    /// An integer, stored as a 64-bit signed integer.
+    Integer(i64),
+    /// A decimal number, stored as a 64-bit float.
+    Decimal(f64),
     /// A boolean value
     Boolean(bool),
 }
 
 impl ParameterValue {
-    /// Returns the value as an f32, or panics if it isn't.
+    /// Returns the value as an string.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is not a string.
+    #[must_use]
     pub fn value_string(&self) -> String {
         match self {
             Self::String(v) => v.clone(),
@@ -64,23 +70,38 @@ impl ParameterValue {
         }
     }
 
-    /// Returns the value as an i32, or panics if it isn't.
-    pub fn value_i32(&self) -> i32 {
+    /// Returns the value as an i64.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is not an i64.
+    #[must_use]
+    pub fn value_i64(&self) -> i64 {
         match self {
             Self::Integer(v) => *v,
-            _ => panic!("value isn't an i32"),
+            _ => panic!("value isn't an i64"),
         }
     }
 
-    /// Returns the value as an f32, or panics if it isn't.
-    pub fn value_f32(&self) -> f32 {
+    /// Returns the value as an f64.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is not an f64.
+    #[must_use]
+    pub fn value_f64(&self) -> f64 {
         match self {
             Self::Decimal(v) => *v,
-            _ => panic!("value isn't an f32"),
+            _ => panic!("value isn't an f64"),
         }
     }
 
-    /// Returns the value as an bool, or panics if it isn't.
+    /// Returns the value as an bool.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is not a bool.
+    #[must_use]
     pub fn value_bool(&self) -> bool {
         match self {
             Self::Boolean(v) => *v,
@@ -89,6 +110,7 @@ impl ParameterValue {
     }
 
     /// Get the kind of this parameter
+    #[must_use]
     pub fn kind(&self) -> ParameterKind {
         match self {
             Self::Decimal(_) => ParameterKind::Decimal,
@@ -98,23 +120,38 @@ impl ParameterValue {
         }
     }
 
-    /// Get a mutable pointer to the value, or panics if it isn't an i32.
-    pub fn int_mut(&mut self) -> &mut i32 {
+    /// Get a mutable pointer to the value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is not an i64.
+    #[must_use]
+    pub fn i64_mut(&mut self) -> &mut i64 {
         match self {
             Self::Integer(a) => a,
             _ => panic!("value isn't an i32"),
         }
     }
 
-    /// Get a mutable pointer to the value, or panics if it isn't an f32.
-    pub fn f32_mut(&mut self) -> &mut f32 {
+    /// Get a mutable pointer to the value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is not an f64.
+    #[must_use]
+    pub fn f64_mut(&mut self) -> &mut f64 {
         match self {
             Self::Decimal(a) => a,
             _ => panic!("value isn't an f32"),
         }
     }
 
-    /// Get a mutable pointer to the value, or panics if it isn't a String or SpecialValue.
+    /// Get a mutable pointer to the value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is not a string.
+    #[must_use]
     pub fn string_mut(&mut self) -> &mut String {
         match self {
             Self::String(a) => a,
