@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dynamic-plugin = { version = "0.3.0", features = [ "client" ] }
 lazy_static = "1.4.0"
 rfd = "0.15.1"
 testangel-engine = { path = "../testangel-engine" }

@@ -1,11 +1,12 @@
 use std::{
     env,
-    ffi::{c_char, CStr, CString},
+    ffi::{CStr, CString},
     fmt, fs, io,
     path::PathBuf,
     sync::Arc,
 };
 
+use testangel_engine::EngineInterface;
 use testangel_ipc::prelude::*;
 
 #[derive(Debug)]
@@ -30,20 +31,12 @@ pub fn ipc_call(engine: &Engine, request: Request) -> Result<Response, IpcError>
     let response = unsafe {
         let lib = engine.lib.clone().ok_or(IpcError::EngineNotStarted)?;
 
-        let ta_call: libloading::Symbol<
-            unsafe extern "C" fn(input: *const c_char) -> *const c_char,
-        > = lib
-            .get(b"ta_call")
-            .map_err(|_| IpcError::EngineNotCompliant)?;
-        let res = ta_call(c_request.as_ptr());
+        let res = lib.ta_call(c_request.as_ptr()).map_err(|_| IpcError::EngineNotCompliant)?;
         let res = CStr::from_ptr(res);
         let string = String::from_utf8_lossy(res.to_bytes()).to_string();
 
         // release string
-        let ta_release: libloading::Symbol<unsafe extern "C" fn(target: *const c_char)> = lib
-            .get(b"ta_release")
-            .map_err(|_| IpcError::EngineNotCompliant)?;
-        ta_release(res.as_ptr());
+        lib.ta_release(res.as_ptr()).map_err(|_| IpcError::EngineNotCompliant)?;
 
         string
     };
@@ -57,13 +50,13 @@ pub fn ipc_call(engine: &Engine, request: Request) -> Result<Response, IpcError>
     Ok(res)
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct Engine {
     path: PathBuf,
     pub name: String,
     pub lua_name: String,
     pub instructions: Vec<Instruction>,
-    lib: Option<Arc<libloading::Library>>,
+    lib: Option<Arc<EngineInterface>>,
 }
 
 impl Engine {
@@ -76,6 +69,13 @@ impl Engine {
 impl fmt::Display for Engine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
+    }
+}
+
+impl fmt::Debug for Engine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let Self { name, lua_name, .. } = self;
+        write!(f, "Engine {{ {name} ({lua_name}) }}")
     }
 }
 
@@ -150,7 +150,7 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
             log::debug!("Found {:?}", path.path());
             if str.ends_with(".so") || str.ends_with(".dll") || str.ends_with(".dylib") {
                 log::debug!("Detected possible engine {str}");
-                match unsafe { libloading::Library::new(path.path()) } {
+                match EngineInterface::load_plugin_and_check(path.path()) {
                     Ok(lib) => {
                         let mut engine = Engine {
                             name: String::from("newly discovered engine"),
@@ -158,6 +158,7 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
                             lib: Some(Arc::new(lib)),
                             ..Default::default()
                         };
+
                         match ipc_call(&engine, Request::Instructions) {
                             Ok(res) => match res {
                                 Response::Instructions {
@@ -195,7 +196,7 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
                             },
                             Err(e) => log::warn!("IPC error: {e:?}"),
                         }
-                    }
+                    },
                     Err(e) => log::warn!("Failed to load engine {str}: {e}"),
                 }
             }
