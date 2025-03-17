@@ -4,7 +4,11 @@
 )]
 #![warn(clippy::pedantic)]
 
-use std::{env, path::PathBuf, sync::Mutex};
+use std::{
+    env,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 
 use relm4::tokio::runtime;
 use testangel::version;
@@ -30,7 +34,7 @@ fn main() {
             AnsiStripper::new(RotatingFile::new(
                 env::current_exe()
                     .ok()
-                    .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                    .and_then(|p| p.parent().map(Path::to_path_buf))
                     .unwrap_or(PathBuf::from("."))
                     .join("testangel.log"),
                 AppendCount::new(3),

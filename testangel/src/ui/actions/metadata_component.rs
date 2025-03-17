@@ -127,6 +127,6 @@ impl Component for Metadata {
             }
         }
 
-        self.update_view(widgets, sender)
+        self.update_view(widgets, sender);
     }
 }

@@ -31,15 +31,16 @@ pub struct ActionV1 {
 }
 
 impl ActionV1 {
-    pub fn upgrade_action(self, engine_list: Arc<EngineList>) -> crate::types::Action {
+    #[must_use]
+    pub fn upgrade_action(self, engine_list: &Arc<EngineList>) -> crate::types::Action {
         let mut script = String::new();
 
         // Add descriptors
         for (name, kind) in &self.parameters {
-            script.push_str(&format!("--: param {} {}\n", kind, name));
+            script.push_str(&format!("--: param {kind} {name}\n"));
         }
         for (name, kind, _src) in self.outputs {
-            script.push_str(&format!("--: return {} {}\n", kind, name));
+            script.push_str(&format!("--: return {kind} {name}\n"));
         }
 
         // Add function signature
@@ -50,14 +51,14 @@ impl ActionV1 {
         // remove the last ", "
         let _ = params.pop();
         let _ = params.pop();
-        script.push_str(&format!("function run_action({})\n", params));
+        script.push_str(&format!("function run_action({params})\n"));
 
         // add steps
         for (idx, step) in self.instructions.iter().enumerate() {
             script.push_str(&format!(
                 "  -- Step {}{}{}\n",
                 idx + 1,
-                if !step.comment.is_empty() { ": " } else { "" },
+                if step.comment.is_empty() { "" } else { ": " },
                 step.comment
             ));
 
@@ -126,8 +127,7 @@ impl ActionV1 {
                     .lua_name;
                 let instruction_lua_name = instruction.lua_name();
                 line.push_str(&format!(
-                    "{}.{}({})",
-                    engine_lua_name, instruction_lua_name, inst_params
+                    "{engine_lua_name}.{instruction_lua_name}({inst_params})"
                 ));
 
                 line.push_str(match &step.run_if {

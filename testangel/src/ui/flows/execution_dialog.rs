@@ -43,19 +43,17 @@ pub enum ExecutionDialogInput {
 #[derive(Debug)]
 pub struct ExecutionDialog;
 
-impl ExecutionDialog {
-    /// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
-    fn create_message_dialog<S>(&self, title: S, message: S) -> adw::MessageDialog
-    where
-        S: AsRef<str>,
-    {
-        adw::MessageDialog::builder()
-            .title(title.as_ref())
-            .heading(title.as_ref())
-            .body(message.as_ref())
-            .modal(true)
-            .build()
-    }
+/// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
+fn create_message_dialog<S>(title: S, message: S) -> adw::MessageDialog
+where
+    S: AsRef<str>,
+{
+    adw::MessageDialog::builder()
+        .title(title.as_ref())
+        .heading(title.as_ref())
+        .body(message.as_ref())
+        .modal(true)
+        .build()
 }
 
 fn add_evidence(mut evp: EvidencePackage, evidence: Vec<Evidence>) -> evidenceangel::Result<()> {
@@ -143,9 +141,9 @@ impl Component for ExecutionDialog {
                 tracing::debug!("Evidence state: {evidence:?}");
                 tracing::debug!("Executing: {action_config:?}");
                 match action_config.execute(
-                    action_map.clone(),
-                    engine_list.clone(),
-                    outputs.clone(),
+                    &action_map,
+                    &engine_list,
+                    &outputs,
                 ) {
                     Ok((output, ev)) => {
                         outputs.push(output);
@@ -172,7 +170,7 @@ impl Component for ExecutionDialog {
         match message {
             ExecutionDialogInput::Close => root.destroy(),
             ExecutionDialogInput::FailedToGenerateEvidence(reason) => {
-                let dialog = self.create_message_dialog(
+                let dialog = create_message_dialog(
                     lang::lookup("evidence-failed"),
                     lang::lookup_with_args(
                         "evidence-failed-message",
@@ -235,7 +233,7 @@ impl Component for ExecutionDialog {
                                     }
                                 }
                                 Err(e) => {
-                                    tracing::warn!("Failed to check if output file exists: {e}")
+                                    tracing::warn!("Failed to check if output file exists: {e}");
                                 }
                             }
                         }
@@ -260,7 +258,7 @@ impl Component for ExecutionDialog {
 
             ExecutionDialogCommandOutput::Failed(step, reason, evidence) => {
                 tracing::warn!("Execution failed. Evidence: {evidence:?}");
-                let dialog = self.create_message_dialog(
+                let dialog = create_message_dialog(
                     lang::lookup("flow-execution-failed"),
                     lang::lookup_with_args(
                         "flow-execution-failed-message",

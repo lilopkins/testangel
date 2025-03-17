@@ -32,7 +32,7 @@ pub fn initialise_ui() {
     theme.add_resource_path("/uk/hpkns/testangel/icons/scalable/actions/");
 
     let engines = Arc::new(ipc::get_engines());
-    let actions = Arc::new(action_loader::get_actions(engines.clone()));
+    let actions = Arc::new(action_loader::get_actions(&engines));
     app.run::<AppModel>(AppInit { engines, actions });
 }
 
@@ -43,7 +43,7 @@ pub struct AppInit {
 
 #[derive(Debug)]
 enum AppInput {
-    /// The view has changed and should be read from visible_child_name, then components updated as needed.
+    /// The view has changed and should be read from `visible_child_name`, then components updated as needed.
     ChangedView(Option<String>),
     /// The actions might have changed and should be reloaded
     ReloadActionsMap,
@@ -87,7 +87,7 @@ impl Component for AppModel {
                 #[local_ref]
                 stack -> adw::ViewStack {
                     connect_visible_child_name_notify[sender] => move |st| {
-                        sender.input(AppInput::ChangedView(st.visible_child_name().map(|s| s.into())));
+                        sender.input(AppInput::ChangedView(st.visible_child_name().map(Into::into)));
                     },
                 },
             }
@@ -167,7 +167,7 @@ impl Component for AppModel {
 
         // Trigger initial header bar update
         sender.input(AppInput::ChangedView(
-            stack.visible_child_name().map(|s| s.into()),
+            stack.visible_child_name().map(Into::into),
         ));
 
         ComponentParts { model, widgets }
@@ -191,7 +191,7 @@ impl Component for AppModel {
                     .emit(HeaderBarInput::ChangedView(new_view.unwrap_or_default()));
             }
             AppInput::ReloadActionsMap => {
-                self.actions_map = Arc::new(action_loader::get_actions(self.engines_list.clone()));
+                self.actions_map = Arc::new(action_loader::get_actions(&self.engines_list));
                 self.flows.emit(flows::FlowInputs::ActionsMapChanged(
                     self.actions_map.clone(),
                 ));
@@ -201,7 +201,7 @@ impl Component for AppModel {
                 self.header
                     .emit(header_bar::HeaderBarInput::ActionsMapChanged(
                         self.actions_map.clone(),
-                    ))
+                    ));
             }
         }
     }

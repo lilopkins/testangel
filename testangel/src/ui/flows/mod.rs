@@ -533,7 +533,7 @@ impl Component for FlowsModel {
                         if !changes.is_empty() {
                             let changed_steps = changes
                                 .iter()
-                                .map(|step| step.to_string())
+                                .map(ToString::to_string)
                                 .collect::<Vec<_>>()
                                 .join(",");
                             self.create_message_dialog(
@@ -688,15 +688,15 @@ impl Component for FlowsModel {
                 flow.actions.remove(idx);
 
                 // Remove references to step and renumber references above step to one less than they were
-                for step in flow.actions.iter_mut() {
-                    for (_step_idx, source) in step.parameter_sources.iter_mut() {
+                for step in &mut flow.actions {
+                    for source in step.parameter_sources.values_mut() {
                         if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                             match (*from_step).cmp(&idx) {
                                 std::cmp::Ordering::Equal => {
-                                    *source = ActionParameterSource::Literal
+                                    *source = ActionParameterSource::Literal;
                                 }
                                 std::cmp::Ordering::Greater => *from_step -= 1,
-                                _ => (),
+                                std::cmp::Ordering::Less => (),
                             }
                         }
                     }
@@ -722,13 +722,13 @@ impl Component for FlowsModel {
                 flow.actions.remove(idx);
 
                 // Remove references to step and renumber references above step to one less than they were
-                for step in flow.actions.iter_mut() {
-                    for (_param_idx, source) in step.parameter_sources.iter_mut() {
+                for step in &mut flow.actions {
+                    for source in step.parameter_sources.values_mut() {
                         if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                             match (*from_step).cmp(&idx) {
                                 std::cmp::Ordering::Equal => *from_step = usize::MAX,
                                 std::cmp::Ordering::Greater => *from_step -= 1,
-                                _ => (),
+                                std::cmp::Ordering::Less => (),
                             }
                         }
                     }
@@ -743,7 +743,7 @@ impl Component for FlowsModel {
                 let idx = idx.max(0).min(flow.actions.len());
 
                 // Adjust step just about to paste
-                for (_param_idx, source) in config.parameter_sources.iter_mut() {
+                for source in config.parameter_sources.values_mut() {
                     if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                         if *from_step <= idx {
                             *source = ActionParameterSource::Literal;
@@ -756,7 +756,7 @@ impl Component for FlowsModel {
 
                 // Remove references to step and renumber references above step to one less than they were
                 for (step_idx, step) in flow.actions.iter_mut().enumerate() {
-                    for (_param_idx, source) in step.parameter_sources.iter_mut() {
+                    for source in step.parameter_sources.values_mut() {
                         if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                             if *from_step == usize::MAX {
                                 if step_idx < idx {

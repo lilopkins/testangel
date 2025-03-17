@@ -147,17 +147,17 @@ impl FactoryComponent for ActionComponent {
                     set_actions: gtk::gdk::DragAction::MOVE,
 
                     connect_prepare[index] => move |_src, _x, _y| {
-                        let p_index = Box::into_raw(Box::new(index.clone())) as *mut ffi::c_void;
+                        let p_index = Box::into_raw(Box::new(index.clone())).cast::<ffi::c_void>();
                         Some(gtk::gdk::ContentProvider::for_value(&p_index.to_value()))
                     },
 
                     connect_drag_begin[sender] => move |_src, _drag| {
-                        sender.input(ActionComponentInput::SetVisible(false))
+                        sender.input(ActionComponentInput::SetVisible(false));
                     },
 
                     connect_drag_end[sender] => move |_src, _drag, delete| {
                         if !delete {
-                            sender.input(ActionComponentInput::SetVisible(true))
+                            sender.input(ActionComponentInput::SetVisible(true));
                         }
                     },
                 },
@@ -170,11 +170,11 @@ impl FactoryComponent for ActionComponent {
 
                         if let Ok(ptr) = val.get::<*mut ffi::c_void>() {
                             let from = unsafe {
-                                Box::from_raw(ptr as *mut DynamicIndex)
+                                Box::from_raw(ptr.cast::<DynamicIndex>())
                             };
                             let to = index.clone();
 
-                            let half = drop.widget().map(|w| w.height()).unwrap_or(0) as f64 / 2.0;
+                            let half = f64::from(drop.widget().map_or(0, |w| w.height())) / 2.0;
                             let offset = if y < half {
                                 -1
                             } else {
@@ -188,7 +188,7 @@ impl FactoryComponent for ActionComponent {
                     },
 
                     connect_enter[sender] => move |drop, _x, y| {
-                        let half = drop.widget().map(|w| w.height()).unwrap_or(0) as f64 / 2.0;
+                        let half = f64::from(drop.widget().map_or(0, |w| w.height())) / 2.0;
                         if y < half {
                             // top half
                             sender.input(ActionComponentInput::ProposedDrop { above: true, below: false, });
@@ -200,7 +200,7 @@ impl FactoryComponent for ActionComponent {
                     },
 
                     connect_motion[sender] => move |drop, _x, y| {
-                        let half = drop.widget().map(|w| w.height()).unwrap_or(0) as f64 / 2.0;
+                        let half = f64::from(drop.widget().map_or(0, |w| w.height())) / 2.0;
                         if y < half {
                             // top half
                             sender.input(ActionComponentInput::ProposedDrop { above: true, below: false, });

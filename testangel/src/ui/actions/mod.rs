@@ -179,7 +179,7 @@ impl ActionsModel {
             // This doesn't save anything, just changes what loads to something compatible
             let action_v1: ActionV1 =
                 ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
-            let action_upgraded = action_v1.upgrade_action(self.engine_list.clone());
+            let action_upgraded = action_v1.upgrade_action(&self.engine_list);
             data = ron::to_string(&action_upgraded)
                 .map_err(SaveOrOpenActionError::SerializingError)?;
         } else if versioned_file.version() != 2 {
@@ -189,7 +189,7 @@ impl ActionsModel {
         let action: Action = ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
         // Validate that all instructions used in the script are available, or return a MissingInstruction err
         action
-            .check_instructions_available(self.engine_list.clone())
+            .check_instructions_available(&self.engine_list)
             .map_err(|missing| SaveOrOpenActionError::MissingInstruction(missing[0].clone()))?;
         self.source_view.buffer().set_text(&action.script);
 
@@ -299,7 +299,7 @@ impl ActionsModel {
             let engine_lua_name = engine.lua_name.clone();
             for instruction in engine.instructions.clone() {
                 let instruction_lua_name = instruction.lua_name().clone();
-                let built_call = format!("{}.{}", engine_lua_name, instruction_lua_name);
+                let built_call = format!("{engine_lua_name}.{instruction_lua_name}");
                 if script.contains(&built_call) {
                     action.required_instructions.push(instruction.id().clone());
                 }
@@ -507,7 +507,7 @@ impl Component for ActionsModel {
             }
             ActionInputs::__OpenAction(path) => {
                 match self.open_action(path) {
-                    Ok(_) => {
+                    Ok(()) => {
                         // Nothing more to do...
                     }
                     Err(e) => {

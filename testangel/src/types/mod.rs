@@ -19,6 +19,7 @@ pub struct VersionedFile {
 
 impl VersionedFile {
     /// Get the version of the file
+    #[must_use]
     pub fn version(&self) -> usize {
         self.version
     }
@@ -64,6 +65,7 @@ impl Default for Action {
 
 impl Action {
     /// Get the version of this action.
+    #[must_use]
     pub fn version(&self) -> usize {
         self.version
     }
@@ -78,7 +80,7 @@ impl Action {
     /// missing instructions.
     pub fn check_instructions_available(
         &self,
-        engine_list: Arc<EngineList>,
+        engine_list: &Arc<EngineList>,
     ) -> Result<(), Vec<String>> {
         let mut missing = vec![];
         for instruction in &self.required_instructions {
@@ -96,6 +98,7 @@ impl Action {
     }
 
     /// Get a list of parameters that need to be provided to this action.
+    #[must_use]
     pub fn parameters(&self) -> Vec<(String, ParameterKind)> {
         let descriptors = Descriptor::parse_all(&self.script);
         let mut params = vec![];
@@ -108,6 +111,7 @@ impl Action {
     }
 
     /// Get a list of outputs provided by this action.
+    #[must_use]
     pub fn outputs(&self) -> Vec<(String, ParameterKind)> {
         let descriptors = Descriptor::parse_all(&self.script);
         let mut outputs = vec![];
@@ -140,7 +144,7 @@ impl fmt::Display for FlowError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IPCFailure(e) => write!(f, "An IPC call failed ({e:?})."),
-            Self::Lua(e) => write!(f, "An action script error occurred:\n{}", e),
+            Self::Lua(e) => write!(f, "An action script error occurred:\n{e}"),
             Self::FromInstruction { error_kind, reason } => write!(
                 f,
                 "An instruction returned an error: {error_kind:?}: {reason}"
@@ -182,6 +186,7 @@ impl Default for AutomationFlow {
 
 impl AutomationFlow {
     /// Get the version of this flow.
+    #[must_use]
     pub fn version(&self) -> usize {
         self.version
     }
@@ -197,9 +202,9 @@ impl ActionConfiguration {
     /// Execute this action
     pub fn execute(
         &self,
-        action_map: Arc<ActionMap>,
-        engine_map: Arc<EngineList>,
-        previous_action_outputs: Vec<HashMap<usize, ParameterValue>>,
+        action_map: &Arc<ActionMap>,
+        engine_map: &Arc<EngineList>,
+        previous_action_outputs: &[HashMap<usize, ParameterValue>],
     ) -> Result<(HashMap<usize, ParameterValue>, Vec<Evidence>), FlowError> {
         // Find action by ID
         let action = action_map.get_action_by_id(&self.action_id).unwrap();
@@ -227,7 +232,7 @@ impl ActionConfiguration {
     #[allow(clippy::type_complexity)]
     /// Directly execute an action with a set of parameters.
     pub fn execute_directly(
-        engine_map: Arc<EngineList>,
+        engine_map: &Arc<EngineList>,
         action: &Action,
         action_parameters: Vec<ParameterValue>,
     ) -> Result<(HashMap<usize, ParameterValue>, Vec<Evidence>), FlowError> {
@@ -318,7 +323,7 @@ impl ActionConfiguration {
                         // Trigger instruction behaviour
                         let response = ipc::ipc_call(
                             &engine,
-                            Request::RunInstructions {
+                            &Request::RunInstructions {
                                 instructions: vec![InstructionWithParameters {
                                     instruction: instruction.id().clone(),
                                     parameters: param_map,
@@ -342,19 +347,20 @@ impl ActionConfiguration {
                                     match o {
                                         ParameterValue::Boolean(b) => {
                                             tracing::debug!("Boolean {b} returned to Lua");
-                                            outputs.push(mlua::Value::Boolean(b))
+                                            outputs.push(mlua::Value::Boolean(b));
                                         }
                                         ParameterValue::String(s) => {
                                             tracing::debug!("String {s:?} returned to Lua");
-                                            outputs.push(mlua::Value::String(lua.create_string(s)?))
+                                            outputs
+                                                .push(mlua::Value::String(lua.create_string(s)?));
                                         }
                                         ParameterValue::Integer(i) => {
                                             tracing::debug!("Integer {i} returned to Lua");
-                                            outputs.push(mlua::Value::Integer(i))
+                                            outputs.push(mlua::Value::Integer(i));
                                         }
                                         ParameterValue::Decimal(n) => {
                                             tracing::debug!("Decimal {n} returned to Lua");
-                                            outputs.push(mlua::Value::Number(n))
+                                            outputs.push(mlua::Value::Number(n));
                                         }
                                     }
                                 }
@@ -436,12 +442,15 @@ impl ActionConfiguration {
     }
 
     /// Update this action configuration to match the inputs and outputs of the provided action.
-    /// This will panic if the action's ID doesn't match the ID of this configuration already set.
     /// Return true if this configuration has changed.
+    ///
+    /// # Panics
+    /// This will panic if the action's ID doesn't match the ID of this configuration already set.
     pub fn update(&mut self, action: Action) -> bool {
-        if self.action_id != action.id {
-            panic!("ActionConfiguration tried to be updated with a different action!");
-        }
+        assert!(
+            self.action_id == action.id,
+            "ActionConfiguration tried to be updated with a different action!"
+        );
 
         // If number of parameters has changed
         if self.parameter_sources.len() != action.parameters().len() {

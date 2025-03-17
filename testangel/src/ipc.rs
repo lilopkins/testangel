@@ -2,7 +2,7 @@ use std::{
     env,
     ffi::{CStr, CString},
     fmt, fs, io,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -18,7 +18,7 @@ pub enum IpcError {
     InvalidResponseFromEngine,
 }
 
-pub fn ipc_call(engine: &Engine, request: Request) -> Result<Response, IpcError> {
+pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError> {
     tracing::debug!(
         "Sending request {:?} to engine {} at {:?}.",
         request,
@@ -65,7 +65,7 @@ pub struct Engine {
 impl Engine {
     /// Ask the engine to reset it's state for test repeatability.
     pub fn reset_state(&self) -> Result<(), IpcError> {
-        ipc_call(self, Request::ResetState).map(|_| ())
+        ipc_call(self, &Request::ResetState).map(|_| ())
     }
 }
 
@@ -87,6 +87,7 @@ pub struct EngineList(Vec<Engine>);
 
 impl EngineList {
     /// Get an instruction from an instruction ID by iterating through available engines.
+    #[must_use]
     pub fn get_instruction_by_id(&self, instruction_id: &String) -> Option<Instruction> {
         for engine in &self.0 {
             for inst in &engine.instructions {
@@ -99,6 +100,7 @@ impl EngineList {
     }
 
     /// Get an instruction and engine from an instruction ID by iterating through available engines.
+    #[must_use]
     pub fn get_engine_by_instruction_id(&self, instruction_id: &String) -> Option<&Engine> {
         for engine in &self.0 {
             for inst in &engine.instructions {
@@ -111,6 +113,7 @@ impl EngineList {
     }
 
     /// Return the inner list of engines
+    #[must_use]
     pub fn inner(&self) -> &Vec<Engine> {
         &self.0
     }
@@ -151,7 +154,11 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
 
         if let Ok(str) = basename.into_string() {
             tracing::debug!("Found {:?}", path.path());
-            if str.ends_with(".so") || str.ends_with(".dll") || str.ends_with(".dylib") {
+            if Path::new(&str).extension().is_some_and(|ext| {
+                ext.eq_ignore_ascii_case("so")
+                    || ext.eq_ignore_ascii_case("dll")
+                    || ext.eq_ignore_ascii_case("dylib")
+            }) {
                 tracing::debug!("Detected possible engine {str}");
                 match EngineInterface::load_plugin_and_check(path.path()) {
                     Ok(lib) => {
@@ -162,15 +169,16 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
                             ..Default::default()
                         };
 
-                        match ipc_call(&engine, Request::Instructions) {
-                            Ok(res) => match res {
-                                Response::Instructions {
+                        match ipc_call(&engine, &Request::Instructions) {
+                            Ok(res) => {
+                                if let Response::Instructions {
                                     friendly_name,
                                     engine_version,
                                     engine_lua_name,
                                     ipc_version,
                                     instructions,
-                                } => {
+                                } = res
+                                {
                                     if ipc_version == 2 {
                                         if lua_names.contains(&engine_lua_name) {
                                             tracing::warn!(
@@ -183,8 +191,8 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
                                             "Discovered engine {friendly_name} (v{engine_version}) at {:?}",
                                             path.path()
                                         );
-                                        engine.name = friendly_name.clone();
-                                        engine.lua_name = engine_lua_name.clone();
+                                        engine.name.clone_from(&friendly_name);
+                                        engine.lua_name.clone_from(&engine_lua_name);
                                         engine.instructions = instructions;
                                         engines.push(engine);
                                         lua_names.push(engine_lua_name);
@@ -194,9 +202,10 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
                                             path.path()
                                         );
                                     }
+                                } else {
+                                    tracing::error!("Invalid response from engine {str}");
                                 }
-                                _ => tracing::error!("Invalid response from engine {str}"),
-                            },
+                            }
                             Err(e) => tracing::warn!("IPC error: {e:?}"),
                         }
                     }

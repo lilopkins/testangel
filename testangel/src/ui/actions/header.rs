@@ -200,8 +200,8 @@ impl Component for ActionsHeader {
                         });
                     }
                 } else {
-                    let mut unsorted_results = vec![];
                     use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+                    let mut unsorted_results = vec![];
                     let matcher = SkimMatcherV2::default();
                     for engine in self.engine_list.inner() {
                         for instruction in &engine.instructions {

@@ -210,8 +210,8 @@ impl Component for FlowsHeader {
                         });
                     }
                 } else {
-                    let mut unsorted_results = vec![];
                     use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+                    let mut unsorted_results = vec![];
                     let matcher = SkimMatcherV2::default();
                     for (group, actions) in self.action_map.get_by_group() {
                         for action in actions {
