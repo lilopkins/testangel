@@ -29,7 +29,7 @@ lazy_static! {
                     .map_err(EngineError::CouldntBuildExpression)?;
                 output.insert(
                     "result".to_string(),
-                    ParameterValue::String(rand::thread_rng().sample(&expr)),
+                    ParameterValue::String(rand::rng().sample(&expr)),
                 );
 
                 Ok(())

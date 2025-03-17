@@ -2,6 +2,7 @@
     all(not(debug_assertions), not(feature = "windows-keep-console-window")),
     windows_subsystem = "windows"
 )]
+#![warn(clippy::pedantic)]
 
 use std::{env, path::PathBuf, sync::Mutex};
 

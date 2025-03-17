@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
 use base64::{prelude::BASE64_STANDARD, Engine};

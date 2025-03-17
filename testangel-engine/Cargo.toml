@@ -10,4 +10,4 @@ edition.workspace = true
 [dependencies]
 testangel-ipc = { path = "../testangel-ipc" }
 testangel-engine-macros = { path = "../testangel-engine-macros" }
-dynamic-plugin = { version = "0.3.0", features = [ "host", "client" ] }
+dynamic-plugin = { version = "0.4.0", features = [ "host", "client" ] }

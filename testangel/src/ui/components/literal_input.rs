@@ -85,7 +85,7 @@ impl SimpleComponent for LiteralInput {
             ParameterValue::Decimal(val) => {
                 let entry = gtk::SpinButton::builder()
                     .adjustment(&gtk::Adjustment::new(
-                        *val as f64,
+                        *val,
                         f32::MIN as f64,
                         f32::MAX as f64,
                         0.1,

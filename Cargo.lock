@@ -953,7 +953,20 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "635f5a96d30bc54b369927598720cc5a939d8d8ab73f9f75be9986ff3f83aa72"
 dependencies = [
- "dynamic-plugin-macros",
+ "dynamic-plugin-macros 0.3.0",
+ "libc",
+ "libloading",
+ "static_assertions",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "dynamic-plugin"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb4655afc3cffab03bd5ad0c5439ca12db3f82c49c2015dd2e4d9929e772b509"
+dependencies = [
+ "dynamic-plugin-macros 0.4.0",
  "libc",
  "libloading",
  "static_assertions",
@@ -965,6 +978,17 @@ name = "dynamic-plugin-macros"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebae0ab5385dc9af8dbc45dc45292d9259b2ee512658b826c15e89be0f06f371"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
+]
+
+[[package]]
+name = "dynamic-plugin-macros"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ad3cd79f708dfa7afe940fc54dcff785a79b54b102becf3da2d2fd710326f63"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4360,7 +4384,7 @@ dependencies = [
 name = "testangel-engine"
 version = "0.22.0-alpha.1"
 dependencies = [
- "dynamic-plugin",
+ "dynamic-plugin 0.4.0",
  "testangel-engine-macros",
  "testangel-ipc",
 ]
@@ -4377,7 +4401,7 @@ dependencies = [
 name = "testangel-evidence"
 version = "0.22.0-alpha.1"
 dependencies = [
- "dynamic-plugin",
+ "dynamic-plugin 0.3.0",
  "lazy_static",
  "testangel-engine",
 ]
@@ -4395,7 +4419,7 @@ dependencies = [
 name = "testangel-rand"
 version = "0.22.0-alpha.1"
 dependencies = [
- "dynamic-plugin",
+ "dynamic-plugin 0.3.0",
  "lazy_static",
  "rand",
  "rand_regex",
@@ -4407,7 +4431,7 @@ dependencies = [
 name = "testangel-time"
 version = "0.22.0-alpha.1"
 dependencies = [
- "dynamic-plugin",
+ "dynamic-plugin 0.3.0",
  "lazy_static",
  "testangel-engine",
  "thiserror 2.0.12",
@@ -4417,7 +4441,7 @@ dependencies = [
 name = "testangel-user-interaction"
 version = "0.22.0-alpha.1"
 dependencies = [
- "dynamic-plugin",
+ "dynamic-plugin 0.3.0",
  "lazy_static",
  "rfd",
  "testangel-engine",

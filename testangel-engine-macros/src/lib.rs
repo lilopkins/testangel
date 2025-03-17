@@ -22,8 +22,8 @@ pub fn expose_engine(stream: TokenStream) -> TokenStream {
         ::testangel_engine::plugin_impl! {
             ::testangel_engine::EngineInterface,
 
-            fn ta_call(input: *const ::testangel_engine::c_char) -> *const ::testangel_engine::c_char {
-                let input = unsafe { ::std::ffi::CStr::from_ptr(input) };
+            unsafe fn ta_call(input: *const ::testangel_engine::c_char) -> *const ::testangel_engine::c_char {
+                let input = ::std::ffi::CStr::from_ptr(input);
                 let request = String::from_utf8_lossy(input.to_bytes()).to_string();
                 let response = match Request::try_from(request) {
                     Err(e) => Response::Error {
@@ -37,9 +37,10 @@ pub fn expose_engine(stream: TokenStream) -> TokenStream {
                 c_response.into_raw()
             }
 
-            fn ta_release(input: *mut ::std::ffi::c_char) {
+            unsafe fn ta_release(input: *mut ::std::ffi::c_char) {
                 if !input.is_null() {
-                    drop(unsafe { ::std::ffi::CString::from_raw(input) });
+                    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+                    drop(::std::ffi::CString::from_raw(input));
                 }
             }
         }
