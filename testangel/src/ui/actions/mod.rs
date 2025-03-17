@@ -206,8 +206,8 @@ impl ActionsModel {
             ));
         self.open_path = Some(file);
         self.needs_saving = false;
-        log::debug!("New action open.");
-        log::debug!("Action: {:?}", self.open_action);
+        tracing::debug!("New action open.");
+        tracing::debug!("Action: {:?}", self.open_action);
         Ok(())
     }
 
@@ -576,7 +576,7 @@ impl Component for ActionsModel {
                 if let Some(action) = &self.open_action {
                     let buf = self.source_view.buffer();
                     if action.script != buf.text(&buf.start_iter(), &buf.end_iter(), false) {
-                        log::debug!("Needs saving due to text change.");
+                        tracing::debug!("Needs saving due to text change.");
                         self.needs_saving = true;
                     }
                 }
@@ -649,17 +649,17 @@ impl Component for ActionsModel {
 
                 // Decide if cursor needs moving down a line (or into function)
                 let cursor_pos = buffer.cursor_position();
-                log::debug!(
+                tracing::debug!(
                     "Inserting step, cursor pos: {} (text len: {})",
                     cursor_pos,
                     text.len()
                 );
                 if cursor_pos == 0 || cursor_pos == text.len() as i32 {
                     // Move cursor into function
-                    log::debug!("Offsetting cursor into function");
+                    tracing::debug!("Offsetting cursor into function");
                     for (i, l) in text.lines().enumerate() {
                         if l.contains("function run_action") {
-                            log::debug!("Function on line {}", i);
+                            tracing::debug!("Function on line {}", i);
                             if let Some(text_iter) = buffer.iter_at_line_offset(i as i32 + 1, 2) {
                                 buffer.place_cursor(&text_iter);
                             }
@@ -685,10 +685,10 @@ impl Component for ActionsModel {
 
                     // Move cursor to end and insert newline if needed
                     let line = &text[line_starts_at..line_ends_at];
-                    log::debug!("cursor on line: {:?}", line);
+                    tracing::debug!("cursor on line: {:?}", line);
                     if !line.trim().is_empty() {
                         // Offset cursor to end of line
-                        log::debug!(
+                        tracing::debug!(
                             "Moving cursor to end of line {} (pos {})",
                             line_num,
                             line.len()

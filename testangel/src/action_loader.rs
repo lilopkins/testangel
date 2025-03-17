@@ -52,11 +52,11 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
 
         if let Ok(str) = filename.into_string() {
             if str.ends_with(".taaction") {
-                log::debug!("Detected possible action {str}");
+                tracing::debug!("Detected possible action {str}");
                 if let Ok(res) = fs::read_to_string(path.path()) {
                     if let Ok(versioned_file) = ron::from_str::<VersionedFile>(&res) {
                         if versioned_file.version() != 2 {
-                            log::warn!("Action {str} uses an incompatible file version.");
+                            tracing::warn!("Action {str} uses an incompatible file version.");
                             continue 'action_loop;
                         }
                     }
@@ -66,7 +66,7 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
                         if let Err(missing) =
                             action.check_instructions_available(engine_list.clone())
                         {
-                            log::warn!(
+                            tracing::warn!(
                                 "Couldn't load action {} because instructions {:?} aren't available.",
                                 action.friendly_name,
                                 missing,
@@ -74,7 +74,7 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
                             continue 'action_loop;
                         }
 
-                        log::info!(
+                        tracing::info!(
                             "Discovered action {} ({}) at {:?}",
                             action.friendly_name,
                             action.id,
@@ -83,10 +83,10 @@ pub fn get_actions(engine_list: Arc<EngineList>) -> ActionMap {
 
                         actions.insert(path.path(), action);
                     } else {
-                        log::warn!("Couldn't parse action");
+                        tracing::warn!("Couldn't parse action");
                     }
                 } else {
-                    log::warn!("Couldn't read action");
+                    tracing::warn!("Couldn't read action");
                 }
             }
         }

@@ -341,19 +341,19 @@ impl ActionConfiguration {
                                     let o = output[0][output_id].clone();
                                     match o {
                                         ParameterValue::Boolean(b) => {
-                                            log::debug!("Boolean {b} returned to Lua");
+                                            tracing::debug!("Boolean {b} returned to Lua");
                                             outputs.push(mlua::Value::Boolean(b))
                                         }
                                         ParameterValue::String(s) => {
-                                            log::debug!("String {s:?} returned to Lua");
+                                            tracing::debug!("String {s:?} returned to Lua");
                                             outputs.push(mlua::Value::String(lua.create_string(s)?))
                                         }
                                         ParameterValue::Integer(i) => {
-                                            log::debug!("Integer {i} returned to Lua");
+                                            tracing::debug!("Integer {i} returned to Lua");
                                             outputs.push(mlua::Value::Integer(i))
                                         }
                                         ParameterValue::Decimal(n) => {
-                                            log::debug!("Decimal {n} returned to Lua");
+                                            tracing::debug!("Decimal {n} returned to Lua");
                                             outputs.push(mlua::Value::Number(n))
                                         }
                                     }

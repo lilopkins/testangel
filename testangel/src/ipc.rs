@@ -19,7 +19,7 @@ pub enum IpcError {
 }
 
 pub fn ipc_call(engine: &Engine, request: Request) -> Result<Response, IpcError> {
-    log::debug!(
+    tracing::debug!(
         "Sending request {:?} to engine {} at {:?}.",
         request,
         engine,
@@ -45,11 +45,11 @@ pub fn ipc_call(engine: &Engine, request: Request) -> Result<Response, IpcError>
     };
 
     let res = Response::try_from(response).map_err(|e| {
-        log::error!("Failed to parse response ({}) from engine {}.", e, engine,);
+        tracing::error!("Failed to parse response ({}) from engine {}.", e, engine,);
         IpcError::InvalidResponseFromEngine
     })?;
 
-    log::debug!("Got response {res:?}");
+    tracing::debug!("Got response {res:?}");
     Ok(res)
 }
 
@@ -121,7 +121,7 @@ pub fn get_engines() -> EngineList {
     let mut engines = Vec::new();
     let engine_dir = env::var("TA_ENGINE_DIR").unwrap_or("./engines".to_owned());
     fs::create_dir_all(engine_dir.clone()).unwrap();
-    log::info!("Searching for engines in {engine_dir:?}");
+    tracing::info!("Searching for engines in {engine_dir:?}");
     let mut lua_names = vec![];
     search_engine_dir(engine_dir, &mut engines, &mut lua_names);
     EngineList(engines)
@@ -150,9 +150,9 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
         }
 
         if let Ok(str) = basename.into_string() {
-            log::debug!("Found {:?}", path.path());
+            tracing::debug!("Found {:?}", path.path());
             if str.ends_with(".so") || str.ends_with(".dll") || str.ends_with(".dylib") {
-                log::debug!("Detected possible engine {str}");
+                tracing::debug!("Detected possible engine {str}");
                 match EngineInterface::load_plugin_and_check(path.path()) {
                     Ok(lib) => {
                         let mut engine = Engine {
@@ -173,13 +173,13 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
                                 } => {
                                     if ipc_version == 2 {
                                         if lua_names.contains(&engine_lua_name) {
-                                            log::warn!(
+                                            tracing::warn!(
                                                 "Engine {friendly_name} (v{engine_version}) at {:?} uses a lua name that is already used by another engine!",
                                                 path.path()
                                             );
                                             continue;
                                         }
-                                        log::info!(
+                                        tracing::info!(
                                             "Discovered engine {friendly_name} (v{engine_version}) at {:?}",
                                             path.path()
                                         );
@@ -189,18 +189,18 @@ fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &
                                         engines.push(engine);
                                         lua_names.push(engine_lua_name);
                                     } else {
-                                        log::warn!(
+                                        tracing::warn!(
                                             "Engine {friendly_name} (v{engine_version}) at {:?} doesn't speak the right IPC version!",
                                             path.path()
                                         );
                                     }
                                 }
-                                _ => log::error!("Invalid response from engine {str}"),
+                                _ => tracing::error!("Invalid response from engine {str}"),
                             },
-                            Err(e) => log::warn!("IPC error: {e:?}"),
+                            Err(e) => tracing::warn!("IPC error: {e:?}"),
                         }
                     }
-                    Err(e) => log::warn!("Failed to load engine {str}: {e}"),
+                    Err(e) => tracing::warn!("Failed to load engine {str}: {e}"),
                 }
             }
         }

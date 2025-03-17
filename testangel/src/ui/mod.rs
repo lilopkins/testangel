@@ -22,7 +22,7 @@ pub(crate) mod lang;
 
 /// Initialise and open the UI.
 pub fn initialise_ui() {
-    log::info!("Starting Next UI...");
+    tracing::info!("Starting Next UI...");
     let app = RelmApp::new("uk.hpkns.testangel");
     relm4_icons::initialize_icons();
 
@@ -163,7 +163,7 @@ impl Component for AppModel {
         }
 
         let widgets = view_output!();
-        log::debug!("Initialised model: {model:?}");
+        tracing::debug!("Initialised model: {model:?}");
 
         // Trigger initial header bar update
         sender.input(AppInput::ChangedView(

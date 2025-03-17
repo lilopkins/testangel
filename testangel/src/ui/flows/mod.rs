@@ -217,8 +217,8 @@ impl FlowsModel {
         ));
         self.open_path = Some(file);
         self.needs_saving = false;
-        log::debug!("New flow open.");
-        log::debug!("Flow: {:?}", self.open_flow);
+        tracing::debug!("New flow open.");
+        tracing::debug!("Flow: {:?}", self.open_flow);
         Ok(steps_reset)
     }
 
@@ -690,11 +690,11 @@ impl Component for FlowsModel {
                 // This is needed as sometimes, if a menu item lines up above the delete step button,
                 // they can both be simultaneously triggered.
                 if idx >= flow.actions.len() {
-                    log::warn!("Skipped running RemoveStep as the index was invalid.");
+                    tracing::warn!("Skipped running RemoveStep as the index was invalid.");
                     return;
                 }
 
-                log::info!("Deleting step {}", idx + 1);
+                tracing::info!("Deleting step {}", idx + 1);
 
                 flow.actions.remove(idx);
 
@@ -721,12 +721,12 @@ impl Component for FlowsModel {
             FlowInputs::CutStep(step_idx) => {
                 let idx = step_idx.current_index();
                 let flow = self.open_flow.as_mut().unwrap();
-                log::info!("Cut step {}", idx + 1);
+                tracing::info!("Cut step {}", idx + 1);
 
                 // This is needed as sometimes, if a menu item lines up above a button that triggers this,
                 // they can both be simultaneously triggered.
                 if idx >= flow.actions.len() {
-                    log::warn!("Skipped running CutStep as the index was invalid.");
+                    tracing::warn!("Skipped running CutStep as the index was invalid.");
                     return;
                 }
 
@@ -745,7 +745,7 @@ impl Component for FlowsModel {
                     }
                 }
 
-                log::debug!("After cut, flow is: {flow:?}");
+                tracing::debug!("After cut, flow is: {flow:?}");
 
                 self.needs_saving = true;
             }
@@ -762,7 +762,7 @@ impl Component for FlowsModel {
                     }
                 }
 
-                log::info!("Pasting step to {}", idx + 1);
+                tracing::info!("Pasting step to {}", idx + 1);
                 flow.actions.insert(idx, config);
 
                 // Remove references to step and renumber references above step to one less than they were
@@ -783,7 +783,7 @@ impl Component for FlowsModel {
                     }
                 }
 
-                log::debug!("After paste, flow is: {flow:?}");
+                tracing::debug!("After paste, flow is: {flow:?}");
 
                 self.needs_saving = true;
 

@@ -168,7 +168,7 @@ impl FactoryComponent for ActionComponent {
                     set_types: &[gtk::glib::Type::POINTER],
 
                     connect_drop[sender, index] => move |drop, val, _x, y| {
-                        log::debug!("type: {}", val.type_());
+                        tracing::debug!("type: {}", val.type_());
 
                         if let Ok(ptr) = val.get::<*mut ffi::c_void>() {
                             let from = unsafe {
