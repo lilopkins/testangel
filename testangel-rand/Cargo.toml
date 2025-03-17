@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 [dependencies]
 dynamic-plugin = { version = "0.3.0", features = [ "client" ] }
 lazy_static = "1.4.0"
-rand = "0.8.5"
-rand_regex = "0.17.0"
+rand = "0.9.0"
+rand_regex = "0.18.0"
 testangel-engine = { path = "../testangel-engine" }
 thiserror = "2.0.4"

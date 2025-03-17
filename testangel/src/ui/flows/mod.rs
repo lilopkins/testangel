@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
@@ -11,7 +11,7 @@ use testangel::{
     types::{ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
 };
 
-use crate::ui::flows::action_component::ActionComponentOutput;
+use crate::{lang_args, ui::flows::action_component::ActionComponentOutput};
 
 use super::{file_filters, lang};
 
@@ -33,35 +33,30 @@ impl fmt::Display for SaveOrOpenFlowError {
             f,
             "{}",
             match self {
-                Self::IoError(e) => lang::lookup_with_args("flow-save-open-error-io-error", {
-                    let mut map = HashMap::new();
-                    map.insert("error", e.to_string().into());
-                    map
-                }),
+                Self::IoError(e) => lang::lookup_with_args(
+                    "flow-save-open-error-io-error",
+                    lang_args!("error", e.to_string())
+                ),
                 Self::ParsingError(e) => {
-                    lang::lookup_with_args("flow-save-open-error-parsing-error", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "flow-save-open-error-parsing-error",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
                 Self::SerializingError(e) => {
-                    lang::lookup_with_args("flow-save-open-error-serializing-error", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "flow-save-open-error-serializing-error",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
                 Self::FlowNotVersionCompatible => {
                     lang::lookup("flow-save-open-error-flow-not-version-compatible")
                 }
                 Self::MissingAction(step, e) => {
-                    lang::lookup_with_args("flow-save-open-error-missing-action", {
-                        let mut map = HashMap::new();
-                        map.insert("step", (step + 1).into());
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "flow-save-open-error-missing-action",
+                        lang_args!("step", step + 1, "error", e.to_string()),
+                    )
                 }
             }
         )
@@ -468,21 +463,19 @@ impl Component for FlowsModel {
                     sender.input(FlowInputs::UpdateStepsFromModel);
                 }
                 if !steps_reset.is_empty() {
-                    let toast =
-                        adw::Toast::new(&lang::lookup_with_args("flow-action-changed-message", {
-                            let mut map = HashMap::new();
-                            map.insert("stepCount", steps_reset.len().into());
-                            map.insert(
-                                "steps",
-                                steps_reset
-                                    .iter()
-                                    .map(|i| (i + 1).to_string())
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                                    .into(),
-                            );
-                            map
-                        }));
+                    let toast = adw::Toast::new(&lang::lookup_with_args(
+                        "flow-action-changed-message",
+                        lang_args!(
+                            "stepCount",
+                            steps_reset.len(),
+                            "steps",
+                            steps_reset
+                                .iter()
+                                .map(|i| (i + 1).to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ),
+                    ));
                     toast.set_timeout(0); // indefinte so it can be seen when switching back
                     widgets.toast_target.add_toast(toast);
                 }
@@ -545,12 +538,10 @@ impl Component for FlowsModel {
                                 .join(",");
                             self.create_message_dialog(
                                 lang::lookup("flow-action-changed"),
-                                lang::lookup_with_args("flow-action-changed-message", {
-                                    let mut map = HashMap::new();
-                                    map.insert("stepCount", changes.len().into());
-                                    map.insert("steps", changed_steps.into());
-                                    map
-                                }),
+                                lang::lookup_with_args(
+                                    "flow-action-changed-message",
+                                    lang_args!("stepCount", changes.len(), "steps", changed_steps),
+                                ),
                             )
                             .set_visible(true);
                         }
@@ -669,12 +660,10 @@ impl Component for FlowsModel {
                             .enumerate()
                         {
                             possible_outputs.push((
-                                lang::lookup_with_args("source-from-step", {
-                                    let mut map = HashMap::new();
-                                    map.insert("step", (step + 1).into());
-                                    map.insert("name", name.clone().into());
-                                    map
-                                }),
+                                lang::lookup_with_args(
+                                    "source-from-step",
+                                    lang_args!("step", step + 1, "name", name.clone()),
+                                ),
                                 *kind,
                                 ActionParameterSource::FromOutput(step, output_idx),
                             ));

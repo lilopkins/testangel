@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ffi};
+use std::ffi;
 
 use adw::prelude::*;
 use relm4::{
@@ -11,12 +11,15 @@ use relm4::{
 use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
-use crate::ui::{
-    components::variable_row::{
-        ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowOutput,
-        VariableRowParentInput,
+use crate::{
+    lang_args,
+    ui::{
+        components::variable_row::{
+            ParameterSourceTrait, VariableRow, VariableRowInit, VariableRowOutput,
+            VariableRowParentInput,
+        },
+        lang,
     },
-    lang,
 };
 
 /// The data object to hold the data for initialising an [`ActionComponent`].
@@ -94,12 +97,7 @@ impl FactoryComponent for ActionComponent {
                 #[watch]
                 set_title: &lang::lookup_with_args(
                     "flow-step-label",
-                    {
-                        let mut map = HashMap::new();
-                        map.insert("step", (self.step.current_index() + 1).into());
-                        map.insert("name", self.action.friendly_name.clone().into());
-                        map
-                    }
+                    lang_args!("step", self.step.current_index() + 1, "name", self.action.friendly_name.clone())
                 ),
                 set_description: Some(&self.action.description),
                 #[watch]

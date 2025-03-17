@@ -7,7 +7,9 @@ use std::{env, path::PathBuf, sync::Mutex};
 
 use relm4::tokio::runtime;
 use testangel::version;
-use tracing_subscriber_multi::{AnsiStripper, AppendCount, Compression, ContentLimit, DualWriter, FmtSubscriber, RotatingFile};
+use tracing_subscriber_multi::{
+    AnsiStripper, AppendCount, Compression, ContentLimit, DualWriter, FmtSubscriber, RotatingFile,
+};
 
 #[cfg(feature = "ui")]
 mod ui;

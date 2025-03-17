@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
@@ -12,6 +12,8 @@ use testangel::{
     types::action_v1::ActionV1,
     types::{Action, VersionedFile},
 };
+
+use crate::lang_args;
 
 use super::{file_filters, lang};
 use sourceview5 as sourceview;
@@ -33,34 +35,30 @@ impl fmt::Display for SaveOrOpenActionError {
             f,
             "{}",
             match self {
-                Self::IoError(e) => lang::lookup_with_args("action-save-open-error-io-error", {
-                    let mut map = HashMap::new();
-                    map.insert("error", e.to_string().into());
-                    map
-                }),
+                Self::IoError(e) => lang::lookup_with_args(
+                    "action-save-open-error-io-error",
+                    lang_args!("error", e.to_string())
+                ),
                 Self::ParsingError(e) => {
-                    lang::lookup_with_args("action-save-open-error-parsing-error", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "action-save-open-error-parsing-error",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
                 Self::SerializingError(e) => {
-                    lang::lookup_with_args("action-save-open-error-serializing-error", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "action-save-open-error-serializing-error",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
                 Self::ActionNotVersionCompatible => {
                     lang::lookup("action-save-open-error-action-not-version-compatible")
                 }
                 Self::MissingInstruction(e) => {
-                    lang::lookup_with_args("action-save-open-error-missing-instruction", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "action-save-open-error-missing-instruction",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
             }
         )

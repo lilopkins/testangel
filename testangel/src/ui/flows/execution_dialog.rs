@@ -12,7 +12,10 @@ use testangel::{
 };
 use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterValue};
 
-use crate::ui::{file_filters, lang};
+use crate::{
+    lang_args,
+    ui::{file_filters, lang},
+};
 
 #[derive(Debug)]
 pub enum ExecutionDialogCommandOutput {
@@ -171,11 +174,10 @@ impl Component for ExecutionDialog {
             ExecutionDialogInput::FailedToGenerateEvidence(reason) => {
                 let dialog = self.create_message_dialog(
                     lang::lookup("evidence-failed"),
-                    lang::lookup_with_args("evidence-failed-message", {
-                        let mut map = HashMap::new();
-                        map.insert("reason", reason.to_string().into());
-                        map
-                    }),
+                    lang::lookup_with_args(
+                        "evidence-failed-message",
+                        lang_args!("reason", reason.to_string()),
+                    ),
                 );
                 dialog.set_transient_for(Some(root));
                 dialog.add_response("ok", &lang::lookup("ok"));
@@ -232,7 +234,9 @@ impl Component for ExecutionDialog {
                                         );
                                     }
                                 }
-                                Err(e) => tracing::warn!("Failed to check if output file exists: {e}"),
+                                Err(e) => {
+                                    tracing::warn!("Failed to check if output file exists: {e}")
+                                }
                             }
                         }
                         sender_c.input(ExecutionDialogInput::Close);
@@ -258,12 +262,10 @@ impl Component for ExecutionDialog {
                 tracing::warn!("Execution failed. Evidence: {evidence:?}");
                 let dialog = self.create_message_dialog(
                     lang::lookup("flow-execution-failed"),
-                    lang::lookup_with_args("flow-execution-failed-message", {
-                        let mut map = HashMap::new();
-                        map.insert("step", step.into());
-                        map.insert("reason", reason.to_string().into());
-                        map
-                    }),
+                    lang::lookup_with_args(
+                        "flow-execution-failed-message",
+                        lang_args!("step", step, "reason", reason.to_string()),
+                    ),
                 );
                 dialog.set_transient_for(Some(root));
                 if !evidence.is_empty() {
