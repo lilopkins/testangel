@@ -54,3 +54,7 @@ pest = "2.7.9"
 pest_derive = "2.7.9"
 convert_case = "0.6.0"
 evidenceangel = { git = "https://github.com/lilopkins/evidenceangel.git" }
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+ico-builder = "0.1"

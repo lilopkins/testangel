@@ -77,7 +77,6 @@ impl Component for AppModel {
             set_title: Some(&lang::lookup("app-name")),
             set_default_width: 800,
             set_default_height: 600,
-            set_icon_name: Some(relm4_icons::icon_names::TESTANGEL),
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
