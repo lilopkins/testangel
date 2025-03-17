@@ -56,13 +56,11 @@ pub struct HeaderBarModel {
     is_flow_open: bool,
 }
 
-impl HeaderBarModel {
-    fn swap_content(&mut self, swap_target: &gtk::Box, new_content: &gtk::Box) {
-        for child in swap_target.iter_children() {
-            swap_target.remove(&child);
-        }
-        swap_target.append(new_content);
+fn swap_content(swap_target: &gtk::Box, new_content: &gtk::Box) {
+    for child in swap_target.iter_children() {
+        swap_target.remove(&child);
     }
+    swap_target.append(new_content);
 }
 
 #[relm4::component(pub)]
@@ -207,6 +205,7 @@ impl Component for HeaderBarModel {
         ComponentParts { model, widgets }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn update_with_view(
         &mut self,
         widgets: &mut Self::Widgets,
@@ -226,20 +225,20 @@ impl Component for HeaderBarModel {
             HeaderBarInput::ChangedView(new_view) => {
                 if new_view == "flows" {
                     let rc_clone = self.flow_header_rc.clone();
-                    self.swap_content(&widgets.start_box, &rc_clone.widgets().start);
+                    swap_content(&widgets.start_box, &rc_clone.widgets().start);
                     self.currently_menu_target = MenuTarget::Flows;
                     self.action_save.set_enabled(self.is_flow_open);
                     self.action_save_as.set_enabled(self.is_flow_open);
                     self.action_close.set_enabled(self.is_flow_open);
                 } else if new_view == "actions" {
                     let rc_clone = self.action_header_rc.clone();
-                    self.swap_content(&widgets.start_box, &rc_clone.widgets().start);
+                    swap_content(&widgets.start_box, &rc_clone.widgets().start);
                     self.currently_menu_target = MenuTarget::Actions;
                     self.action_save.set_enabled(self.is_action_open);
                     self.action_save_as.set_enabled(self.is_action_open);
                     self.action_close.set_enabled(self.is_action_open);
                 } else {
-                    self.swap_content(&widgets.start_box, &gtk::Box::builder().build());
+                    swap_content(&widgets.start_box, &gtk::Box::builder().build());
                     self.currently_menu_target = MenuTarget::Nothing;
                     self.action_save.set_enabled(false);
                     self.action_save_as.set_enabled(false);

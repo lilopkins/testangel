@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
@@ -11,7 +11,7 @@ use testangel::{
     types::{ActionConfiguration, ActionParameterSource, AutomationFlow, VersionedFile},
 };
 
-use crate::ui::flows::action_component::ActionComponentOutput;
+use crate::{lang_args, ui::flows::action_component::ActionComponentOutput};
 
 use super::{file_filters, lang};
 
@@ -33,35 +33,30 @@ impl fmt::Display for SaveOrOpenFlowError {
             f,
             "{}",
             match self {
-                Self::IoError(e) => lang::lookup_with_args("flow-save-open-error-io-error", {
-                    let mut map = HashMap::new();
-                    map.insert("error", e.to_string().into());
-                    map
-                }),
+                Self::IoError(e) => lang::lookup_with_args(
+                    "flow-save-open-error-io-error",
+                    lang_args!("error", e.to_string())
+                ),
                 Self::ParsingError(e) => {
-                    lang::lookup_with_args("flow-save-open-error-parsing-error", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "flow-save-open-error-parsing-error",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
                 Self::SerializingError(e) => {
-                    lang::lookup_with_args("flow-save-open-error-serializing-error", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "flow-save-open-error-serializing-error",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
                 Self::FlowNotVersionCompatible => {
                     lang::lookup("flow-save-open-error-flow-not-version-compatible")
                 }
                 Self::MissingAction(step, e) => {
-                    lang::lookup_with_args("flow-save-open-error-missing-action", {
-                        let mut map = HashMap::new();
-                        map.insert("step", (step + 1).into());
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "flow-save-open-error-missing-action",
+                        lang_args!("step", step + 1, "error", e.to_string()),
+                    )
                 }
             }
         )
@@ -217,8 +212,8 @@ impl FlowsModel {
         ));
         self.open_path = Some(file);
         self.needs_saving = false;
-        log::debug!("New flow open.");
-        log::debug!("Flow: {:?}", self.open_flow);
+        tracing::debug!("New flow open.");
+        tracing::debug!("Flow: {:?}", self.open_flow);
         Ok(steps_reset)
     }
 
@@ -468,21 +463,19 @@ impl Component for FlowsModel {
                     sender.input(FlowInputs::UpdateStepsFromModel);
                 }
                 if !steps_reset.is_empty() {
-                    let toast =
-                        adw::Toast::new(&lang::lookup_with_args("flow-action-changed-message", {
-                            let mut map = HashMap::new();
-                            map.insert("stepCount", steps_reset.len().into());
-                            map.insert(
-                                "steps",
-                                steps_reset
-                                    .iter()
-                                    .map(|i| (i + 1).to_string())
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                                    .into(),
-                            );
-                            map
-                        }));
+                    let toast = adw::Toast::new(&lang::lookup_with_args(
+                        "flow-action-changed-message",
+                        lang_args!(
+                            "stepCount",
+                            steps_reset.len(),
+                            "steps",
+                            steps_reset
+                                .iter()
+                                .map(|i| (i + 1).to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ),
+                    ));
                     toast.set_timeout(0); // indefinte so it can be seen when switching back
                     widgets.toast_target.add_toast(toast);
                 }
@@ -540,17 +533,15 @@ impl Component for FlowsModel {
                         if !changes.is_empty() {
                             let changed_steps = changes
                                 .iter()
-                                .map(|step| step.to_string())
+                                .map(ToString::to_string)
                                 .collect::<Vec<_>>()
                                 .join(",");
                             self.create_message_dialog(
                                 lang::lookup("flow-action-changed"),
-                                lang::lookup_with_args("flow-action-changed-message", {
-                                    let mut map = HashMap::new();
-                                    map.insert("stepCount", changes.len().into());
-                                    map.insert("steps", changed_steps.into());
-                                    map
-                                }),
+                                lang::lookup_with_args(
+                                    "flow-action-changed-message",
+                                    lang_args!("stepCount", changes.len(), "steps", changed_steps),
+                                ),
                             )
                             .set_visible(true);
                         }
@@ -669,12 +660,10 @@ impl Component for FlowsModel {
                             .enumerate()
                         {
                             possible_outputs.push((
-                                lang::lookup_with_args("source-from-step", {
-                                    let mut map = HashMap::new();
-                                    map.insert("step", (step + 1).into());
-                                    map.insert("name", name.clone().into());
-                                    map
-                                }),
+                                lang::lookup_with_args(
+                                    "source-from-step",
+                                    lang_args!("step", step + 1, "name", name.clone()),
+                                ),
                                 *kind,
                                 ActionParameterSource::FromOutput(step, output_idx),
                             ));
@@ -690,24 +679,24 @@ impl Component for FlowsModel {
                 // This is needed as sometimes, if a menu item lines up above the delete step button,
                 // they can both be simultaneously triggered.
                 if idx >= flow.actions.len() {
-                    log::warn!("Skipped running RemoveStep as the index was invalid.");
+                    tracing::warn!("Skipped running RemoveStep as the index was invalid.");
                     return;
                 }
 
-                log::info!("Deleting step {}", idx + 1);
+                tracing::info!("Deleting step {}", idx + 1);
 
                 flow.actions.remove(idx);
 
                 // Remove references to step and renumber references above step to one less than they were
-                for step in flow.actions.iter_mut() {
-                    for (_step_idx, source) in step.parameter_sources.iter_mut() {
+                for step in &mut flow.actions {
+                    for source in step.parameter_sources.values_mut() {
                         if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                             match (*from_step).cmp(&idx) {
                                 std::cmp::Ordering::Equal => {
-                                    *source = ActionParameterSource::Literal
+                                    *source = ActionParameterSource::Literal;
                                 }
                                 std::cmp::Ordering::Greater => *from_step -= 1,
-                                _ => (),
+                                std::cmp::Ordering::Less => (),
                             }
                         }
                     }
@@ -721,31 +710,31 @@ impl Component for FlowsModel {
             FlowInputs::CutStep(step_idx) => {
                 let idx = step_idx.current_index();
                 let flow = self.open_flow.as_mut().unwrap();
-                log::info!("Cut step {}", idx + 1);
+                tracing::info!("Cut step {}", idx + 1);
 
                 // This is needed as sometimes, if a menu item lines up above a button that triggers this,
                 // they can both be simultaneously triggered.
                 if idx >= flow.actions.len() {
-                    log::warn!("Skipped running CutStep as the index was invalid.");
+                    tracing::warn!("Skipped running CutStep as the index was invalid.");
                     return;
                 }
 
                 flow.actions.remove(idx);
 
                 // Remove references to step and renumber references above step to one less than they were
-                for step in flow.actions.iter_mut() {
-                    for (_param_idx, source) in step.parameter_sources.iter_mut() {
+                for step in &mut flow.actions {
+                    for source in step.parameter_sources.values_mut() {
                         if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                             match (*from_step).cmp(&idx) {
                                 std::cmp::Ordering::Equal => *from_step = usize::MAX,
                                 std::cmp::Ordering::Greater => *from_step -= 1,
-                                _ => (),
+                                std::cmp::Ordering::Less => (),
                             }
                         }
                     }
                 }
 
-                log::debug!("After cut, flow is: {flow:?}");
+                tracing::debug!("After cut, flow is: {flow:?}");
 
                 self.needs_saving = true;
             }
@@ -754,7 +743,7 @@ impl Component for FlowsModel {
                 let idx = idx.max(0).min(flow.actions.len());
 
                 // Adjust step just about to paste
-                for (_param_idx, source) in config.parameter_sources.iter_mut() {
+                for source in config.parameter_sources.values_mut() {
                     if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                         if *from_step <= idx {
                             *source = ActionParameterSource::Literal;
@@ -762,12 +751,12 @@ impl Component for FlowsModel {
                     }
                 }
 
-                log::info!("Pasting step to {}", idx + 1);
+                tracing::info!("Pasting step to {}", idx + 1);
                 flow.actions.insert(idx, config);
 
                 // Remove references to step and renumber references above step to one less than they were
                 for (step_idx, step) in flow.actions.iter_mut().enumerate() {
-                    for (_param_idx, source) in step.parameter_sources.iter_mut() {
+                    for source in step.parameter_sources.values_mut() {
                         if let ActionParameterSource::FromOutput(from_step, _output_idx) = source {
                             if *from_step == usize::MAX {
                                 if step_idx < idx {
@@ -783,7 +772,7 @@ impl Component for FlowsModel {
                     }
                 }
 
-                log::debug!("After paste, flow is: {flow:?}");
+                tracing::debug!("After paste, flow is: {flow:?}");
 
                 self.needs_saving = true;
 

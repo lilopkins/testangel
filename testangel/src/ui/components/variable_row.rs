@@ -1,5 +1,5 @@
+use std::fmt::Debug;
 use std::marker::PhantomData;
-use std::{collections::HashMap, fmt::Debug};
 
 use adw::prelude::*;
 use relm4::{
@@ -8,6 +8,7 @@ use relm4::{
 };
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
+use crate::lang_args;
 use crate::ui::{
     components::literal_input::{LiteralInput, LiteralInputOutput},
     lang,
@@ -95,32 +96,23 @@ where
             set_subtitle: &if self.source == PS::literal() {
                 lang::lookup_with_args(
                     "variable-row-subtitle-with-value",
-                    {
-                        let mut map = HashMap::new();
-                        map.insert("kind", lang::lookup(match self.kind {
+                    lang_args!("kind", lang::lookup(match self.kind {
                             ParameterKind::String => "kind-string",
                             ParameterKind::Integer => "kind-integer",
                             ParameterKind::Decimal => "kind-decimal",
                             ParameterKind::Boolean => "kind-boolean",
-                        }).into());
-                        map.insert("source", self.source.to_string().into());
-                        map.insert("value", self.value.to_string().into());
-                        map
-                    }
+                        }), "source", self.source.to_string(),
+                        "value", self.value.to_string())
                 )
             } else {
                 lang::lookup_with_args(
                     "variable-row-subtitle",
-                    {
-                        let mut map = HashMap::new();
-                        map.insert("kind", lang::lookup(match self.kind {
+                    lang_args!("kind", lang::lookup(match self.kind {
                             ParameterKind::String => "kind-string",
                             ParameterKind::Integer => "kind-integer",
                             ParameterKind::Decimal => "kind-decimal",
                             ParameterKind::Boolean => "kind-boolean",
-                        }).into());
-                        map
-                    }
+                        }))
                 )
             },
             set_use_markup: false,

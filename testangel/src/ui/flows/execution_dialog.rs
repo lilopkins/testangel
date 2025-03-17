@@ -12,7 +12,10 @@ use testangel::{
 };
 use testangel_ipc::prelude::{Evidence, EvidenceContent, ParameterValue};
 
-use crate::ui::{file_filters, lang};
+use crate::{
+    lang_args,
+    ui::{file_filters, lang},
+};
 
 #[derive(Debug)]
 pub enum ExecutionDialogCommandOutput {
@@ -40,19 +43,17 @@ pub enum ExecutionDialogInput {
 #[derive(Debug)]
 pub struct ExecutionDialog;
 
-impl ExecutionDialog {
-    /// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
-    fn create_message_dialog<S>(&self, title: S, message: S) -> adw::MessageDialog
-    where
-        S: AsRef<str>,
-    {
-        adw::MessageDialog::builder()
-            .title(title.as_ref())
-            .heading(title.as_ref())
-            .body(message.as_ref())
-            .modal(true)
-            .build()
-    }
+/// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
+fn create_message_dialog<S>(title: S, message: S) -> adw::MessageDialog
+where
+    S: AsRef<str>,
+{
+    adw::MessageDialog::builder()
+        .title(title.as_ref())
+        .heading(title.as_ref())
+        .body(message.as_ref())
+        .modal(true)
+        .build()
 }
 
 fn add_evidence(mut evp: EvidencePackage, evidence: Vec<Evidence>) -> evidenceangel::Result<()> {
@@ -136,13 +137,13 @@ impl Component for ExecutionDialog {
             }
 
             for (step, action_config) in flow.actions.iter().enumerate() {
-                log::debug!("Output state: {outputs:?}");
-                log::debug!("Evidence state: {evidence:?}");
-                log::debug!("Executing: {action_config:?}");
+                tracing::debug!("Output state: {outputs:?}");
+                tracing::debug!("Evidence state: {evidence:?}");
+                tracing::debug!("Executing: {action_config:?}");
                 match action_config.execute(
-                    action_map.clone(),
-                    engine_list.clone(),
-                    outputs.clone(),
+                    &action_map,
+                    &engine_list,
+                    &outputs,
                 ) {
                     Ok((output, ev)) => {
                         outputs.push(output);
@@ -169,13 +170,12 @@ impl Component for ExecutionDialog {
         match message {
             ExecutionDialogInput::Close => root.destroy(),
             ExecutionDialogInput::FailedToGenerateEvidence(reason) => {
-                let dialog = self.create_message_dialog(
+                let dialog = create_message_dialog(
                     lang::lookup("evidence-failed"),
-                    lang::lookup_with_args("evidence-failed-message", {
-                        let mut map = HashMap::new();
-                        map.insert("reason", reason.to_string().into());
-                        map
-                    }),
+                    lang::lookup_with_args(
+                        "evidence-failed-message",
+                        lang_args!("reason", reason.to_string()),
+                    ),
                 );
                 dialog.set_transient_for(Some(root));
                 dialog.add_response("ok", &lang::lookup("ok"));
@@ -221,7 +221,7 @@ impl Component for ExecutionDialog {
                                     };
 
                                     if let Err(e) = &evp {
-                                        log::warn!("Failed to create/open output file: {e}");
+                                        tracing::warn!("Failed to create/open output file: {e}");
                                     }
                                     let evp = evp.unwrap();
 
@@ -232,7 +232,9 @@ impl Component for ExecutionDialog {
                                         );
                                     }
                                 }
-                                Err(e) => log::warn!("Failed to check if output file exists: {e}"),
+                                Err(e) => {
+                                    tracing::warn!("Failed to check if output file exists: {e}");
+                                }
                             }
                         }
                         sender_c.input(ExecutionDialogInput::Close);
@@ -250,20 +252,18 @@ impl Component for ExecutionDialog {
     ) {
         match message {
             ExecutionDialogCommandOutput::Complete(evidence) => {
-                log::info!("Execution complete.");
+                tracing::info!("Execution complete.");
                 sender.input(ExecutionDialogInput::SaveEvidence(evidence));
             }
 
             ExecutionDialogCommandOutput::Failed(step, reason, evidence) => {
-                log::warn!("Execution failed. Evidence: {evidence:?}");
-                let dialog = self.create_message_dialog(
+                tracing::warn!("Execution failed. Evidence: {evidence:?}");
+                let dialog = create_message_dialog(
                     lang::lookup("flow-execution-failed"),
-                    lang::lookup_with_args("flow-execution-failed-message", {
-                        let mut map = HashMap::new();
-                        map.insert("step", step.into());
-                        map.insert("reason", reason.to_string().into());
-                        map
-                    }),
+                    lang::lookup_with_args(
+                        "flow-execution-failed-message",
+                        lang_args!("step", step, "reason", reason.to_string()),
+                    ),
                 );
                 dialog.set_transient_for(Some(root));
                 if !evidence.is_empty() {

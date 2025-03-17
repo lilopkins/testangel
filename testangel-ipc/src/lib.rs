@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -35,6 +37,11 @@ pub enum Request {
 
 impl Request {
     /// Convert this request to JSON
+    ///
+    /// # Panics
+    ///
+    /// Theoretically panics if JSON cannot be produced. This should never occur.
+    #[must_use]
     pub fn to_json(&self) -> String {
         serde_json::to_string(self).unwrap()
     }
@@ -68,7 +75,7 @@ pub enum Response {
     },
     /// Execution finished with the output provided.
     ExecutionOutput {
-        /// TOrder matches the list of instructions sent originally.he execution output. Order matches the list of instructions sent originally.
+        /// The execution output. Order matches the list of instructions sent originally.
         output: Vec<HashMap<String, ParameterValue>>,
         /// The evidence output. Order matches the list of instructions sent originally.
         evidence: Vec<Vec<Evidence>>,
@@ -81,6 +88,11 @@ pub enum Response {
 
 impl Response {
     /// Convert this response to JSON
+    ///
+    /// # Panics
+    ///
+    /// Theoretically panics if JSON cannot be produced. This should never occur.
+    #[must_use]
     pub fn to_json(&self) -> String {
         serde_json::to_string(self).unwrap()
     }

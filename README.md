@@ -33,6 +33,7 @@ The tool can be configured through a number of environment variables:
 
 | Environment Variable | Description |
 |:---------------------|:------------|
+| `TA_DEBUG`           | Enable verbose logging |
 | `TA_ENGINE_DIR`      | The directory that should be searched through to locate TestAngel engines. By default, `./engines` is used. |
 | `TA_ACTION_DIR`      | The directory that should be searched through to locate TestAngel actions. By default, `./actions` is used. |
 | `TA_FLOW_DIR`        | The directory that should be suggested to save flows in. |

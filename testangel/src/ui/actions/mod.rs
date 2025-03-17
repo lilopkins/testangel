@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
@@ -12,6 +12,8 @@ use testangel::{
     types::action_v1::ActionV1,
     types::{Action, VersionedFile},
 };
+
+use crate::lang_args;
 
 use super::{file_filters, lang};
 use sourceview5 as sourceview;
@@ -33,34 +35,30 @@ impl fmt::Display for SaveOrOpenActionError {
             f,
             "{}",
             match self {
-                Self::IoError(e) => lang::lookup_with_args("action-save-open-error-io-error", {
-                    let mut map = HashMap::new();
-                    map.insert("error", e.to_string().into());
-                    map
-                }),
+                Self::IoError(e) => lang::lookup_with_args(
+                    "action-save-open-error-io-error",
+                    lang_args!("error", e.to_string())
+                ),
                 Self::ParsingError(e) => {
-                    lang::lookup_with_args("action-save-open-error-parsing-error", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "action-save-open-error-parsing-error",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
                 Self::SerializingError(e) => {
-                    lang::lookup_with_args("action-save-open-error-serializing-error", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "action-save-open-error-serializing-error",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
                 Self::ActionNotVersionCompatible => {
                     lang::lookup("action-save-open-error-action-not-version-compatible")
                 }
                 Self::MissingInstruction(e) => {
-                    lang::lookup_with_args("action-save-open-error-missing-instruction", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "action-save-open-error-missing-instruction",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
             }
         )
@@ -181,7 +179,7 @@ impl ActionsModel {
             // This doesn't save anything, just changes what loads to something compatible
             let action_v1: ActionV1 =
                 ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
-            let action_upgraded = action_v1.upgrade_action(self.engine_list.clone());
+            let action_upgraded = action_v1.upgrade_action(&self.engine_list);
             data = ron::to_string(&action_upgraded)
                 .map_err(SaveOrOpenActionError::SerializingError)?;
         } else if versioned_file.version() != 2 {
@@ -191,7 +189,7 @@ impl ActionsModel {
         let action: Action = ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
         // Validate that all instructions used in the script are available, or return a MissingInstruction err
         action
-            .check_instructions_available(self.engine_list.clone())
+            .check_instructions_available(&self.engine_list)
             .map_err(|missing| SaveOrOpenActionError::MissingInstruction(missing[0].clone()))?;
         self.source_view.buffer().set_text(&action.script);
 
@@ -206,8 +204,8 @@ impl ActionsModel {
             ));
         self.open_path = Some(file);
         self.needs_saving = false;
-        log::debug!("New action open.");
-        log::debug!("Action: {:?}", self.open_action);
+        tracing::debug!("New action open.");
+        tracing::debug!("Action: {:?}", self.open_action);
         Ok(())
     }
 
@@ -301,7 +299,7 @@ impl ActionsModel {
             let engine_lua_name = engine.lua_name.clone();
             for instruction in engine.instructions.clone() {
                 let instruction_lua_name = instruction.lua_name().clone();
-                let built_call = format!("{}.{}", engine_lua_name, instruction_lua_name);
+                let built_call = format!("{engine_lua_name}.{instruction_lua_name}");
                 if script.contains(&built_call) {
                     action.required_instructions.push(instruction.id().clone());
                 }
@@ -509,7 +507,7 @@ impl Component for ActionsModel {
             }
             ActionInputs::__OpenAction(path) => {
                 match self.open_action(path) {
-                    Ok(_) => {
+                    Ok(()) => {
                         // Nothing more to do...
                     }
                     Err(e) => {
@@ -576,7 +574,7 @@ impl Component for ActionsModel {
                 if let Some(action) = &self.open_action {
                     let buf = self.source_view.buffer();
                     if action.script != buf.text(&buf.start_iter(), &buf.end_iter(), false) {
-                        log::debug!("Needs saving due to text change.");
+                        tracing::debug!("Needs saving due to text change.");
                         self.needs_saving = true;
                     }
                 }
@@ -649,17 +647,17 @@ impl Component for ActionsModel {
 
                 // Decide if cursor needs moving down a line (or into function)
                 let cursor_pos = buffer.cursor_position();
-                log::debug!(
+                tracing::debug!(
                     "Inserting step, cursor pos: {} (text len: {})",
                     cursor_pos,
                     text.len()
                 );
                 if cursor_pos == 0 || cursor_pos == text.len() as i32 {
                     // Move cursor into function
-                    log::debug!("Offsetting cursor into function");
+                    tracing::debug!("Offsetting cursor into function");
                     for (i, l) in text.lines().enumerate() {
                         if l.contains("function run_action") {
-                            log::debug!("Function on line {}", i);
+                            tracing::debug!("Function on line {}", i);
                             if let Some(text_iter) = buffer.iter_at_line_offset(i as i32 + 1, 2) {
                                 buffer.place_cursor(&text_iter);
                             }
@@ -685,10 +683,10 @@ impl Component for ActionsModel {
 
                     // Move cursor to end and insert newline if needed
                     let line = &text[line_starts_at..line_ends_at];
-                    log::debug!("cursor on line: {:?}", line);
+                    tracing::debug!("cursor on line: {:?}", line);
                     if !line.trim().is_empty() {
                         // Offset cursor to end of line
-                        log::debug!(
+                        tracing::debug!(
                             "Moving cursor to end of line {} (pos {})",
                             line_num,
                             line.len()
