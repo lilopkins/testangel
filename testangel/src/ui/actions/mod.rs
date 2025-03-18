@@ -251,7 +251,7 @@ impl ActionsModel {
                 .modal(true)
                 .title(lang::lookup("header-save"))
                 .initial_folder(&gtk::gio::File::for_path(
-                    std::env::var("TA_ACTION_DIR").unwrap_or("./actions".to_string()),
+                    testangel::action_loader::get_action_directory(),
                 ))
                 .filters(&file_filters::filter_list(vec![
                     file_filters::actions(),
@@ -489,7 +489,7 @@ impl Component for ActionsModel {
                         file_filters::all(),
                     ]))
                     .initial_folder(&gtk::gio::File::for_path(
-                        std::env::var("TA_ACTION_DIR").unwrap_or("./actions".to_string()),
+                        testangel::action_loader::get_action_directory(),
                     ))
                     .build();
 

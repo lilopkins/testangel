@@ -31,10 +31,23 @@ impl ActionMap {
     }
 }
 
+#[must_use]
+pub fn get_action_directory() -> PathBuf {
+    if let Ok(env_path) = env::var("TA_ACTION_DIR") {
+        PathBuf::from(env_path)
+    } else {
+        if let Ok(exe_path) = env::current_exe() {
+            exe_path.join("actions")
+        } else {
+            PathBuf::from(".").join("actions")
+        }
+    }
+}
+
 /// Get the list of available engines.
 pub fn get_actions(engine_list: &Arc<EngineList>) -> ActionMap {
     let mut actions = HashMap::new();
-    let action_dir = env::var("TA_ACTION_DIR").unwrap_or("./actions".to_owned());
+    let action_dir = get_action_directory();
     if let Ok(exists) = fs::exists(&action_dir) {
         if !exists {
             fs::create_dir_all(action_dir.clone()).unwrap();

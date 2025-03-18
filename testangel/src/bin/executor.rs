@@ -7,6 +7,7 @@ use clap::{arg, Parser};
 use evidenceangel::{Author, EvidencePackage};
 use testangel::{action_loader, ipc, types::AutomationFlow};
 use testangel_ipc::prelude::*;
+use tracing_subscriber::util::SubscriberInitExt;
 
 #[derive(Parser)]
 
@@ -21,7 +22,7 @@ struct Cli {
 }
 
 fn main() {
-    pretty_env_logger::init();
+    tracing_subscriber::FmtSubscriber::new().init();
 
     let cli = Cli::parse();
 

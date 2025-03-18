@@ -220,16 +220,26 @@ impl Component for ExecutionDialog {
                                         )
                                     };
 
-                                    if let Err(e) = &evp {
-                                        tracing::warn!("Failed to create/open output file: {e}");
-                                    }
-                                    let evp = evp.unwrap();
-
-                                    // Append new TC
-                                    if let Err(e) = add_evidence(evp, evidence.clone()) {
-                                        sender_c.input(
-                                            ExecutionDialogInput::FailedToGenerateEvidence(e),
-                                        );
+                                    match evp {
+                                        Err(e) => {
+                                            tracing::warn!(
+                                                "Failed to create/open output file: {e}"
+                                            );
+                                            sender_c.input(
+                                                ExecutionDialogInput::FailedToGenerateEvidence(e),
+                                            );
+                                            return;
+                                        }
+                                        Ok(evp) => {
+                                            // Append new TC
+                                            if let Err(e) = add_evidence(evp, evidence.clone()) {
+                                                sender_c.input(
+                                                    ExecutionDialogInput::FailedToGenerateEvidence(
+                                                        e,
+                                                    ),
+                                                );
+                                            }
+                                        }
                                     }
                                 }
                                 Err(e) => {
