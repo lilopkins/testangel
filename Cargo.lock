@@ -4274,7 +4274,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.22.0-alpha.2"
+version = "0.22.0-alpha.3"
 dependencies = [
  "arboard",
  "base64 0.22.1",
@@ -4315,7 +4315,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine"
-version = "0.22.0-alpha.2"
+version = "0.22.0-alpha.3"
 dependencies = [
  "dynamic-plugin 0.4.0",
  "testangel-engine-macros",
@@ -4324,7 +4324,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine-macros"
-version = "0.22.0-alpha.2"
+version = "0.22.0-alpha.3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4332,7 +4332,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-evidence"
-version = "0.22.0-alpha.2"
+version = "0.22.0-alpha.3"
 dependencies = [
  "dynamic-plugin 0.3.0",
  "lazy_static",
@@ -4341,7 +4341,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.22.0-alpha.2"
+version = "0.22.0-alpha.3"
 dependencies = [
  "schemars",
  "serde",
@@ -4350,7 +4350,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-rand"
-version = "0.22.0-alpha.2"
+version = "0.22.0-alpha.3"
 dependencies = [
  "dynamic-plugin 0.3.0",
  "lazy_static",
@@ -4362,7 +4362,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-time"
-version = "0.22.0-alpha.2"
+version = "0.22.0-alpha.3"
 dependencies = [
  "dynamic-plugin 0.3.0",
  "lazy_static",
@@ -4372,7 +4372,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-user-interaction"
-version = "0.22.0-alpha.2"
+version = "0.22.0-alpha.3"
 dependencies = [
  "dynamic-plugin 0.3.0",
  "lazy_static",
