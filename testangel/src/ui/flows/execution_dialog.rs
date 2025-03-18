@@ -222,7 +222,9 @@ impl Component for ExecutionDialog {
 
                                     match evp {
                                         Err(e) => {
-                                            tracing::warn!("Failed to create/open output file: {e}");
+                                            tracing::warn!(
+                                                "Failed to create/open output file: {e}"
+                                            );
                                             sender_c.input(
                                                 ExecutionDialogInput::FailedToGenerateEvidence(e),
                                             );
@@ -232,7 +234,9 @@ impl Component for ExecutionDialog {
                                             // Append new TC
                                             if let Err(e) = add_evidence(evp, evidence.clone()) {
                                                 sender_c.input(
-                                                    ExecutionDialogInput::FailedToGenerateEvidence(e),
+                                                    ExecutionDialogInput::FailedToGenerateEvidence(
+                                                        e,
+                                                    ),
                                                 );
                                             }
                                         }
