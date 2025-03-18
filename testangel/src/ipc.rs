@@ -119,10 +119,23 @@ impl EngineList {
     }
 }
 
+#[must_use]
+fn get_engine_directory() -> PathBuf {
+    if let Ok(env_path) = env::var("TA_ENGINE_DIR") {
+        PathBuf::from(env_path)
+    } else {
+        if let Ok(exe_path) = env::current_exe() {
+            exe_path.join("engines")
+        } else {
+            PathBuf::from(".").join("engines")
+        }
+    }
+}
+
 /// Get the list of available engines.
 pub fn get_engines() -> EngineList {
     let mut engines = Vec::new();
-    let engine_dir = env::var("TA_ENGINE_DIR").unwrap_or("./engines".to_owned());
+    let engine_dir = get_engine_directory();
     fs::create_dir_all(engine_dir.clone()).unwrap();
     tracing::info!("Searching for engines in {engine_dir:?}");
     let mut lua_names = vec![];
@@ -130,7 +143,11 @@ pub fn get_engines() -> EngineList {
     EngineList(engines)
 }
 
-fn search_engine_dir(engine_dir: String, engines: &mut Vec<Engine>, lua_names: &mut Vec<String>) {
+fn search_engine_dir<P: AsRef<Path>>(
+    engine_dir: P,
+    engines: &mut Vec<Engine>,
+    lua_names: &mut Vec<String>,
+) {
     for path in fs::read_dir(engine_dir).unwrap() {
         let path = path.unwrap();
         let basename = path.file_name();
