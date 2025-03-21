@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use libc::malloc;
+use libc::{malloc, strcpy};
 use testangel_engine::{
     ta_engine_metadata, ta_instruction_metadata, ta_named_value, ta_result_code, EngineInterface,
     EvidenceList, OutputMap,
@@ -46,7 +46,7 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                 szDescription: std::ptr::null(),
             };
 
-            let mut raw_instructions: *const *const ta_instruction_metadata = std::ptr::null();
+            let mut raw_instructions: *mut *const ta_instruction_metadata = std::ptr::null_mut();
 
             lib.ta_request_instructions(&mut engine_meta, &mut raw_instructions)
                 .map_err(|_| IpcError::EngineNotCompliant)?;
@@ -164,10 +164,12 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                             }
                             ParameterKind::String => {
                                 let val = param.value_string();
-                                let boxed_val = Box::new(CString::new(val).unwrap());
-                                let val: *const c_char = boxed_val.as_ptr();
-                                std::mem::forget(boxed_val);
-                                ta_inner_value { szValue: val }
+                                let val = CString::new(val.as_str()).unwrap();
+                                let p_val = unsafe { malloc(val.count_bytes()) }.cast::<c_char>();
+                                unsafe {
+                                    strcpy(p_val, val.as_ptr());
+                                }
+                                ta_inner_value { szValue: p_val }
                             }
                         };
                         let named_val = Box::new(ta_named_value {

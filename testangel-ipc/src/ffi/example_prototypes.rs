@@ -10,7 +10,7 @@ use super::{
 #[no_mangle]
 extern "C" fn _ta_request_instructions(
     pOutputEngineMetadata: *mut ta_engine_metadata,
-    parpOutputInstructions: *mut *const *const ta_instruction_metadata,
+    parpOutputInstructions: *mut *mut *const ta_instruction_metadata,
 ) -> *mut ta_result {
     todo!()
 }

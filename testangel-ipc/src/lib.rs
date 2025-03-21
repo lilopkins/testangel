@@ -80,8 +80,6 @@ pub enum Response {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ErrorKind {
-    /// The IPC JSON request couldn't be parsed.
-    FailedToParseIPCJson,
     /// You have asked this engine to run an instruction that it is not able to run.
     InvalidInstruction,
     /// You are missing a parameter needed to execute.

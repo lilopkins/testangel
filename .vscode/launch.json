@@ -7,25 +7,6 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'testangel'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=testangel"
-                ],
-                "filter": {
-                    "name": "testangel",
-                    "kind": "lib"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
             "name": "Debug executable 'testangel'",
             "cargo": {
                 "args": [
@@ -39,101 +20,7 @@
                 }
             },
             "env": {
-                "TA_ENGINE_DIR": "testangel-ipc/"
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'testangel'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=testangel",
-                    "--package=testangel"
-                ],
-                "filter": {
-                    "name": "testangel",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug executable 'testangel-executor'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=testangel-executor",
-                    "--package=testangel"
-                ],
-                "filter": {
-                    "name": "testangel-executor",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'testangel-executor'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=testangel-executor",
-                    "--package=testangel"
-                ],
-                "filter": {
-                    "name": "testangel-executor",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in library 'testangel_engine'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=testangel-engine"
-                ],
-                "filter": {
-                    "name": "testangel_engine",
-                    "kind": "lib"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in library 'testangel_ipc'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=testangel-ipc"
-                ],
-                "filter": {
-                    "name": "testangel_ipc",
-                    "kind": "lib"
-                }
+                "TA_ENGINE_DIR": "target/debug"
             },
             "args": [],
             "cwd": "${workspaceFolder}"

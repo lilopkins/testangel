@@ -190,6 +190,7 @@ void ta_free_result(const ta_result *pTarget) {
 */
 void ta_free_engine_metadata(const ta_engine_metadata *pTarget) {
     // Nothing to do in this implementation, all the metadata is static.
+    (void)(pTarget);
 }
 
 /**

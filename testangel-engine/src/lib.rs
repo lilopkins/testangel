@@ -1,17 +1,18 @@
 use std::{collections::HashMap, error::Error, ffi::c_char};
 
+pub use dynamic_plugin::libc::{free, malloc, strcpy};
 pub use dynamic_plugin::plugin_impl;
 use dynamic_plugin::plugin_interface;
-use getset::Getters;
+use getset::{Getters, MutGetters};
 pub use lazy_static::lazy_static;
 
 pub use testangel_engine_macros::*;
 pub use testangel_ipc::ffi::{
-    evidence::ta_evidence,
-    instruction::ta_instruction_metadata,
+    evidence::{ta_evidence, ta_evidence_kind},
+    instruction::{ta_instruction_metadata, ta_instruction_named_kind},
     result::{ta_result, ta_result_code},
     ta_engine_metadata,
-    value::ta_named_value,
+    value::{ta_inner_value, ta_named_value, ta_parameter_kind},
 };
 pub use testangel_ipc::prelude::*;
 
@@ -20,7 +21,7 @@ plugin_interface! {
         /// Return a list of instructions this engine supports
         fn ta_request_instructions(
             p_output_engine_metadata: *mut ta_engine_metadata,
-            parp_output_instructions: *mut *const *const ta_instruction_metadata,
+            parp_output_instructions: *mut *mut *const ta_instruction_metadata,
         ) -> *mut ta_result;
 
         /// Execute an instruction
@@ -61,7 +62,7 @@ pub type FnEngineInstruction<'a, T> = dyn 'a
     + Sync
     + Fn(&mut T, ParameterMap, &mut OutputMap, &mut EvidenceList) -> Result<(), Box<dyn Error>>;
 
-#[derive(Getters)]
+#[derive(Getters, MutGetters)]
 pub struct Engine<'a, T: Default + Send + Sync> {
     #[getset(get = "pub")]
     name: String,
@@ -71,8 +72,11 @@ pub struct Engine<'a, T: Default + Send + Sync> {
     lua_name: String,
     #[getset(get = "pub")]
     description: String,
+    #[getset(get = "pub")]
     instructions: Vec<Instruction>,
+    #[getset(get = "pub")]
     functions: HashMap<String, Box<FnEngineInstruction<'a, T>>>,
+    #[getset(get_mut = "pub")]
     state: T,
 }
 
@@ -107,6 +111,25 @@ impl<'a, T: Default + Send + Sync> Engine<'a, T> {
             .insert(instruction.id().clone(), Box::new(execute));
         self.instructions.push(instruction);
         self
+    }
+
+    pub fn run_instruction(
+        &mut self,
+        iwp: InstructionWithParameters,
+    ) -> Result<(OutputMap, EvidenceList), String> {
+        let f = &self.functions[&iwp.instruction];
+        let mut this_instruction_output = OutputMap::new();
+        let mut this_instruction_evidence = EvidenceList::new();
+        let instruction_result = f(
+            &mut self.state,
+            iwp.parameters,
+            &mut this_instruction_output,
+            &mut this_instruction_evidence,
+        );
+        if let Err(e) = instruction_result {
+            return Err(format!("{e}"));
+        }
+        Ok((this_instruction_output, this_instruction_evidence))
     }
 
     /// Reset the state of the engine
