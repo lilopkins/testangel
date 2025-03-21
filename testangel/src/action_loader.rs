@@ -35,12 +35,10 @@ impl ActionMap {
 pub fn get_action_directory() -> PathBuf {
     if let Ok(env_path) = env::var("TA_ACTION_DIR") {
         PathBuf::from(env_path)
+    } else if let Ok(exe_path) = env::current_exe() {
+        exe_path.join("actions")
     } else {
-        if let Ok(exe_path) = env::current_exe() {
-            exe_path.join("actions")
-        } else {
-            PathBuf::from(".").join("actions")
-        }
+        PathBuf::from(".").join("actions")
     }
 }
 

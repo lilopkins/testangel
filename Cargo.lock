@@ -949,46 +949,22 @@ checksum = "1c7a8fb8a9fbf66c1f703fe16184d10ca0ee9d23be5b4436400408ba54a95005"
 
 [[package]]
 name = "dynamic-plugin"
-version = "0.3.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "635f5a96d30bc54b369927598720cc5a939d8d8ab73f9f75be9986ff3f83aa72"
+checksum = "2a662b86b442834643c954131d2140ad06607d408520c79533ccf4bb118589ce"
 dependencies = [
- "dynamic-plugin-macros 0.3.0",
+ "dynamic-plugin-macros",
  "libc",
  "libloading",
- "static_assertions",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "dynamic-plugin"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb4655afc3cffab03bd5ad0c5439ca12db3f82c49c2015dd2e4d9929e772b509"
-dependencies = [
- "dynamic-plugin-macros 0.4.0",
- "libc",
- "libloading",
- "static_assertions",
+ "sa",
  "thiserror 2.0.12",
 ]
 
 [[package]]
 name = "dynamic-plugin-macros"
-version = "0.3.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebae0ab5385dc9af8dbc45dc45292d9259b2ee512658b826c15e89be0f06f371"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.100",
-]
-
-[[package]]
-name = "dynamic-plugin-macros"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ad3cd79f708dfa7afe940fc54dcff785a79b54b102becf3da2d2fd710326f63"
+checksum = "94eb6ea9814fe3dd80fa2d48585c04475d28eb0a60561f723fe629f60c0405fa"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3710,6 +3686,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
+name = "sa"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "236ebc09b9423b2e39e5f3924be8188b9f0fdb64ec24bb07e3d1d36dc0ec7929"
+
+[[package]]
 name = "safe-transmute"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4317,7 +4299,8 @@ dependencies = [
 name = "testangel-engine"
 version = "0.22.0-alpha.3"
 dependencies = [
- "dynamic-plugin 0.4.0",
+ "dynamic-plugin",
+ "lazy_static",
  "testangel-engine-macros",
  "testangel-ipc",
 ]
@@ -4326,16 +4309,18 @@ dependencies = [
 name = "testangel-engine-macros"
 version = "0.22.0-alpha.3"
 dependencies = [
+ "heck",
+ "proc-macro-error2",
  "proc-macro2",
  "quote",
+ "syn 2.0.100",
 ]
 
 [[package]]
 name = "testangel-evidence"
 version = "0.22.0-alpha.3"
 dependencies = [
- "dynamic-plugin 0.3.0",
- "lazy_static",
+ "dynamic-plugin",
  "testangel-engine",
 ]
 
@@ -4352,8 +4337,7 @@ dependencies = [
 name = "testangel-rand"
 version = "0.22.0-alpha.3"
 dependencies = [
- "dynamic-plugin 0.3.0",
- "lazy_static",
+ "dynamic-plugin",
  "rand",
  "rand_regex",
  "testangel-engine",
@@ -4364,8 +4348,7 @@ dependencies = [
 name = "testangel-time"
 version = "0.22.0-alpha.3"
 dependencies = [
- "dynamic-plugin 0.3.0",
- "lazy_static",
+ "dynamic-plugin",
  "testangel-engine",
  "thiserror 2.0.12",
 ]
@@ -4374,8 +4357,7 @@ dependencies = [
 name = "testangel-user-interaction"
 version = "0.22.0-alpha.3"
 dependencies = [
- "dynamic-plugin 0.3.0",
- "lazy_static",
+ "dynamic-plugin",
  "rfd",
  "testangel-engine",
  "thiserror 2.0.12",

@@ -123,12 +123,10 @@ impl EngineList {
 fn get_engine_directory() -> PathBuf {
     if let Ok(env_path) = env::var("TA_ENGINE_DIR") {
         PathBuf::from(env_path)
+    } else if let Ok(exe_path) = env::current_exe() {
+        exe_path.join("engines")
     } else {
-        if let Ok(exe_path) = env::current_exe() {
-            exe_path.join("engines")
-        } else {
-            PathBuf::from(".").join("engines")
-        }
+        PathBuf::from(".").join("engines")
     }
 }
 

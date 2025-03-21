@@ -2,6 +2,7 @@ use std::{collections::HashMap, error::Error};
 
 use dynamic_plugin::plugin_interface;
 pub use dynamic_plugin::{libc::c_char, plugin_impl};
+pub use lazy_static::lazy_static;
 
 plugin_interface! {
     extern trait EngineInterface {

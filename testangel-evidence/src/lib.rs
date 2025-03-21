@@ -1,31 +1,23 @@
-use std::sync::Mutex;
+use testangel_engine::{engine, Evidence as Ev, EvidenceContent};
 
-use lazy_static::lazy_static;
-use testangel_engine::*;
+engine! {
+    /// Work with evidence.
+    #[engine(
+        version = env!("CARGO_PKG_VERSION"),
+    )]
+    struct Evidence;
 
-lazy_static! {
-    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("Evidence", "Evidence", env!("CARGO_PKG_VERSION"))
-    .with_instruction(
-        Instruction::new(
-            "evidence-add-text",
-            "AddText",
-            "Add Text-based Evidence",
-            "Add text based evidence to the report.",
-        )
-        .with_parameter("label", "Label", ParameterKind::String)
-        .with_parameter("content", "Content", ParameterKind::String),
-        |_state, params, _output, evidence| {
-            let label = params["label"].value_string();
-            let content = params["content"].value_string();
-
-            // Produce output and evidence
-            evidence.push(Evidence {
+    impl Evidence {
+        #[instruction(id = "evidence-add-text", name = "Add Text-based Evidence", lua_name = "AddText")]
+        /// Add text based evidence to the report.
+        fn add_text(
+            label: String,
+            content: String,
+        ) {
+            evidence.push(Ev {
                 label,
                 content: EvidenceContent::Textual(content),
             });
-            Ok(())
-        })
-    );
+        }
+    }
 }
-
-expose_engine!(ENGINE);
