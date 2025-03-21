@@ -1,13 +1,9 @@
 use std::fmt;
 
-#[cfg(feature = "schemas")]
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// A type of a parameter
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "schemas", derive(JsonSchema))]
-#[serde(tag = "t", content = "v")]
 pub enum ParameterKind {
     /// A string type.
     String,
@@ -43,8 +39,6 @@ impl fmt::Display for ParameterKind {
 
 /// A value of a parameter
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "schemas", derive(JsonSchema))]
-#[serde(tag = "t", content = "v")]
 pub enum ParameterValue {
     /// A string type.
     String(String),

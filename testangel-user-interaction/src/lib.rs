@@ -1,7 +1,4 @@
-use std::sync::Mutex;
-
-use lazy_static::lazy_static;
-use testangel_engine::*;
+use testangel_engine::engine;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -12,63 +9,46 @@ pub enum FlowTermination {
     StepTerminated,
 }
 
-lazy_static! {
-    static ref ENGINE: Mutex<Engine<'static, ()>> = Mutex::new(Engine::new("User Interaction", "Interaction", env!("CARGO_PKG_VERSION"))
-    .with_instruction(
-        Instruction::new(
-            "user-interaction-wait",
-            "WaitForOK",
-            "Wait for OK",
-            "Display a message dialog and don't continue running the test flow until the user presses 'OK'.",
-        )
-        .with_parameter("message", "Message", ParameterKind::String),
-        |_state, params, _output, _evidence| {
-            let message = params["message"].value_string();
+engine! {
+    /// Work with evidence.
+    #[engine(
+        lua_name = "Interaction",
+        version = env!("CARGO_PKG_VERSION"),
+    )]
+    struct UserInteraction;
 
+    impl UserInteraction {
+        #[instruction(id = "user-interaction-wait", name = "Wait for OK", lua_name = "WaitForOK")]
+        /// Display a message dialog and don't continue running the test flow until the user presses 'OK'.
+        fn wait(
+            message: String,
+        ) {
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Info)
                 .set_buttons(rfd::MessageButtons::Ok)
                 .set_title("Information")
                 .set_description(message)
                 .show();
-            Ok(())
-        })
-    .with_instruction(
-        Instruction::new(
-            "user-interaction-ask",
-            "AskYesNo",
-            "Yes/No Question",
-            "Returns a boolean if the input text matches a regular expression.",
-        )
-        .with_parameter("message", "Message", ParameterKind::String)
-        .with_output("response", "Response", ParameterKind::Boolean),
-        |_state, params, output, _evidence| {
-            let message = params["message"].value_string();
+        }
 
-            output.insert(
-                "response".to_string(),
-                ParameterValue::Boolean(
-                    rfd::MessageDialog::new()
-                        .set_level(rfd::MessageLevel::Info)
-                        .set_buttons(rfd::MessageButtons::YesNo)
-                        .set_title("Question")
-                        .set_description(message)
-                        .show() == rfd::MessageDialogResult::Yes,
-                ),
-            );
-            Ok(())
-        })
-    .with_instruction(
-        Instruction::new(
-            "user-interaction-ask-continue",
-            "AskToContinue",
-            "Ask to Continue Flow",
-            "Ask the user if they want to continue the automation flow.",
-        )
-        .with_parameter("message", "Message", ParameterKind::String),
-        |_state, params, _output, _evidence| {
-            let message = params["message"].value_string();
+        #[instruction(id = "user-interaction-ask", name = "Yes/No Question", lua_name = "AskYesNo")]
+        /// Returns a boolean if the input text matches a regular expression.
+        fn ask(
+            message: String,
+        ) -> #[output(id = "response", name = "Response")] bool {
+            rfd::MessageDialog::new()
+                .set_level(rfd::MessageLevel::Info)
+                .set_buttons(rfd::MessageButtons::YesNo)
+                .set_title("Question")
+                .set_description(message)
+                .show() == rfd::MessageDialogResult::Yes
+        }
 
+        #[instruction(id = "user-interaction-ask-continue", name = "Ask to Continue Flow", lua_name = "AskToContinue")]
+        /// Ask the user if they want to continue the automation flow.
+        fn ask_continue(
+            message: String,
+        ) {
             if rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Info)
                 .set_buttons(rfd::MessageButtons::YesNo)
@@ -76,21 +56,15 @@ lazy_static! {
                 .set_description(message)
                 .show() == rfd::MessageDialogResult::No
             {
-                return Err(FlowTermination::UserTerminated.into());
+                Err::<(), FlowTermination>(FlowTermination::UserTerminated)?;
             }
-            Ok(())
-        })
-    .with_instruction(
-        Instruction::new(
-            "user-interaction-terminate-flow",
-            "TerminateFlow",
-            "Terminate Flow",
-            "Let the user know that the flow has been stopped for a reason.",
-        )
-        .with_parameter("message", "Message", ParameterKind::String),
-        |_state, params, _output, _evidence| {
-            let message = params["message"].value_string();
+        }
 
+        #[instruction(id = "user-interaction-terminate-flow", name = "Terminate Flow", lua_name = "TerminateFlow")]
+        /// Let the user know that the flow has been stopped for a reason.
+        fn terminate_flow(
+            message: String,
+        ) {
             rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Info)
                 .set_buttons(rfd::MessageButtons::Ok)
@@ -98,9 +72,7 @@ lazy_static! {
                 .set_description(message)
                 .show();
 
-            Err(FlowTermination::StepTerminated.into())
-        })
-    );
+            Err::<(), FlowTermination>(FlowTermination::StepTerminated)?;
+        }
+    }
 }
-
-expose_engine!(ENGINE);

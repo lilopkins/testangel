@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
+use testangel_engine::InstructionNamedKind;
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
 use crate::ipc::EngineList;
@@ -77,18 +78,22 @@ impl ActionV1 {
                 });
 
                 // Add outputs with predicatable names
-                if !instruction.output_order().is_empty() {
+                if !instruction.outputs().is_empty() {
                     line.push_str("local ");
                 }
-                for output in instruction.output_order() {
-                    let (output_name, _kind) = instruction.outputs()[output].clone();
+                for InstructionNamedKind {
+                    id: _,
+                    friendly_name,
+                    ..
+                } in instruction.outputs()
+                {
                     line.push_str(&format!(
                         "s{}_{}, ",
                         idx + 1,
-                        output_name.to_case(Case::Snake)
+                        friendly_name.to_case(Case::Snake)
                     ));
                 }
-                if !instruction.output_order().is_empty() {
+                if !instruction.outputs().is_empty() {
                     // Remove last ", "
                     let _ = line.pop();
                     let _ = line.pop();
@@ -97,11 +102,11 @@ impl ActionV1 {
 
                 // Call instruction with parameters and literals as specified
                 let mut inst_params = String::new();
-                for param_id in instruction.parameter_order() {
-                    let src = &step.parameter_sources[param_id];
+                for InstructionNamedKind { id, .. } in instruction.parameters() {
+                    let src = &step.parameter_sources[id];
                     inst_params.push_str(&match src {
                         InstructionParameterSource::Literal => {
-                            match step.parameter_values.get(param_id).unwrap() {
+                            match step.parameter_values.get(id).unwrap() {
                                 ParameterValue::Boolean(b) => format!("{b}"),
                                 ParameterValue::Decimal(d) => format!("{d}"),
                                 ParameterValue::Integer(i) => format!("{i}"),

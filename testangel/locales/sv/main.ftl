@@ -114,5 +114,5 @@ action-condition-run-condition = Kör ifall: { $cond }
 
 evidence-failed = Det gick inte att spara bevis
 evidence-failed-message = Det gick inte att spara: { $reason }
-evidence-save-title = Spara bebis...
+evidence-save-title = Spara bevis...
 evidence-default-name = bevis.evp
