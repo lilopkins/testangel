@@ -12,6 +12,7 @@ use testangel::{
     types::action_v1::ActionV1,
     types::{Action, VersionedFile},
 };
+use testangel_engine::InstructionNamedKind;
 
 use crate::lang_args;
 
@@ -598,13 +599,12 @@ impl Component for ActionsModel {
                 let instruction = self.engine_list.get_instruction_by_id(&step_id).unwrap();
                 // Build LoC
                 let mut params = String::new();
-                for param_id in instruction.parameter_order() {
+                for InstructionNamedKind { friendly_name, .. } in instruction.parameters() {
                     use convert_case::{Case, Casing};
 
-                    let (param_name, _param_kind) = instruction.parameters().get(param_id).unwrap();
                     // remove invalid chars
                     let mut sanitised_name = String::new();
-                    for c in param_name.chars() {
+                    for c in friendly_name.chars() {
                         if c.is_ascii_alphanumeric() || c.is_ascii_whitespace() {
                             sanitised_name.push(c);
                         }
@@ -619,11 +619,9 @@ impl Component for ActionsModel {
                     format!("{}.{}({})", engine.lua_name, instruction.lua_name(), params)
                 } else {
                     let mut returns = String::new();
-                    for return_id in instruction.output_order() {
+                    for InstructionNamedKind { friendly_name, .. } in instruction.outputs() {
                         use convert_case::{Case, Casing};
-
-                        let (name, _kind) = instruction.outputs()[return_id].clone();
-                        returns.push_str(&format!("{}, ", name.to_case(Case::Snake)));
+                        returns.push_str(&format!("{}, ", friendly_name.to_case(Case::Snake)));
                     }
 
                     // Remove last ", "

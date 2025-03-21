@@ -260,61 +260,59 @@ impl ActionConfiguration {
 
                         // Check we have the correct parameter types and convert to parameter map
                         let mut param_map = HashMap::new();
-                        for (idx, param_id) in instruction.parameter_order().iter().enumerate() {
-                            if let Some((_name, kind)) = instruction.parameters().get(param_id) {
-                                // Get argument and coerce
-                                let arg = args[idx].clone();
-                                match kind {
-                                    ParameterKind::Boolean => {
-                                        if let mlua::Value::Boolean(b) = arg {
-                                            param_map.insert(
-                                                param_id.clone(),
-                                                ParameterValue::Boolean(b),
-                                            );
-                                        } else {
-                                            return Err(mlua::Error::external(
-                                                FlowError::InstructionCalledWithInvalidParamType,
-                                            ));
-                                        }
+                        for (
+                            idx,
+                            InstructionNamedKind {
+                                id: param_id, kind, ..
+                            },
+                        ) in instruction.parameters().iter().enumerate()
+                        {
+                            // Get argument and coerce
+                            let arg = args[idx].clone();
+                            match kind {
+                                ParameterKind::Boolean => {
+                                    if let mlua::Value::Boolean(b) = arg {
+                                        param_map
+                                            .insert(param_id.clone(), ParameterValue::Boolean(b));
+                                    } else {
+                                        return Err(mlua::Error::external(
+                                            FlowError::InstructionCalledWithInvalidParamType,
+                                        ));
                                     }
-                                    ParameterKind::String => {
-                                        let maybe_str = lua.coerce_string(arg)?;
-                                        if let Some(s) = maybe_str {
-                                            param_map.insert(
-                                                param_id.clone(),
-                                                ParameterValue::String(s.to_str()?.to_string()),
-                                            );
-                                        } else {
-                                            return Err(mlua::Error::external(
-                                                FlowError::InstructionCalledWithInvalidParamType,
-                                            ));
-                                        }
+                                }
+                                ParameterKind::String => {
+                                    let maybe_str = lua.coerce_string(arg)?;
+                                    if let Some(s) = maybe_str {
+                                        param_map.insert(
+                                            param_id.clone(),
+                                            ParameterValue::String(s.to_str()?.to_string()),
+                                        );
+                                    } else {
+                                        return Err(mlua::Error::external(
+                                            FlowError::InstructionCalledWithInvalidParamType,
+                                        ));
                                     }
-                                    ParameterKind::Decimal => {
-                                        let maybe_dec = lua.coerce_number(arg)?;
-                                        if let Some(d) = maybe_dec {
-                                            param_map.insert(
-                                                param_id.clone(),
-                                                ParameterValue::Decimal(d),
-                                            );
-                                        } else {
-                                            return Err(mlua::Error::external(
-                                                FlowError::InstructionCalledWithInvalidParamType,
-                                            ));
-                                        }
+                                }
+                                ParameterKind::Decimal => {
+                                    let maybe_dec = lua.coerce_number(arg)?;
+                                    if let Some(d) = maybe_dec {
+                                        param_map
+                                            .insert(param_id.clone(), ParameterValue::Decimal(d));
+                                    } else {
+                                        return Err(mlua::Error::external(
+                                            FlowError::InstructionCalledWithInvalidParamType,
+                                        ));
                                     }
-                                    ParameterKind::Integer => {
-                                        let maybe_int = lua.coerce_integer(arg)?;
-                                        if let Some(i) = maybe_int {
-                                            param_map.insert(
-                                                param_id.clone(),
-                                                ParameterValue::Integer(i),
-                                            );
-                                        } else {
-                                            return Err(mlua::Error::external(
-                                                FlowError::InstructionCalledWithInvalidParamType,
-                                            ));
-                                        }
+                                }
+                                ParameterKind::Integer => {
+                                    let maybe_int = lua.coerce_integer(arg)?;
+                                    if let Some(i) = maybe_int {
+                                        param_map
+                                            .insert(param_id.clone(), ParameterValue::Integer(i));
+                                    } else {
+                                        return Err(mlua::Error::external(
+                                            FlowError::InstructionCalledWithInvalidParamType,
+                                        ));
                                     }
                                 }
                             }
@@ -323,11 +321,11 @@ impl ActionConfiguration {
                         // Trigger instruction behaviour
                         let response = ipc::ipc_call(
                             &engine,
-                            &Request::RunInstructions {
-                                instructions: vec![InstructionWithParameters {
+                            &Request::RunInstruction {
+                                instruction: InstructionWithParameters {
                                     instruction: instruction.id().clone(),
                                     parameters: param_map,
-                                }],
+                                },
                             },
                         )
                         .map_err(|e| mlua::Error::external(FlowError::IPCFailure(e)))?;
@@ -336,14 +334,14 @@ impl ActionConfiguration {
                             Response::ExecutionOutput { output, evidence } => {
                                 // Add evidence
                                 let mut ev = lua.app_data_mut::<Vec<Evidence>>().unwrap();
-                                for item in &evidence[0] {
+                                for item in &evidence {
                                     ev.push(item.clone());
                                 }
 
                                 // Convert output back to Lua values
                                 let mut outputs = vec![];
-                                for output_id in instruction.output_order() {
-                                    let o = output[0][output_id].clone();
+                                for InstructionNamedKind { id, .. } in instruction.outputs() {
+                                    let o = output[id].clone();
                                     match o {
                                         ParameterValue::Boolean(b) => {
                                             tracing::debug!("Boolean {b} returned to Lua");

@@ -1,10 +1,5 @@
-#[cfg(feature = "schemas")]
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
 /// A piece of evidence.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schemas", derive(JsonSchema))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Evidence {
     /// The label for this piece of evidence.
     pub label: String,
@@ -13,9 +8,7 @@ pub struct Evidence {
 }
 
 /// Content of some evidence.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "schemas", derive(JsonSchema))]
-#[serde(tag = "type", content = "content")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum EvidenceContent {
     /// Textual content
     Textual(String),

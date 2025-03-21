@@ -107,6 +107,26 @@ $ cargo build --release
 
 ### Engine Communication
 
+```mermaid
+sequenceDiagram
+    TestAngel->>Engine: ta_request_instructions()
+    activate Engine
+    Engine->>TestAngel: struct ta_instructions
+    deactivate Engine
+
+    loop During execution
+        TestAngel->>Engine: ta_execute()
+        activate Engine
+        Engine->>TestAngel: TA_DONE
+        deactivate Engine
+    end
+
+    TestAngel->>Engine: ta_reset_state()
+    activate Engine
+    Engine->>TestAngel: TA_DONE
+    deactivate Engine
+```
+
 Engines are dynamically linked libraries (`.dll`s on Windows, `.dylib`s on Mac, `.so`s on Linux systems) which have two functions, `ta_call` and `ta_release`.
 The call function has the signature:
 ```c

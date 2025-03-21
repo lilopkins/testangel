@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::{collections::HashMap, env, fs, path::PathBuf, sync::Arc};
 
 use crate::ipc::EngineList;
@@ -33,13 +34,18 @@ impl ActionMap {
 
 #[must_use]
 pub fn get_action_directory() -> PathBuf {
-    if let Ok(env_path) = env::var("TA_ACTION_DIR") {
+    let p = if let Ok(env_path) = env::var("TA_ACTION_DIR") {
         PathBuf::from(env_path)
-    } else if let Ok(exe_path) = env::current_exe() {
+    } else if let Some(exe_path) = env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(Path::to_path_buf))
+    {
         exe_path.join("actions")
     } else {
         PathBuf::from(".").join("actions")
-    }
+    };
+    tracing::debug!("Action directory: {p:?}");
+    p
 }
 
 /// Get the list of available engines.

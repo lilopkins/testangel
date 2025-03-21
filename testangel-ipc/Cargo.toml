@@ -8,10 +8,9 @@ authors = [
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-schemas = ["dep:schemars"]
-
 [dependencies]
-schemars = { version = "0.8.12", features = ["derive"], optional = true }
-serde = { version = "1.0.180", features = ["derive"] }
-serde_json = "1.0.104"
+getset = "0.1.5"
+serde = { version = "1.0.219", features = ["derive"] }
+
+[build-dependencies]
+cbindgen = "0.28.0"

@@ -3,7 +3,8 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use proc_macro_error2::{abort, abort_call_site, emit_call_site_error, emit_error};
 use quote::quote;
 use syn::{
-    braced, parenthesized, parse::Parse, parse_str, punctuated::Punctuated, token::Paren, Attribute, Block, Expr, Ident, Lit, Meta, Token, TypePath
+    braced, parenthesized, parse::Parse, parse_str, punctuated::Punctuated, token::Paren,
+    Attribute, Block, Expr, Ident, Lit, Meta, Token, TypePath,
 };
 
 use crate::kv_attributes::parse_as_kv_attr;
@@ -180,11 +181,13 @@ impl InstructionFn {
             });
         }
 
-        let output_let = if self.sig.results_in_tuple {
-            quote!(let (#(#outputs,)*))
+        let output_let = if self.sig.output.is_empty() {
+            quote!(#body)
+        } else if self.sig.results_in_tuple {
+            quote!(let (#(#outputs,)*) = #body;)
         } else {
             let output = outputs.first().unwrap();
-            quote!(let #output)
+            quote!(let #output = #body;)
         };
 
         quote! {
@@ -195,7 +198,7 @@ impl InstructionFn {
             #(#output_registrations)*
             engine = engine.with_instruction(i, |state, _params, _output, evidence| {
                 #(#param_expansions)*
-                #output_let = #body;
+                #output_let
                 #(#output_transformers)*
                 Ok(())
             });
