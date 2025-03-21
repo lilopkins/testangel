@@ -3,8 +3,7 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use proc_macro_error2::{abort, abort_call_site, emit_call_site_error, emit_error};
 use quote::quote;
 use syn::{
-    braced, parenthesized, parse::Parse, parse_str, punctuated::Punctuated, Attribute, Block, Expr,
-    Ident, Lit, Meta, Token, TypePath,
+    braced, parenthesized, parse::Parse, parse_str, punctuated::Punctuated, token::Paren, Attribute, Block, Expr, Ident, Lit, Meta, Token, TypePath
 };
 
 use crate::kv_attributes::parse_as_kv_attr;
@@ -181,6 +180,13 @@ impl InstructionFn {
             });
         }
 
+        let output_let = if self.sig.results_in_tuple {
+            quote!(let (#(#outputs,)*))
+        } else {
+            let output = outputs.first().unwrap();
+            quote!(let #output)
+        };
+
         quote! {
             let mut i = ::testangel_engine::Instruction::new(
                 #id, #lua_name, #friendly_name, #description,
@@ -189,7 +195,7 @@ impl InstructionFn {
             #(#output_registrations)*
             engine = engine.with_instruction(i, |state, _params, _output, evidence| {
                 #(#param_expansions)*
-                let (#(#outputs,)*) = #body;
+                #output_let = #body;
                 #(#output_transformers)*
                 Ok(())
             });
@@ -210,6 +216,7 @@ impl Parse for InstructionFn {
 pub struct InstructionSignature {
     pub ident: Ident,
     pub inputs: Punctuated<InstructionParameter, Token![,]>,
+    pub results_in_tuple: bool,
     pub output: Punctuated<InstructionReturn, Token![,]>,
 }
 
@@ -221,17 +228,26 @@ impl Parse for InstructionSignature {
         let _ = parenthesized!(content in input);
         let inputs = content.parse_terminated(InstructionParameter::parse, Token![,])?;
 
+        let mut results_in_tuple = true;
         let output = if input.peek(Token![->]) {
             let _: Token![->] = input.parse()?;
-            let content;
-            let _ = parenthesized!(content in input);
-            content.parse_terminated(InstructionReturn::parse, Token![,])?
+            if input.peek(Paren) {
+                let content;
+                let _ = parenthesized!(content in input);
+                content.parse_terminated(InstructionReturn::parse, Token![,])?
+            } else {
+                let mut p = Punctuated::new();
+                p.push(input.parse()?);
+                results_in_tuple = false;
+                p
+            }
         } else {
             Punctuated::new()
         };
         Ok(Self {
             ident,
             inputs,
+            results_in_tuple,
             output,
         })
     }
@@ -275,6 +291,12 @@ impl Parse for InstructionParameter {
         let ident: Ident = input.parse()?;
         let _: Token![:] = input.parse()?;
         let ty = input.parse()?;
+
+        if ident.to_string().as_str() == "state" {
+            emit_error!(ident, "Using a parameter with the name `state` will make it impossible to change the engine's state variable.");
+        } else if ident.to_string().as_str() == "evidence" {
+            emit_error!(ident, "Using a parameter with the name `evidence` will make it impossible to change the engine's evidence variable.");
+        }
 
         Ok(Self {
             id: id.unwrap_or(

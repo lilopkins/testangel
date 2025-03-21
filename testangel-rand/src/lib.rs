@@ -20,12 +20,10 @@ engine! {
         /// Generate a random string given the regular expression-like format you provide.
         fn string_by_regex(
             #[arg(name = "Regular Expression")] regex: String,
-        ) -> (
-            #[output(id = "result", name = "Result")] String,
-        ) {
+        ) -> #[output(id = "result", name = "Result")] String {
             let expr = rand_regex::Regex::compile(&regex, 32)
                 .map_err(EngineError::CouldntBuildExpression)?;
-            (rand::rng().sample(&expr),)
+            rand::rng().sample(&expr)
         }
     }
 }

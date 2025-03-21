@@ -35,15 +35,13 @@ engine! {
         /// Returns a boolean if the input text matches a regular expression.
         fn ask(
             message: String,
-        ) -> (
-            #[output(id = "response", name = "Response")] bool,
-        ) {
-            (rfd::MessageDialog::new()
+        ) -> #[output(id = "response", name = "Response")] bool {
+            rfd::MessageDialog::new()
                 .set_level(rfd::MessageLevel::Info)
                 .set_buttons(rfd::MessageButtons::YesNo)
                 .set_title("Question")
                 .set_description(message)
-                .show() == rfd::MessageDialogResult::Yes,)
+                .show() == rfd::MessageDialogResult::Yes
         }
 
         #[instruction(id = "user-interaction-ask-continue", name = "Ask to Continue Flow", lua_name = "AskToContinue")]

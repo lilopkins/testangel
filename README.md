@@ -46,6 +46,65 @@ The tool can be configured through a number of environment variables:
 
 If you are a developer in a language with C compatible FFI, you can write an engine. The following provides some details about how it can be achieved.
 
+### Writing an Engine in Rust
+
+Writing an engine in Rust is the easiest way to do so, as there are powerful macros making the process feel expressive.
+
+Get started with:
+
+```sh
+$ cargo new --lib testangel-demo-engine
+$ cd testangel-demo-engine
+$ cargo add dynamic-plugin
+$ cargo add testangel-engine --git https://github.com/lilopkins/testangel
+```
+
+In `Cargo.toml`, add the following lines:
+
+```toml
+[lib]
+crate-type = ["cdylib"]
+```
+
+Then in `lib.rs`, you can start with the boilerplate:
+
+```rust
+use testangel_engine::engine;
+
+engine! {
+    /// Just a demonstration of how to write an engine in Rust.
+    #[engine(
+        version = env!("CARGO_PKG_VERSION"),
+    )]
+    struct Demo;
+
+    impl Demo {
+        #[instruction(name = "Demo Instruction")]
+        /// Just a demo instruction
+        fn demo(
+            #[arg(name = "A")] a: i32,
+            #[arg(name = "B")] b: i32,
+        ) -> #[output(id = "result", name = "A + B")] i32 {
+            // You can write almost any code here.
+            // You should return the output(s) above, if you need multiple, these should be written as a tuple.
+            // The only acceptable types for arguments and outputs are (currently) i32, f64, bool and String.
+            // You can use the `?` operator on any code that may return an error, this will be handled cleanly.
+            //
+            // Two variables exist without being declared, and you can mutate these as desired:
+            //     state: &mut Self
+            //     evidence: &mut Vec<testangel_engine::Evidence>
+            a + b
+        }
+    }
+}
+```
+
+You can now simply build your ready-to-ship engine with:
+
+```sh
+$ cargo build --release
+```
+
 ### Engine Communication
 
 Engines are dynamically linked libraries (`.dll`s on Windows, `.dylib`s on Mac, `.so`s on Linux systems) which have two functions, `ta_call` and `ta_release`.
