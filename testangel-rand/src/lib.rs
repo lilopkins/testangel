@@ -27,3 +27,21 @@ engine! {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use testangel_engine::iwp;
+
+    use super::*;
+
+    #[test]
+    fn test_string_by_regex() {
+        let mut engine = RANDOM_ENGINE.lock().unwrap();
+        let (output, _evidence) = engine.run_instruction(iwp!("rand-string", "regex" => "[a-z]{5}"))
+            .expect("Failed to trigger instruction");
+        let result = output["result"].value_string();
+        for c in result.chars() {
+            assert!(c.is_ascii_lowercase());
+        }
+    }
+}

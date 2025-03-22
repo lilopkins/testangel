@@ -164,3 +164,33 @@ impl fmt::Display for ParameterValue {
         }
     }
 }
+
+impl From<i32> for ParameterValue {
+    fn from(value: i32) -> Self {
+        Self::Integer(value)
+    }
+}
+
+impl From<f64> for ParameterValue {
+    fn from(value: f64) -> Self {
+        Self::Decimal(value)
+    }
+}
+
+impl From<bool> for ParameterValue {
+    fn from(value: bool) -> Self {
+        Self::Boolean(value)
+    }
+}
+
+impl From<String> for ParameterValue {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl<'a> From<&'a str> for ParameterValue {
+    fn from(value: &'a str) -> Self {
+        Self::String(value.to_owned())
+    }
+}

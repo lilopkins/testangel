@@ -16,6 +16,30 @@ pub use testangel_ipc::ffi::{
 };
 pub use testangel_ipc::prelude::*;
 
+/// A utility for quickly generating [`InstructionWithParameters`] objects,
+/// to make writing unit tests easier.
+#[macro_export]
+macro_rules! iwp {
+    ($instruction_name: expr) => {
+        ::testangel_engine::InstructionWithParameters {
+            instruction: String::from($instruction_name),
+            parameters: ::std::collections::HashMap::new(),
+        }
+    };
+    ($instruction_name: expr, $($name: expr => $val: expr),*) => {
+        ::testangel_engine::InstructionWithParameters {
+            instruction: String::from($instruction_name),
+            parameters: {
+                let mut map = ::std::collections::HashMap::new();
+                $(
+                    map.insert(String::from($name), $val.into());
+                )*
+                map
+            },
+        }
+    };
+}
+
 plugin_interface! {
     extern trait EngineInterface {
         /// Return a list of instructions this engine supports

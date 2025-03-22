@@ -29,3 +29,17 @@ engine! {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use testangel_engine::iwp;
+
+    use super::*;
+
+    #[test]
+    fn test_time_wait() {
+        let mut engine = TIME_ENGINE.lock().unwrap();
+        let (_output, _evidence) = engine.run_instruction(iwp!("time-wait", "duration" => 300))
+            .expect("Failed to trigger instruction");
+    }
+}
