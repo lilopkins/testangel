@@ -31,7 +31,7 @@ mod tests {
     #[test]
     fn test_add_text() {
         let mut engine = EVIDENCE_ENGINE.lock().unwrap();
-        let (_output, evidence) = engine.run_instruction(iwp!("evidence-add-text", "label" => "Test Label", "content" => "Content"))
+        let (_output, evidence) = engine.run_instruction(iwp!("evidence-add-text", false, "label" => "Test Label", "content" => "Content"))
             .expect("Failed to trigger instruction");
         assert_eq!(evidence.len(), 1);
         assert_eq!(evidence[0].label, "Test Label".to_owned());

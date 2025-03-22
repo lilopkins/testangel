@@ -20,15 +20,17 @@ pub use testangel_ipc::prelude::*;
 /// to make writing unit tests easier.
 #[macro_export]
 macro_rules! iwp {
-    ($instruction_name: expr) => {
+    ($instruction_name: expr, $dry_run: expr) => {
         ::testangel_engine::InstructionWithParameters {
             instruction: String::from($instruction_name),
+            dry_run: $dry_run,
             parameters: ::std::collections::HashMap::new(),
         }
     };
-    ($instruction_name: expr, $($name: expr => $val: expr),*) => {
+    ($instruction_name: expr, $dry_run: expr, $($name: expr => $val: expr),*) => {
         ::testangel_engine::InstructionWithParameters {
             instruction: String::from($instruction_name),
+            dry_run: $dry_run,
             parameters: {
                 let mut map = ::std::collections::HashMap::new();
                 $(
@@ -53,6 +55,7 @@ plugin_interface! {
             sz_instruction_id: *const c_char,
             arp_parameter_list: *const *const ta_named_value,
             n_parameter_count: u32,
+            b_dry_run: bool,
             parp_output_list: *mut *mut *mut ta_named_value,
             parp_output_evidence_list: *mut *mut *mut ta_evidence,
         ) -> *mut ta_result;
@@ -84,7 +87,7 @@ pub type EvidenceList = Vec<Evidence>;
 pub type FnEngineInstruction<'a, T> = dyn 'a
     + Send
     + Sync
-    + Fn(&mut T, ParameterMap, &mut OutputMap, &mut EvidenceList) -> Result<(), Box<dyn Error>>;
+    + Fn(&mut T, ParameterMap, bool, &mut OutputMap, &mut EvidenceList) -> Result<(), Box<dyn Error>>;
 
 #[derive(Getters, MutGetters)]
 pub struct Engine<'a, T: Default + Send + Sync> {
@@ -127,6 +130,7 @@ impl<'a, T: Default + Send + Sync> Engine<'a, T> {
             + Fn(
                 &mut T,
                 ParameterMap,
+                bool,
                 &mut OutputMap,
                 &mut EvidenceList,
             ) -> Result<(), Box<dyn Error>>,
@@ -147,6 +151,7 @@ impl<'a, T: Default + Send + Sync> Engine<'a, T> {
         let instruction_result = f(
             &mut self.state,
             iwp.parameters,
+            iwp.dry_run,
             &mut this_instruction_output,
             &mut this_instruction_evidence,
         );

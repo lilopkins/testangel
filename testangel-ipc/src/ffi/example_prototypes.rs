@@ -22,6 +22,7 @@ extern "C" fn _ta_execute(
     szInstructionId: *const c_char,
     arpParameterList: *const *const ta_named_value,
     nParameterCount: u32,
+    bDryRun: bool,
     parpOutputList: *mut *mut *mut ta_named_value,
     parpOutputEvidenceList: *mut *mut *mut ta_evidence,
 ) -> *mut ta_result {

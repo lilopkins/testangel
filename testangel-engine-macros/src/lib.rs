@@ -275,6 +275,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                 sz_instruction_id: *const ::std::ffi::c_char,
                 arp_parameter_list: *const *const ::testangel_engine::ta_named_value,
                 n_parameter_count: u32,
+                b_dry_run: bool,
                 parp_output_list: *mut *mut *mut ::testangel_engine::ta_named_value,
                 parp_output_evidence_list: *mut *mut *mut ::testangel_engine::ta_evidence,
             ) -> *mut ::testangel_engine::ta_result {
@@ -306,6 +307,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                     // Convert parameters
                     let mut iwp = ::testangel_engine::InstructionWithParameters {
                         instruction: instruction_id.clone(),
+                        dry_run: b_dry_run,
                         parameters: ::std::collections::HashMap::new(),
                     };
                     for idx in 0..n_parameter_count {

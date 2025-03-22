@@ -25,7 +25,10 @@ engine! {
             if duration < 0 {
                 return Err(Box::new(EngineError::CantWaitNegative));
             }
-            sleep(Duration::from_millis(duration as u64));
+
+            if !dry_run {
+                sleep(Duration::from_millis(duration as u64));
+            }
         }
     }
 }
@@ -39,7 +42,7 @@ mod tests {
     #[test]
     fn test_time_wait() {
         let mut engine = TIME_ENGINE.lock().unwrap();
-        let (_output, _evidence) = engine.run_instruction(iwp!("time-wait", "duration" => 300))
+        let (_output, _evidence) = engine.run_instruction(iwp!("time-wait", false, "duration" => 300))
             .expect("Failed to trigger instruction");
     }
 }

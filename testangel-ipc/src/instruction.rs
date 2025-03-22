@@ -234,6 +234,8 @@ pub struct InstructionNamedKind {
 pub struct InstructionWithParameters {
     /// The ID of the instruction to run.
     pub instruction: String,
+    /// Should this instruction be triggered as a dry run?
+    pub dry_run: bool,
     /// The parameters for the instruction.
     pub parameters: HashMap<String, ParameterValue>,
 }

@@ -196,7 +196,7 @@ impl InstructionFn {
             );
             #(#param_registrations)*
             #(#output_registrations)*
-            engine = engine.with_instruction(i, |state, _params, _output, evidence| {
+            engine = engine.with_instruction(i, |state, _params, dry_run, _output, evidence| {
                 #(#param_expansions)*
                 #output_let
                 #(#output_transformers)*

@@ -71,9 +71,13 @@ ta_result * ta_execute(
     const char *szInstructionId,
     const ta_named_value *const *arpParameterList,
     uint32_t nParameterCount,
+    bool bDryRun,
     ta_named_value ***parpOutputList,
     ta_evidence ***parpOutputEvidenceList
 ) {
+    // This implementation is pure, so dry runs can be identical to real runs.
+    (void)(bDryRun);
+
     if (strcmp("demo-add", szInstructionId) != 0) {
         ta_result *pResult = (ta_result *)malloc(sizeof(ta_result));
         pResult->code = TESTANGEL_ERROR_INVALID_INSTRUCTION;
