@@ -17,7 +17,12 @@ engine! {
     struct Time;
 
     impl Time {
-        #[instruction(id = "time-wait", name = "Wait", lua_name = "Wait")]
+        #[instruction(
+            id = "time-wait",
+            name = "Wait",
+            lua_name = "Wait",
+            flags = InstructionFlags::AUTOMATIC,
+        )]
         /// Wait for a specified number of milliseconds.
         fn time_wait(
             #[arg(name = "Duration (ms)")] duration: i32,

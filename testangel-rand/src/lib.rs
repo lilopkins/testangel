@@ -16,7 +16,11 @@ engine! {
     struct Random;
 
     impl Random {
-        #[instruction(id = "rand-string", name = "Random String by Regex")]
+        #[instruction(
+            id = "rand-string",
+            name = "Random String by Regex"
+            flags = InstructionFlags::AUTOMATIC,
+        )]
         /// Generate a random string given the regular expression-like format you provide.
         fn string_by_regex(
             #[arg(name = "Regular Expression")] regex: String,

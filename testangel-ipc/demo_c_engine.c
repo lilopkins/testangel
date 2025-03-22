@@ -26,6 +26,7 @@ ta_result * ta_request_instructions(
     pInstructionMetadata->szLuaName = "Add";
     pInstructionMetadata->szFriendlyName = "Add";
     pInstructionMetadata->szDescription = "Add together two numbers";
+    pInstructionMetadata->iFlags = TA_INSTRUCTION_FLAG_PURE | TA_INSTRUCTION_FLAG_AUTOMATIC | TA_INSTRUCTION_FLAG_INFALLIBLE;
 
     ta_instruction_named_kind *pParamA = (ta_instruction_named_kind *)malloc(sizeof(ta_instruction_named_kind));
     pParamA->szId = "a";

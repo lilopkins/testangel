@@ -138,6 +138,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
 
         ::testangel_engine::lazy_static! {
             static ref #engine_ref: ::std::sync::Mutex<::testangel_engine::Engine<'static, #state_struct_ident>> = {
+                use ::testangel_engine::InstructionFlags;
                 let mut engine = ::testangel_engine::Engine::<#state_struct_ident>::new(#name, #lua_name, #version, #description);
                 #instrucs
                 ::std::sync::Mutex::new(engine)

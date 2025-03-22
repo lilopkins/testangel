@@ -4342,6 +4342,7 @@ dependencies = [
 name = "testangel-ipc"
 version = "0.22.0-alpha.4"
 dependencies = [
+ "bitflags 2.9.0",
  "cbindgen",
  "cc",
  "getset",

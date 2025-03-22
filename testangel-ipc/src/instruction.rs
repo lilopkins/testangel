@@ -1,5 +1,6 @@
 use std::{collections::HashMap, ffi::CStr};
 
+use bitflags::bitflags;
 use getset::Getters;
 
 use crate::{
@@ -20,6 +21,8 @@ pub struct Instruction {
     friendly_name: String,
     /// A description of this instruction.
     description: String,
+    /// Flags for this instruction
+    flags: InstructionFlags,
     /// The parameters this instruction takes, with a friendly name.
     parameters: Vec<InstructionNamedKind>,
     /// The outputs this instruction produces, with a friendly name
@@ -63,6 +66,8 @@ impl Instruction {
             let str_slice = cstr.to_str().map_err(|_| ())?;
             str_slice.to_owned()
         };
+
+        let flags = InstructionFlags::from_bits_retain((*metadata).iFlags as u16);
 
         let mut i = 0;
         let raw_parameters = (*metadata).arpParameterList;
@@ -135,6 +140,7 @@ impl Instruction {
             lua_name,
             friendly_name,
             description,
+            flags,
             parameters,
             outputs,
         })
@@ -142,7 +148,7 @@ impl Instruction {
 
     /// Build a new instruction
     #[must_use]
-    pub fn new<S>(id: S, lua_name: S, friendly_name: S, description: S) -> Self
+    pub fn new<S>(id: S, lua_name: S, friendly_name: S, description: S, flags: InstructionFlags) -> Self
     where
         S: Into<String>,
     {
@@ -151,6 +157,7 @@ impl Instruction {
             lua_name: lua_name.into(),
             friendly_name: friendly_name.into(),
             description: description.into(),
+            flags,
             parameters: vec![],
             outputs: vec![],
         }
@@ -238,4 +245,21 @@ pub struct InstructionWithParameters {
     pub dry_run: bool,
     /// The parameters for the instruction.
     pub parameters: HashMap<String, ParameterValue>,
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct InstructionFlags: u16 {
+        /// No specific flags
+        const NONE = 0b0000_0000_0000_0000;
+        /// This instruction is pure, i.e. it has no side effects (it doesn't affect
+        /// any other external systems and for each identical execution, provides
+        /// identical output).
+        const PURE = 0b0000_0000_0000_0001;
+        /// This instruction is infallible.
+        const INFALLIBLE = 0b0000_0000_0000_0010;
+        /// This instruction is fully automatic, i.e. it requires no user input at
+        /// any stage, regardless of behaviour.
+        const AUTOMATIC = 0b0000_0000_0000_0100;
+    }
 }
