@@ -35,7 +35,7 @@ image = { version = "0.25.0", default-features = false, features = ["png"] }
 thiserror = "2.0.4"
 serde = { version = "1.0.180", features = [ "derive" ] }
 uuid = { version = "1.4.1", features = [ "v4" ] }
-ron = "0.8.0"
+ron = "0.9.0"
 genpdf = { version = "0.2.0", features = ["images"] }
 chrono = "0.4.26"
 base64 = "0.22.0"
@@ -55,7 +55,7 @@ mlua = { version = "0.10.2", features = [ "luau" ] }
 pest = "2.7.9"
 pest_derive = "2.7.9"
 convert_case = "0.8.0"
-evidenceangel = { git = "https://github.com/lilopkins/evidenceangel.git" }
+evidenceangel = { git = "https://github.com/lilopkins/evidenceangel.git", branch = "next" }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", optional = true }
 tracing-subscriber-multi = { version = "0.1.0", optional = true }

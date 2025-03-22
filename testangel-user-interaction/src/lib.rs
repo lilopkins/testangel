@@ -18,7 +18,12 @@ engine! {
     struct UserInteraction;
 
     impl UserInteraction {
-        #[instruction(id = "user-interaction-wait", name = "Wait for OK", lua_name = "WaitForOK")]
+        #[instruction(
+            id = "user-interaction-wait",
+            name = "Wait for OK",
+            lua_name = "WaitForOK",
+            flags = InstructionFlags::INFALLIBLE,
+        )]
         /// Display a message dialog and don't continue running the test flow until the user presses 'OK'.
         fn wait(
             message: String,
@@ -31,7 +36,12 @@ engine! {
                 .show();
         }
 
-        #[instruction(id = "user-interaction-ask", name = "Yes/No Question", lua_name = "AskYesNo")]
+        #[instruction(
+            id = "user-interaction-ask",
+            name = "Yes/No Question",
+            lua_name = "AskYesNo",
+            flags = InstructionFlags::INFALLIBLE,
+        )]
         /// Returns a boolean if the input text matches a regular expression.
         fn ask(
             message: String,
@@ -44,7 +54,12 @@ engine! {
                 .show() == rfd::MessageDialogResult::Yes
         }
 
-        #[instruction(id = "user-interaction-ask-continue", name = "Ask to Continue Flow", lua_name = "AskToContinue")]
+        #[instruction(
+            id = "user-interaction-ask-continue",
+            name = "Ask to Continue Flow",
+            lua_name = "AskToContinue",
+            flags = InstructionFlags::NONE,
+        )]
         /// Ask the user if they want to continue the automation flow.
         fn ask_continue(
             message: String,
@@ -60,7 +75,12 @@ engine! {
             }
         }
 
-        #[instruction(id = "user-interaction-terminate-flow", name = "Terminate Flow", lua_name = "TerminateFlow")]
+        #[instruction(
+            id = "user-interaction-terminate-flow",
+            name = "Terminate Flow",
+            lua_name = "TerminateFlow",
+            flags = InstructionFlags::NONE,
+        )]
         /// Let the user know that the flow has been stopped for a reason.
         fn terminate_flow(
             message: String,

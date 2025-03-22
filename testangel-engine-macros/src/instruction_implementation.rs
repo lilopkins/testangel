@@ -114,6 +114,7 @@ impl InstructionFn {
         let mut friendly_name =
             parse_str(&format!(r#""{}""#, ident.to_string().to_title_case())).unwrap();
         let mut description = String::new();
+        let mut flags = parse_str(r#"InstructionFlags::NONE"#).unwrap();
 
         // Validate struct attributes
         for attr in &self.attrs {
@@ -124,9 +125,10 @@ impl InstructionFn {
                             "id" => id = var.value,
                             "name" => friendly_name = var.value,
                             "lua_name" => lua_name = var.value,
+                            "flags" => flags = var.value,
                             _ => emit_error!(
                                 var.key.span(),
-                                "Invalid key, expecting 'id', 'name' or 'lua_name'."
+                                "Invalid key, expecting 'id', 'name', 'lua_name' or 'flags'."
                             ),
                         }
                     }
@@ -192,11 +194,11 @@ impl InstructionFn {
 
         quote! {
             let mut i = ::testangel_engine::Instruction::new(
-                #id, #lua_name, #friendly_name, #description,
+                #id, #lua_name, #friendly_name, #description, #flags,
             );
             #(#param_registrations)*
             #(#output_registrations)*
-            engine = engine.with_instruction(i, |state, _params, _output, evidence| {
+            engine = engine.with_instruction(i, |state, _params, dry_run, _output, evidence| {
                 #(#param_expansions)*
                 #output_let
                 #(#output_transformers)*

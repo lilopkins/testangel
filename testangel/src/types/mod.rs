@@ -324,6 +324,7 @@ impl ActionConfiguration {
                             &Request::RunInstruction {
                                 instruction: InstructionWithParameters {
                                     instruction: instruction.id().clone(),
+                                    dry_run: false,
                                     parameters: param_map,
                                 },
                             },

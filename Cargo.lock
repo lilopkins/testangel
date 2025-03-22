@@ -79,6 +79,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "angelmark"
+version = "0.0.0"
+source = "git+https://github.com/lilopkins/evidenceangel.git?branch=next#11568cf7a2400b1489a55756f26ce58b027f3645"
+dependencies = [
+ "getset",
+ "pest",
+ "pest_derive",
+ "regex",
+ "thiserror 2.0.12",
+ "tracing",
+]
+
+[[package]]
 name = "anstream"
 version = "0.6.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -375,12 +388,6 @@ name = "base-x"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4cbbc9d0964165b47557570cce6c952866c2678457aca742aafc9fb771d30270"
-
-[[package]]
-name = "base64"
-version = "0.21.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
 name = "base64"
@@ -1135,10 +1142,11 @@ dependencies = [
 
 [[package]]
 name = "evidenceangel"
-version = "1.3.0"
-source = "git+https://github.com/lilopkins/evidenceangel.git#f5444462f15b6e45bb581ef790719e9df506a51a"
+version = "1.4.0-rc.3"
+source = "git+https://github.com/lilopkins/evidenceangel.git?branch=next#11568cf7a2400b1489a55756f26ce58b027f3645"
 dependencies = [
- "base64 0.22.1",
+ "angelmark",
+ "base64",
  "build_html",
  "chrono",
  "getset",
@@ -1152,7 +1160,7 @@ dependencies = [
  "thiserror 2.0.12",
  "tracing",
  "uuid",
- "winres",
+ "winresource",
  "zip",
 ]
 
@@ -2233,9 +2241,9 @@ dependencies = [
 
 [[package]]
 name = "infer"
-version = "0.16.0"
+version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc150e5ce2330295b8616ce0e3f53250e53af31759a9dbedad1621ba29151847"
+checksum = "a588916bfdfd92e71cacef98a63d9b1f0d74d6599980d11894290e7ddefffcf7"
 dependencies = [
  "cfb",
 ]
@@ -2344,12 +2352,12 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.28.3"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b8f66fe41fa46a5c83ed1c717b7e0b4635988f427083108c8cf0a882cc13441"
+checksum = "3c59cb1733c34377b6067a0419befd7f25073c5249ec3b0614a482bf499e1df5"
 dependencies = [
  "ahash",
- "base64 0.22.1",
+ "base64",
  "bytecount",
  "email_address",
  "fancy-regex",
@@ -2373,7 +2381,7 @@ version = "9.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a87cc7a48537badeae96744432de36f4be2b4a34a05a5ef32e9dd8a1c169dde"
 dependencies = [
- "base64 0.22.1",
+ "base64",
  "js-sys",
  "pem",
  "ring",
@@ -2928,7 +2936,7 @@ checksum = "27527d68322f4c603319f7958973db8f9fa4be62c0e3fafe084f5562cf6353df"
 dependencies = [
  "arc-swap",
  "async-trait",
- "base64 0.22.1",
+ "base64",
  "bytes",
  "cfg-if",
  "chrono",
@@ -3084,7 +3092,7 @@ version = "3.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "38af38e8470ac9dee3ce1bae1af9c1671fffc44ddfd8bd1d0a3445bf349a8ef3"
 dependencies = [
- "base64 0.22.1",
+ "base64",
  "serde",
 ]
 
@@ -3419,15 +3427,28 @@ dependencies = [
 
 [[package]]
 name = "referencing"
-version = "0.28.3"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0dcb5ab28989ad7c91eb1b9531a37a1a137cc69a0499aee4117cae4a107c464"
+checksum = "6ce52678d53e5ee37e4af0a9036ca834d0cd34b33c82457c6b06a24f8d783344"
 dependencies = [
  "ahash",
  "fluent-uri",
  "once_cell",
+ "parking_lot",
  "percent-encoding",
  "serde_json",
+]
+
+[[package]]
+name = "regex"
+version = "1.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b544ef1b4eac5dc2db33ea63606ae9ffcfac26c1416a2806ae0bf5f56b201191"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-automata",
+ "regex-syntax",
 ]
 
 [[package]]
@@ -3500,7 +3521,7 @@ version = "0.12.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d19c46a6fdd48bc4dab94b6103fccc55d34c67cc0ad04653aad4ea2a07cd7bbb"
 dependencies = [
- "base64 0.22.1",
+ "base64",
  "bytes",
  "futures-channel",
  "futures-core",
@@ -3571,14 +3592,15 @@ dependencies = [
 
 [[package]]
 name = "ron"
-version = "0.8.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b91f7eff05f748767f183df4320a63d6936e9c6107d97c9e6bdd9784f4289c94"
+checksum = "63f3aa105dea217ef30d89581b65a4d527a19afc95ef5750be3890e8d3c5b837"
 dependencies = [
- "base64 0.21.7",
+ "base64",
  "bitflags 2.9.0",
  "serde",
  "serde_derive",
+ "unicode-ident",
 ]
 
 [[package]]
@@ -4246,10 +4268,10 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.22.0-alpha.3"
+version = "0.22.0-alpha.4"
 dependencies = [
  "arboard",
- "base64 0.22.1",
+ "base64",
  "chrono",
  "clap",
  "convert_case",
@@ -4288,7 +4310,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine"
-version = "0.22.0-alpha.3"
+version = "0.22.0-alpha.4"
 dependencies = [
  "dynamic-plugin",
  "getset",
@@ -4299,7 +4321,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine-macros"
-version = "0.22.0-alpha.3"
+version = "0.22.0-alpha.4"
 dependencies = [
  "heck 0.5.0",
  "proc-macro-error2",
@@ -4310,7 +4332,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-evidence"
-version = "0.22.0-alpha.3"
+version = "0.22.0-alpha.4"
 dependencies = [
  "dynamic-plugin",
  "testangel-engine",
@@ -4318,8 +4340,9 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.22.0-alpha.3"
+version = "0.22.0-alpha.4"
 dependencies = [
+ "bitflags 2.9.0",
  "cbindgen",
  "cc",
  "getset",
@@ -4328,7 +4351,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-rand"
-version = "0.22.0-alpha.3"
+version = "0.22.0-alpha.4"
 dependencies = [
  "dynamic-plugin",
  "rand",
@@ -4339,7 +4362,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-time"
-version = "0.22.0-alpha.3"
+version = "0.22.0-alpha.4"
 dependencies = [
  "dynamic-plugin",
  "testangel-engine",
@@ -4348,7 +4371,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-user-interaction"
-version = "0.22.0-alpha.3"
+version = "0.22.0-alpha.4"
 dependencies = [
  "dynamic-plugin",
  "rfd",
@@ -5327,6 +5350,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b68db261ef59e9e52806f688020631e987592bd83619edccda9c47d42cde4f6c"
 dependencies = [
  "toml 0.5.11",
+]
+
+[[package]]
+name = "winresource"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba4a67c78ee5782c0c1cb41bebc7e12c6e79644daa1650ebbc1de5d5b08593f7"
+dependencies = [
+ "toml 0.8.20",
+ "version_check",
 ]
 
 [[package]]

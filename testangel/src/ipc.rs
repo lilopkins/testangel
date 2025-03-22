@@ -209,6 +209,7 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                             sz_instruction_id.as_ptr(),
                             arp_parameter_list,
                             inst_with_params.parameters.len().try_into().unwrap(),
+                            inst_with_params.dry_run,
                             &mut parp_output_list,
                             &mut parp_output_evidence_list,
                         )

@@ -5,7 +5,9 @@ use std::collections::HashMap;
 /// A prelude module to quickly import common imports.
 pub mod prelude {
     pub use crate::evidence::{Evidence, EvidenceContent};
-    pub use crate::instruction::{Instruction, InstructionNamedKind, InstructionWithParameters};
+    pub use crate::instruction::{
+        Instruction, InstructionFlags, InstructionNamedKind, InstructionWithParameters,
+    };
     pub use crate::value::{ParameterKind, ParameterValue};
     pub use crate::{ErrorKind, Request, Response};
 }
