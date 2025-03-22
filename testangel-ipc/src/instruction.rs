@@ -148,7 +148,13 @@ impl Instruction {
 
     /// Build a new instruction
     #[must_use]
-    pub fn new<S>(id: S, lua_name: S, friendly_name: S, description: S, flags: InstructionFlags) -> Self
+    pub fn new<S>(
+        id: S,
+        lua_name: S,
+        friendly_name: S,
+        description: S,
+        flags: InstructionFlags,
+    ) -> Self
     where
         S: Into<String>,
     {

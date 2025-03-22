@@ -41,7 +41,8 @@ mod tests {
     #[test]
     fn test_string_by_regex() {
         let mut engine = RANDOM_ENGINE.lock().unwrap();
-        let (output, _evidence) = engine.run_instruction(iwp!("rand-string", false, "regex" => "[a-z]{5}"))
+        let (output, _evidence) = engine
+            .run_instruction(iwp!("rand-string", false, "regex" => "[a-z]{5}"))
             .expect("Failed to trigger instruction");
         let result = output["result"].value_string();
         for c in result.chars() {

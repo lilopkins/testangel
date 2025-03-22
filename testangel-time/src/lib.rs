@@ -47,7 +47,8 @@ mod tests {
     #[test]
     fn test_time_wait() {
         let mut engine = TIME_ENGINE.lock().unwrap();
-        let (_output, _evidence) = engine.run_instruction(iwp!("time-wait", false, "duration" => 300))
+        let (_output, _evidence) = engine
+            .run_instruction(iwp!("time-wait", false, "duration" => 300))
             .expect("Failed to trigger instruction");
     }
 }
