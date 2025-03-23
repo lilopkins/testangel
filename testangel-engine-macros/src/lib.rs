@@ -176,41 +176,54 @@ pub fn engine(stream: TokenStream) -> TokenStream {
             ) -> *mut ::testangel_engine::ta_result {
                 use ::testangel_engine::{
                     ta_result, ta_result_code, ta_instruction_metadata,
-                    ta_instruction_named_kind, ta_parameter_kind, InstructionNamedKind,
-                    ParameterKind, malloc, strcpy
+                    ta_instruction_named_kind, ta_parameter_kind,
+                    ta_logging_level, InstructionNamedKind, ParameterKind,
+                    malloc, strcpy,
                 };
                 use ::std::boxed::Box;
                 use ::std::ffi::{CString, c_char};
                 use ::std::mem::{forget, size_of};
                 use ::std::ptr;
+                use ta_logging_level::{
+                    TA_LOG_TRACE,
+                    TA_LOG_DEBUG,
+                    TA_LOG_INFO,
+                    TA_LOG_WARN,
+                    TA_LOG_ERROR,
+                };
+
+                fn log(level: ta_logging_level, message: &'_ str) {
+                    if let Some(logger) = LOGGING_FN_CELL.get() {
+                        let msg = ::std::ffi::CString::new(message)
+                            .expect("Nul bytes in the log message");
+                        logger(level, msg.as_ptr());
+                    }
+                }
 
                 (*p_output_engine_metadata).iSupportsIpcVersion = 3;
 
                 let engine = #engine_ref.lock().unwrap();
 
-                let name = Box::new(CString::new(engine.name().as_str())
-                    .expect("Nul bytes in the engine name"));
-                (*p_output_engine_metadata).szFriendlyName = name.as_ptr();
-                forget(name);
+                let name = CString::new(engine.name().as_str())
+                    .expect("Nul bytes in the engine name");
+                (*p_output_engine_metadata).szFriendlyName = name.into_raw();
 
-                let version = Box::new(CString::new(engine.version().as_str())
-                    .expect("Nul bytes in the engine version"));
-                (*p_output_engine_metadata).szVersion = version.as_ptr();
-                forget(version);
+                let version = CString::new(engine.version().as_str())
+                    .expect("Nul bytes in the engine version");
+                (*p_output_engine_metadata).szVersion = version.into_raw();
 
-                let lua_name = Box::new(CString::new(engine.lua_name().as_str())
-                    .expect("Nul bytes in the engine lua name"));
-                (*p_output_engine_metadata).szLuaName = lua_name.as_ptr();
-                forget(lua_name);
+                let lua_name = CString::new(engine.lua_name().as_str())
+                    .expect("Nul bytes in the engine lua name");
+                (*p_output_engine_metadata).szLuaName = lua_name.into_raw();
 
-                let description = Box::new(CString::new(engine.description().as_str())
-                    .expect("Nul bytes in the engine description"));
-                (*p_output_engine_metadata).szDescription = description.as_ptr();
-                forget(description);
+                let description = CString::new(engine.description().as_str())
+                    .expect("Nul bytes in the engine description");
+                (*p_output_engine_metadata).szDescription = description.into_raw();
 
                 // Present instructions
-                let instruction_array: *mut *const ta_instruction_metadata =
-                        malloc((engine.instructions().len() + 1) * size_of::<*mut ta_instruction_metadata>()).cast();
+                let bytes = (engine.instructions().len() + 1) * size_of::<*mut ta_instruction_metadata>();
+                log(TA_LOG_TRACE, &format!("Allocating {bytes} for instructions."));
+                let instruction_array: *mut *const ta_instruction_metadata = malloc(bytes).cast();
                 *instruction_array.add(engine.instructions().len()) = ptr::null_mut();
                 *parp_output_instructions = instruction_array;
 
@@ -220,37 +233,32 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                         malloc(size_of::<ta_instruction_metadata>()).cast();
                     let id = CString::new(instruction.id().as_str())
                         .expect("Nul bytes in the instruction ID");
-                    (*instMeta).szId = malloc(id.count_bytes()).cast::<c_char>();
-                    strcpy((*instMeta).szId.cast_mut(), id.as_ptr());
+                    (*instMeta).szId = id.into_raw();
                     let lua_name = CString::new(instruction.lua_name().as_str())
                         .expect("Nul bytes in the instruction lua name");
-                    (*instMeta).szLuaName = malloc(lua_name.count_bytes()).cast::<c_char>();
-                    strcpy((*instMeta).szLuaName.cast_mut(), lua_name.as_ptr());
+                    (*instMeta).szLuaName = lua_name.into_raw();
                     let friendly_name = CString::new(instruction.friendly_name().as_str())
                         .expect("Nul bytes in the instruction name");
-                    (*instMeta).szFriendlyName = malloc(friendly_name.count_bytes()).cast::<c_char>();
-                    strcpy((*instMeta).szFriendlyName.cast_mut(), friendly_name.as_ptr());
+                    (*instMeta).szFriendlyName = friendly_name.into_raw();
                     let description = CString::new(instruction.description().as_str())
                         .expect("Nul bytes in the instruction description");
-                    (*instMeta).szDescription = malloc(description.count_bytes()).cast::<c_char>();
-                    strcpy((*instMeta).szDescription.cast_mut(), description.as_ptr());
+                    (*instMeta).szDescription = description.into_raw();
 
                     // Parameters
-                    let parameters_array: *mut *mut ta_instruction_named_kind =
-                        malloc((instruction.parameters().len() + 1) * size_of::<*mut ta_instruction_named_kind>()).cast();
+                    let bytes = (instruction.parameters().len() + 1) * size_of::<*mut ta_instruction_named_kind>();
+                    log(TA_LOG_TRACE, &format!("Allocating {bytes} for instruction parameters"));
+                    let parameters_array: *mut *mut ta_instruction_named_kind = malloc(bytes).cast();
                     *parameters_array.add(instruction.parameters().len()) = ptr::null_mut();
                     for (idx, InstructionNamedKind { id, friendly_name, kind }) in instruction.parameters().iter().enumerate() {
                         let param: *mut ta_instruction_named_kind = malloc(size_of::<ta_instruction_named_kind>()).cast();
 
                         let id = CString::new(id.as_str())
                             .expect("Nul bytes in the parameter id");
-                        (*param).szId = malloc(id.count_bytes()).cast::<c_char>();
-                        strcpy((*param).szId.cast_mut(), id.as_ptr());
+                        (*param).szId = id.into_raw();
 
                         let name = CString::new(friendly_name.as_str())
                             .expect("Nul bytes in the parameter name");
-                        (*param).szName = malloc(name.count_bytes()).cast::<c_char>();
-                        strcpy((*param).szName.cast_mut(), name.as_ptr());
+                        (*param).szName = name.into_raw();
 
                         (*param).kind = match kind {
                             ParameterKind::String => ta_parameter_kind::TA_PARAMETER_STRING,
@@ -264,21 +272,20 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                     (*instMeta).arpParameterList = parameters_array;
 
                     // Outputs
-                    let outputs_array: *mut *mut ta_instruction_named_kind =
-                        malloc((instruction.outputs().len() + 1) * size_of::<*mut ta_instruction_named_kind>()).cast();
+                    let bytes = (instruction.outputs().len() + 1) * size_of::<*mut ta_instruction_named_kind>();
+                    log(TA_LOG_TRACE, &format!("Allocating {bytes} for instruction outputs"));
+                    let outputs_array: *mut *mut ta_instruction_named_kind = malloc(bytes).cast();
                     *outputs_array.add(instruction.outputs().len()) = ptr::null_mut();
                     for (idx, InstructionNamedKind { id, friendly_name, kind }) in instruction.outputs().iter().enumerate() {
                         let param: *mut ta_instruction_named_kind = malloc(size_of::<ta_instruction_named_kind>()).cast();
 
                         let id = CString::new(id.as_str())
                             .expect("Nul bytes in the output id");
-                        (*param).szId = malloc(id.count_bytes()).cast::<c_char>();
-                        strcpy((*param).szId.cast_mut(), id.as_ptr());
+                        (*param).szId = id.into_raw();
 
                         let name = CString::new(friendly_name.as_str())
                             .expect("Nul bytes in the output name");
-                        (*param).szName = malloc(name.count_bytes()).cast::<c_char>();
-                        strcpy((*param).szName.cast_mut(), name.as_ptr());
+                        (*param).szName = name.into_raw();
 
                         (*param).kind = match kind {
                             ParameterKind::String => ta_parameter_kind::TA_PARAMETER_STRING,
@@ -310,13 +317,28 @@ pub fn engine(stream: TokenStream) -> TokenStream {
             ) -> *mut ::testangel_engine::ta_result {
                 use ::testangel_engine::{
                     ta_result, ta_result_code, ta_parameter_kind, ta_evidence, ta_evidence_kind,
-                    ta_named_value, ta_inner_value, ParameterKind, ParameterValue,
+                    ta_named_value, ta_inner_value, ta_logging_level, ParameterKind, ParameterValue,
                     EvidenceContent, ErrorKind, OutputMap, EvidenceList, malloc, strcpy
                 };
                 use ::std::boxed::Box;
                 use ::std::ptr;
                 use ::std::ffi::{CStr, CString, c_char};
                 use ::std::mem::size_of;
+                use ta_logging_level::{
+                    TA_LOG_TRACE,
+                    TA_LOG_DEBUG,
+                    TA_LOG_INFO,
+                    TA_LOG_WARN,
+                    TA_LOG_ERROR,
+                };
+
+                fn log(level: ta_logging_level, message: &'_ str) {
+                    if let Some(logger) = LOGGING_FN_CELL.get() {
+                        let msg = ::std::ffi::CString::new(message)
+                            .expect("Nul bytes in the log message");
+                        logger(level, msg.as_ptr());
+                    }
+                }
 
                 let instruction_id = {
                     let cstr = CStr::from_ptr(sz_instruction_id);
@@ -369,8 +391,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                     if let Err((kind, reason)) = instruction.validate(&iwp)
                     {
                         let reason = CString::new(reason.as_str()).unwrap();
-                        let sz_reason = malloc(reason.count_bytes()).cast::<c_char>();
-                        strcpy(sz_reason, reason.as_ptr());
+                        let sz_reason = reason.into_raw();
                         return Box::into_raw(Box::new(ta_result {
                             code: match kind {
                                 ErrorKind::InvalidInstruction => ta_result_code::TESTANGEL_ERROR_INVALID_INSTRUCTION,
@@ -386,8 +407,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                     let instruction_result = #engine_ref.lock().unwrap().run_instruction(iwp);
                     if let Err(e) = instruction_result {
                         let reason = CString::new(e.as_str()).unwrap();
-                        let sz_reason = malloc(reason.count_bytes()).cast::<c_char>();
-                        strcpy(sz_reason, reason.as_ptr());
+                        let sz_reason = reason.into_raw();
                         return Box::into_raw(Box::new(ta_result {
                             code: ta_result_code::TESTANGEL_ERROR_ENGINE_PROCESSING,
                             szReason: sz_reason,
@@ -404,8 +424,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                         let named_val: *mut ta_named_value = malloc(size_of::<ta_named_value>()).cast();
 
                         let name = CString::new(id.as_str()).unwrap();
-                        (*named_val).szName = malloc(name.count_bytes()).cast::<c_char>();
-                        strcpy((*named_val).szName.cast_mut(), name.as_ptr());
+                        (*named_val).szName = name.into_raw();
 
                         (*named_val).value.kind = match value.kind() {
                             ParameterKind::String => ta_parameter_kind::TA_PARAMETER_STRING,
@@ -433,8 +452,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                             ParameterKind::String => {
                                 let val = value.value_string();
                                 let val = CString::new(val.as_str()).unwrap();
-                                let p_val = malloc(val.count_bytes()).cast::<c_char>();
-                                strcpy(p_val, val.as_ptr());
+                                let p_val = val.into_raw();
                                 ta_inner_value { szValue: p_val }
                             }
                         };
@@ -452,8 +470,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                         let evidence: *mut ta_evidence = malloc(size_of::<ta_evidence>()).cast();
 
                         let name = CString::new(ev.label.as_str()).unwrap();
-                        (*evidence).szLabel = malloc(name.count_bytes()).cast::<c_char>();
-                        strcpy((*evidence).szLabel.cast_mut(), name.as_ptr());
+                        (*evidence).szLabel = name.into_raw();
 
                         (*evidence).kind = match &ev.content {
                             EvidenceContent::Textual(_) => ta_evidence_kind::TA_EVIDENCE_TEXTUAL,
@@ -463,8 +480,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                         match &ev.content {
                             EvidenceContent::Textual(txt) | EvidenceContent::ImageAsPngBase64(txt) => {
                                 let data = CString::new(txt.as_str()).unwrap();
-                                (*evidence).value = malloc(data.count_bytes()).cast::<c_char>();
-                                strcpy((*evidence).value.cast_mut(), data.as_ptr());
+                                (*evidence).value = data.into_raw();
                             },
                         }
 
@@ -477,8 +493,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                     }));
                 } else {
                     let reason = CString::new("This engine does not know about the requested instruction.").unwrap();
-                    let sz_reason = malloc(reason.count_bytes()).cast::<c_char>();
-                    strcpy(sz_reason, reason.as_ptr());
+                    let sz_reason = reason.into_raw();
                     return Box::into_raw(Box::new(ta_result {
                         code: ta_result_code::TESTANGEL_ERROR_INVALID_INSTRUCTION,
                         szReason: sz_reason,
@@ -501,28 +516,29 @@ pub fn engine(stream: TokenStream) -> TokenStream {
 
             unsafe fn ta_free_result(p_target: *const ::testangel_engine::ta_result) {
                 use ::std::boxed::Box;
+                use ::std::ffi::CString;
 
                 if !p_target.is_null() {
                     let res = Box::from_raw(p_target.cast_mut());
                     if !res.szReason.is_null() {
-                        let _ = Box::from_raw(res.szReason.cast_mut());
+                        let _ = CString::from_raw(res.szReason.cast_mut());
                     }
                 }
             }
 
             unsafe fn ta_free_engine_metadata(p_target: *const ::testangel_engine::ta_engine_metadata) {
                 use ::testangel_engine::free;
-                use ::std::ffi::c_void;
+                use ::std::ffi::CString;
 
-                free((*p_target).szFriendlyName.cast::<c_void>().cast_mut());
-                free((*p_target).szVersion.cast::<c_void>().cast_mut());
-                free((*p_target).szLuaName.cast::<c_void>().cast_mut());
-                free((*p_target).szDescription.cast::<c_void>().cast_mut());
+                let _ = CString::from_raw((*p_target).szFriendlyName.cast_mut());
+                let _ = CString::from_raw((*p_target).szVersion.cast_mut());
+                let _ = CString::from_raw((*p_target).szLuaName.cast_mut());
+                let _ = CString::from_raw((*p_target).szDescription.cast_mut());
             }
 
             unsafe fn ta_free_instruction_metadata_array(arp_target: *const *const ::testangel_engine::ta_instruction_metadata) {
                 use ::testangel_engine::free;
-                use ::std::ffi::c_void;
+                use ::std::ffi::{CString, c_void};
 
                 let mut i = 0;
                 loop {
@@ -530,6 +546,10 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                     if meta_raw.is_null() {
                         break;
                     }
+                    let _ = CString::from_raw((*meta_raw).szId.cast_mut());
+                    let _ = CString::from_raw((*meta_raw).szFriendlyName.cast_mut());
+                    let _ = CString::from_raw((*meta_raw).szLuaName.cast_mut());
+                    let _ = CString::from_raw((*meta_raw).szDescription.cast_mut());
 
                     let mut j = 0;
                     loop {
@@ -537,6 +557,8 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                         if param.is_null() {
                             break;
                         }
+                        let _ = CString::from_raw((*param).szId.cast_mut());
+                        let _ = CString::from_raw((*param).szName.cast_mut());
 
                         free(param.cast::<c_void>());
                         j += 1;
@@ -548,6 +570,8 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                         if output.is_null() {
                             break;
                         }
+                        let _ = CString::from_raw((*output).szId.cast_mut());
+                        let _ = CString::from_raw((*output).szName.cast_mut());
 
                         free(output.cast::<c_void>());
                         j += 1;
@@ -561,8 +585,9 @@ pub fn engine(stream: TokenStream) -> TokenStream {
             }
 
             unsafe fn ta_free_named_value_array(arp_target: *const *const ::testangel_engine::ta_named_value) {
-                use ::testangel_engine::free;
-                use ::std::ffi::c_void;
+                use ::testangel_engine::{ta_parameter_kind, free};
+                use ::std::boxed::Box;
+                use ::std::ffi::{CString, c_void};
 
                 let mut i = 0;
                 loop {
@@ -571,8 +596,14 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                         break;
                     }
 
-                    free((*named_value_raw).szName.cast::<c_void>().cast_mut());
-                    free((*named_value_raw).value.value.iValue.cast::<c_void>().cast_mut());
+                    let _ = CString::from_raw((*named_value_raw).szName.cast_mut());
+                    // Free differently depending on type.
+                    match (*named_value_raw).value.kind {
+                        ta_parameter_kind::TA_PARAMETER_STRING => ::std::mem::drop(CString::from_raw((*named_value_raw).value.value.szValue.cast_mut())),
+                        ta_parameter_kind::TA_PARAMETER_INTEGER => ::std::mem::drop(Box::from_raw((*named_value_raw).value.value.iValue.cast_mut())),
+                        ta_parameter_kind::TA_PARAMETER_DECIMAL => ::std::mem::drop(Box::from_raw((*named_value_raw).value.value.fValue.cast_mut())),
+                        ta_parameter_kind::TA_PARAMETER_BOOLEAN => ::std::mem::drop(Box::from_raw((*named_value_raw).value.value.bValue.cast_mut())),
+                    }
                     free(named_value_raw.cast::<c_void>().cast_mut());
                     i += 1;
                 }
@@ -581,7 +612,7 @@ pub fn engine(stream: TokenStream) -> TokenStream {
 
             unsafe fn ta_free_evidence_array(arp_target: *const *const ::testangel_engine::ta_evidence) {
                 use ::testangel_engine::free;
-                use ::std::ffi::c_void;
+                use ::std::ffi::{CString, c_void};
 
                 let mut i = 0;
                 loop {
@@ -590,8 +621,8 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                         break;
                     }
 
-                    free((*evidence_raw).szLabel.cast::<c_void>().cast_mut());
-                    free((*evidence_raw).value.cast::<c_void>().cast_mut());
+                    let _ = CString::from_raw((*evidence_raw).szLabel.cast_mut());
+                    let _ = CString::from_raw((*evidence_raw).value.cast_mut());
                     free(evidence_raw.cast::<c_void>().cast_mut());
                     i += 1;
                 }

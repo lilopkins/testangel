@@ -405,16 +405,18 @@ impl ActionConfiguration {
                         }
 
                         // Trigger instruction behaviour
-                        let response = ipc::ipc_call(
-                            &engine,
-                            &Request::RunInstruction {
-                                instruction: InstructionWithParameters {
-                                    instruction: instruction.id().clone(),
-                                    dry_run: false,
-                                    parameters: param_map,
+                        let response = unsafe {
+                            ipc::ipc_call(
+                                &engine,
+                                &Request::RunInstruction {
+                                    instruction: InstructionWithParameters {
+                                        instruction: instruction.id().clone(),
+                                        dry_run: false,
+                                        parameters: param_map,
+                                    },
                                 },
-                            },
-                        )
+                            )
+                        }
                         .map_err(|e| mlua::Error::external(FlowError::IPCFailure(e)))?;
 
                         match response {

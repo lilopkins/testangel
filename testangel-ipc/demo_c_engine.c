@@ -149,12 +149,12 @@ ta_result * ta_execute(
     }
 
     char *logLineA = (char *)malloc(255 * sizeof(char));
-    sprintf(logLineA, "paramA = %d", paramA);
+    snprintf(logLineA, 255, "paramA = %d", paramA);
     log(TA_LOG_DEBUG, logLineA);
     free(logLineA);
 
     char *logLineB = (char *)malloc(255 * sizeof(char));
-    sprintf(logLineB, "paramB = %d", paramB);
+    snprintf(logLineB, 255, "paramB = %d", paramB);
     log(TA_LOG_DEBUG, logLineB);
     free(logLineB);
 
@@ -166,7 +166,7 @@ ta_result * ta_execute(
     pEvidence->szLabel = "Sum";
     pEvidence->kind = TA_EVIDENCE_TEXTUAL;
     char *buf = (char *)malloc(255 * sizeof(char));
-    sprintf(buf, "%d + %d = %d", paramA, paramB, *pOutputResult);
+    snprintf(buf, 255, "%d + %d = %d", paramA, paramB, *pOutputResult);
     buf = realloc(buf, (strlen(buf) + 1) * sizeof(char));
     pEvidence->value = buf;
 
@@ -235,14 +235,14 @@ void ta_free_instruction_metadata_array(const ta_instruction_metadata *const *ar
     // Loop through array and free each instruction
     for (uint32_t i = 0; arpTarget[i] != NULL; i++) {
         char *logMsg = (char *)malloc(255 * sizeof(char));
-        sprintf(logMsg, "ta_free_instruction_metadata_array -> arpTarget[%d]", i);
+        snprintf(logMsg, 255, "ta_free_instruction_metadata_array -> arpTarget[%d]", i);
         log(TA_LOG_TRACE, logMsg);
         free(logMsg);
 
         const ta_instruction_metadata *const pMeta = arpTarget[i];
         for (uint32_t j = 0; pMeta->arpParameterList[j] != NULL; j++) {
             char *logMsg = (char *)malloc(255 * sizeof(char));
-            sprintf(logMsg, "ta_free_instruction_metadata_array -> arpTarget[%d] -> arpParameterList[%d]", i, j);
+            snprintf(logMsg, 255, "ta_free_instruction_metadata_array -> arpTarget[%d] -> arpParameterList[%d]", i, j);
             log(TA_LOG_TRACE, logMsg);
             free(logMsg);
             ta_instruction_named_kind *pInk = pMeta->arpParameterList[j];
@@ -250,7 +250,7 @@ void ta_free_instruction_metadata_array(const ta_instruction_metadata *const *ar
         }
         for (uint32_t j = 0; pMeta->arpOutputList[j] != NULL; j++) {
             char *logMsg = (char *)malloc(255 * sizeof(char));
-            sprintf(logMsg, "ta_free_instruction_metadata_array -> arpTarget[%d] -> arpOutputList[%d]", i, j);
+            snprintf(logMsg, 255, "ta_free_instruction_metadata_array -> arpTarget[%d] -> arpOutputList[%d]", i, j);
             log(TA_LOG_TRACE, logMsg);
             free(logMsg);
             ta_instruction_named_kind *pInk = pMeta->arpOutputList[j];
@@ -269,7 +269,7 @@ void ta_free_named_value_array(const ta_named_value *const *arpTarget) {
 
     for (uint32_t i = 0; arpTarget[i] != NULL; i++) {
         char *logMsg = (char *)malloc(255 * sizeof(char));
-        sprintf(logMsg, "ta_free_named_value_array -> arpTarget[%d]", i);
+        snprintf(logMsg, 255, "ta_free_named_value_array -> arpTarget[%d]", i);
         log(TA_LOG_TRACE, logMsg);
         free(logMsg);
 
@@ -291,7 +291,7 @@ void ta_free_evidence_array(const ta_evidence *const *arpTarget) {
 
     for (uint32_t i = 0; arpTarget[i] != NULL; i++) {
         char *logMsg = (char *)malloc(255 * sizeof(char));
-        sprintf(logMsg, "ta_free_evidence_array -> arpTarget[%d]", i);
+        snprintf(logMsg, 255, "ta_free_evidence_array -> arpTarget[%d]", i);
         log(TA_LOG_TRACE, logMsg);
         free(logMsg);
 

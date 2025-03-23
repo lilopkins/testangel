@@ -6,9 +6,10 @@ use std::{
     sync::Arc,
 };
 
-use libc::{malloc, strcpy};
+use libc::malloc;
 use testangel_engine::{
-    ta_engine_metadata, ta_instruction_metadata, ta_logging_level, ta_named_value, ta_result_code, EngineInterface, EvidenceList, OutputMap
+    ta_engine_metadata, ta_instruction_metadata, ta_logging_level, ta_named_value, ta_result_code,
+    EngineInterface, EvidenceList, OutputMap,
 };
 use testangel_ipc::{
     ffi::{
@@ -42,7 +43,7 @@ pub enum IpcError {
     CantLockEngineIo,
 }
 
-pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError> {
+pub unsafe fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError> {
     tracing::debug!(
         "Sending request {:?} to engine {} at {:?}.",
         request,
@@ -76,17 +77,17 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                 Err(IpcError::EngineNotCompliant)?;
             }
             let friendly_name = {
-                let cstr = unsafe { CStr::from_ptr(engine_meta.szFriendlyName) };
+                let cstr = CStr::from_ptr(engine_meta.szFriendlyName);
                 let str_slice = cstr.to_str().map_err(|_| IpcError::EngineNotCompliant)?;
                 str_slice.to_owned()
             };
             let engine_version = {
-                let cstr = unsafe { CStr::from_ptr(engine_meta.szVersion) };
+                let cstr = CStr::from_ptr(engine_meta.szVersion);
                 let str_slice = cstr.to_str().map_err(|_| IpcError::EngineNotCompliant)?;
                 str_slice.to_owned()
             };
             let engine_lua_name = {
-                let cstr = unsafe { CStr::from_ptr(engine_meta.szLuaName) };
+                let cstr = CStr::from_ptr(engine_meta.szLuaName);
                 let str_slice = cstr.to_str().map_err(|_| IpcError::EngineNotCompliant)?;
                 str_slice.to_owned()
             };
@@ -94,7 +95,7 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                 if engine_meta.szDescription.is_null() {
                     String::new()
                 } else {
-                    let cstr = unsafe { CStr::from_ptr(engine_meta.szDescription) };
+                    let cstr = CStr::from_ptr(engine_meta.szDescription);
                     let str_slice = cstr.to_str().map_err(|_| IpcError::EngineNotCompliant)?;
                     str_slice.to_owned()
                 }
@@ -105,12 +106,12 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
             let mut i = 0;
             let mut instructions = vec![];
             loop {
-                let instruction_raw = unsafe { *raw_instructions.add(i) };
+                let instruction_raw = *raw_instructions.add(i);
                 if instruction_raw.is_null() {
                     break;
                 }
                 instructions.push(
-                    unsafe { Instruction::from_ffi(instruction_raw) }
+                    Instruction::from_ffi(instruction_raw)
                         .map_err(|()| IpcError::EngineNotCompliant)?,
                 );
                 i += 1;
@@ -149,19 +150,13 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                     }
 
                     tracing::trace!("Converting parameters to C ABI");
-                    let sz_instruction_id =
-                        CString::new(inst_with_params.instruction.clone()).unwrap();
-
-                    let arp_parameter_list = unsafe {
-                        malloc(
-                            (inst_with_params.parameters.len() + 1)
-                                * size_of::<*mut ta_named_value>(),
-                        )
-                    }
+                    let arp_parameter_list = malloc(
+                        (inst_with_params.parameters.len() + 1) * size_of::<*mut ta_named_value>(),
+                    )
                     .cast::<*const ta_named_value>();
+                    *arp_parameter_list.add(inst_with_params.parameters.len()) = std::ptr::null();
 
                     for (idx, (id, param)) in inst_with_params.parameters.iter().enumerate() {
-                        let sz_name = Box::new(CString::new(id.clone()).unwrap());
                         let p_value: ta_inner_value = match param.kind() {
                             ParameterKind::Boolean => {
                                 let val = Box::new(param.value_bool());
@@ -181,15 +176,14 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                             ParameterKind::String => {
                                 let val = param.value_string();
                                 let val = CString::new(val.as_str()).unwrap();
-                                let p_val = unsafe { malloc(val.count_bytes()) }.cast::<c_char>();
-                                unsafe {
-                                    strcpy(p_val, val.as_ptr());
-                                }
+                                let p_val = val.into_raw();
                                 ta_inner_value { szValue: p_val }
                             }
                         };
+
+                        let sz_name = CString::new(id.clone()).unwrap();
                         let named_val = Box::new(ta_named_value {
-                            szName: sz_name.as_ptr(),
+                            szName: sz_name.into_raw(),
                             value: ta_value {
                                 kind: match param.kind() {
                                     ParameterKind::Boolean => {
@@ -206,14 +200,8 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                                 value: p_value,
                             },
                         });
-                        unsafe {
-                            *arp_parameter_list.add(idx) = Box::into_raw(named_val);
-                        }
-                        std::mem::forget(sz_name);
-                    }
-                    unsafe {
-                        *arp_parameter_list.add(inst_with_params.parameters.len()) =
-                            std::ptr::null();
+
+                        *arp_parameter_list.add(idx) = Box::into_raw(named_val);
                     }
 
                     let mut parp_output_list = std::ptr::null_mut();
@@ -221,6 +209,8 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
 
                     // Execute instruction
                     tracing::trace!("Executing instruction");
+                    let sz_instruction_id =
+                        CString::new(inst_with_params.instruction.clone()).unwrap();
                     let result = lib
                         .ta_execute(
                             sz_instruction_id.as_ptr(),
@@ -236,29 +226,25 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                     tracing::trace!("Freeing parameters");
                     let mut i = 0;
                     loop {
-                        let parameter_raw = unsafe { *arp_parameter_list.add(i) };
+                        let parameter_raw = *arp_parameter_list.add(i);
                         if parameter_raw.is_null() {
                             break;
                         }
 
-                        let param = unsafe { Box::from_raw(parameter_raw.cast_mut()) };
-                        let _ = unsafe { Box::from_raw(param.szName.cast_mut()) };
+                        let param = Box::from_raw(parameter_raw.cast_mut());
+                        let _ = CString::from_raw(param.szName.cast_mut());
                         match param.value.kind {
                             ta_parameter_kind::TA_PARAMETER_STRING => {
-                                let _ =
-                                    unsafe { Box::from_raw(param.value.value.szValue.cast_mut()) };
+                                let _ = CString::from_raw(param.value.value.szValue.cast_mut());
                             }
                             ta_parameter_kind::TA_PARAMETER_BOOLEAN => {
-                                let _ =
-                                    unsafe { Box::from_raw(param.value.value.bValue.cast_mut()) };
+                                let _ = Box::from_raw(param.value.value.bValue.cast_mut());
                             }
                             ta_parameter_kind::TA_PARAMETER_DECIMAL => {
-                                let _ =
-                                    unsafe { Box::from_raw(param.value.value.fValue.cast_mut()) };
+                                let _ = Box::from_raw(param.value.value.fValue.cast_mut());
                             }
                             ta_parameter_kind::TA_PARAMETER_INTEGER => {
-                                let _ =
-                                    unsafe { Box::from_raw(param.value.value.iValue.cast_mut()) };
+                                let _ = Box::from_raw(param.value.value.iValue.cast_mut());
                             }
                         }
 
@@ -267,12 +253,12 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
 
                     // Validate response
                     tracing::trace!("Validating response");
-                    if unsafe { (*result).code } != ta_result_code::TESTANGEL_OK {
+                    if (*result).code != ta_result_code::TESTANGEL_OK {
                         let reason = {
-                            if unsafe { (*result).szReason }.is_null() {
+                            if (*result).szReason.is_null() {
                                 String::new()
                             } else {
-                                let cstr = unsafe { CStr::from_ptr((*result).szReason) };
+                                let cstr = CStr::from_ptr((*result).szReason);
                                 let str_slice =
                                     cstr.to_str().map_err(|_| IpcError::EngineNotCompliant)?;
                                 str_slice.to_owned()
@@ -289,36 +275,36 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                     tracing::trace!("Converting output and evidence");
                     let mut i = 0;
                     loop {
-                        let output_raw = unsafe { *parp_output_list.add(i) };
+                        let output_raw = *parp_output_list.add(i);
                         if output_raw.is_null() {
                             break;
                         }
 
                         let k = {
-                            let cstr = unsafe { CStr::from_ptr((*output_raw).szName) };
+                            let cstr = CStr::from_ptr((*output_raw).szName);
                             let str_slice =
                                 cstr.to_str().map_err(|_| IpcError::EngineNotCompliant)?;
                             str_slice.to_owned()
                         };
                         output.insert(
                             k,
-                            match unsafe { (*output_raw).value.kind } {
+                            match (*output_raw).value.kind {
                                 ta_parameter_kind::TA_PARAMETER_BOOLEAN => {
-                                    let p_val = unsafe { (*output_raw).value.value.bValue };
-                                    ParameterValue::Boolean(unsafe { *p_val })
+                                    let p_val = (*output_raw).value.value.bValue;
+                                    ParameterValue::Boolean(*p_val)
                                 }
                                 ta_parameter_kind::TA_PARAMETER_INTEGER => {
-                                    let p_val = unsafe { (*output_raw).value.value.iValue };
-                                    ParameterValue::Integer(unsafe { *p_val })
+                                    let p_val = (*output_raw).value.value.iValue;
+                                    ParameterValue::Integer(*p_val)
                                 }
                                 ta_parameter_kind::TA_PARAMETER_DECIMAL => {
-                                    let p_val = unsafe { (*output_raw).value.value.fValue };
-                                    ParameterValue::Decimal(unsafe { *p_val })
+                                    let p_val = (*output_raw).value.value.fValue;
+                                    ParameterValue::Decimal(*p_val)
                                 }
                                 ta_parameter_kind::TA_PARAMETER_STRING => {
-                                    let p_val = unsafe { (*output_raw).value.value.szValue };
+                                    let p_val = (*output_raw).value.value.szValue;
                                     let val = {
-                                        let cstr = unsafe { CStr::from_ptr(p_val) };
+                                        let cstr = CStr::from_ptr(p_val);
                                         let str_slice = cstr
                                             .to_str()
                                             .map_err(|_| IpcError::EngineNotCompliant)?;
@@ -334,24 +320,23 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
 
                     let mut i = 0;
                     loop {
-                        let output_evidence = unsafe { *parp_output_evidence_list.add(i) };
+                        let output_evidence = *parp_output_evidence_list.add(i);
                         if output_evidence.is_null() {
                             break;
                         }
 
                         let label = {
-                            let cstr = unsafe { CStr::from_ptr((*output_evidence).szLabel) };
+                            let cstr = CStr::from_ptr((*output_evidence).szLabel);
                             let str_slice =
                                 cstr.to_str().map_err(|_| IpcError::EngineNotCompliant)?;
                             str_slice.to_owned()
                         };
                         evidence.push(Evidence {
                             label,
-                            content: match unsafe { (*output_evidence).kind } {
+                            content: match (*output_evidence).kind {
                                 ta_evidence_kind::TA_EVIDENCE_TEXTUAL => {
                                     let text = {
-                                        let cstr =
-                                            unsafe { CStr::from_ptr((*output_evidence).value) };
+                                        let cstr = CStr::from_ptr((*output_evidence).value);
                                         let str_slice = cstr
                                             .to_str()
                                             .map_err(|_| IpcError::EngineNotCompliant)?;
@@ -361,8 +346,7 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                                 }
                                 ta_evidence_kind::TA_EVIDENCE_PNGBASE64 => {
                                     let text = {
-                                        let cstr =
-                                            unsafe { CStr::from_ptr((*output_evidence).value) };
+                                        let cstr = CStr::from_ptr((*output_evidence).value);
                                         let str_slice = cstr
                                             .to_str()
                                             .map_err(|_| IpcError::EngineNotCompliant)?;
@@ -420,7 +404,7 @@ pub struct Engine {
 impl Engine {
     /// Ask the engine to reset it's state for test repeatability.
     pub fn reset_state(&self) -> Result<(), IpcError> {
-        ipc_call(self, &Request::ResetState).map(|_| ())
+        unsafe { ipc_call(self, &Request::ResetState) }.map(|_| ())
     }
 }
 
@@ -526,7 +510,6 @@ fn search_engine_dir<P: AsRef<Path>>(
         }
 
         if let Ok(str) = basename.into_string() {
-            tracing::debug!("Found {:?}", path.path());
             if Path::new(&str).extension().is_some_and(|ext| {
                 ext.eq_ignore_ascii_case("so")
                     || ext.eq_ignore_ascii_case("dll")
@@ -548,7 +531,7 @@ fn search_engine_dir<P: AsRef<Path>>(
                             }
                         }
 
-                        match ipc_call(&engine, &Request::Instructions) {
+                        match unsafe { ipc_call(&engine, &Request::Instructions) } {
                             Ok(res) => {
                                 if let Response::Instructions {
                                     friendly_name,
