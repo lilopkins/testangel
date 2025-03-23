@@ -110,7 +110,12 @@ impl InstructionFn {
     pub fn to_tokens(&self, engine_name: &String) -> TokenStream2 {
         let ident = &self.sig.ident;
 
-        let mut id = parse_str(&format!(r#""{}-{}""#, engine_name.to_kebab_case(), ident.to_string().to_kebab_case())).unwrap();
+        let mut id = parse_str(&format!(
+            r#""{}-{}""#,
+            engine_name.to_kebab_case(),
+            ident.to_string().to_kebab_case()
+        ))
+        .unwrap();
         let mut lua_name =
             parse_str(&format!(r#""{}""#, ident.to_string().to_upper_camel_case())).unwrap();
         let mut friendly_name =
