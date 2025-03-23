@@ -67,6 +67,8 @@ impl fmt::Display for SaveOrOpenFlowError {
 pub enum FlowInputs {
     /// Do nothing
     NoOp,
+    /// Request that TestAngel is closed
+    RequestProgramExit,
     /// The map of actions has changed and should be updated
     ActionsMapChanged(Arc<ActionMap>),
     /// Create a new flow
@@ -88,9 +90,9 @@ pub enum FlowInputs {
     /// Actually write the flow to disk, then emit then input
     __SaveFlowThen(PathBuf, Box<FlowInputs>),
     /// Close the flow, prompting if needing to save first
-    CloseFlow,
+    CloseFlowThen(Box<FlowInputs>),
     /// Actually close the flow
-    _CloseFlow,
+    _CloseFlowThen(Box<FlowInputs>),
     /// Add the step with the ID provided
     AddStep(String),
     /// Update the UI steps from the open flow. This will clear first and overwrite any changes!
@@ -114,7 +116,12 @@ pub enum FlowInputs {
 }
 
 #[derive(Debug)]
-pub enum FlowOutputs {}
+pub enum FlowOutputs {
+    /// Updates if the flow needs saving or not
+    SetNeedsSaving(bool),
+    /// Request that TestAngel is closed
+    RequestProgramExit,
+}
 
 #[derive(Debug)]
 pub struct FlowsModel {
@@ -136,15 +143,30 @@ impl FlowsModel {
         self.header.clone()
     }
 
+    /// Set whether the open flow needs saving
+    pub fn set_needs_saving(
+        &mut self,
+        needs_saving: bool,
+        sender: &relm4::ComponentSender<FlowsModel>,
+    ) {
+        self.needs_saving = needs_saving;
+        sender
+            .output(FlowOutputs::SetNeedsSaving(needs_saving))
+            .unwrap();
+    }
+
     /// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
-    fn create_message_dialog_skeleton<S>(&self, title: S, message: S) -> adw::MessageDialog
+    fn create_message_dialog_skeleton<S>(
+        &self,
+        title: S,
+        message: S,
+        transient_for: &impl IsA<gtk::Window>,
+    ) -> adw::MessageDialog
     where
         S: AsRef<str>,
     {
         adw::MessageDialog::builder()
-            .transient_for(&self.header.widget().toplevel_window().expect(
-                "FlowsModel::create_message_dialog cannot be called until the header is attached",
-            ))
+            .transient_for(transient_for)
             .title(title.as_ref())
             .heading(title.as_ref())
             .body(message.as_ref())
@@ -153,11 +175,16 @@ impl FlowsModel {
     }
 
     /// Create a message dialog attached to the toplevel window. This includes default implementations of an 'OK' button.
-    fn create_message_dialog<S>(&self, title: S, message: S) -> adw::MessageDialog
+    fn create_message_dialog<S>(
+        &self,
+        title: S,
+        message: S,
+        transient_for: &impl IsA<gtk::Window>,
+    ) -> adw::MessageDialog
     where
         S: AsRef<str>,
     {
-        let dialog = self.create_message_dialog_skeleton(title, message);
+        let dialog = self.create_message_dialog_skeleton(title, message, transient_for);
         dialog.add_response("ok", &lang::lookup("ok"));
         dialog.set_default_response(Some("ok"));
         dialog.set_close_response("ok");
@@ -165,9 +192,9 @@ impl FlowsModel {
     }
 
     /// Just open a brand new flow
-    fn new_flow(&mut self) {
+    fn new_flow(&mut self, sender: &relm4::ComponentSender<FlowsModel>) {
         self.open_path = None;
-        self.needs_saving = true;
+        self.set_needs_saving(true, sender);
         self.open_flow = Some(AutomationFlow::default());
         self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
             self.open_flow.is_some(),
@@ -175,7 +202,11 @@ impl FlowsModel {
     }
 
     /// Open a flow. This does not ask to save first.
-    fn open_flow(&mut self, file: PathBuf) -> Result<Vec<usize>, SaveOrOpenFlowError> {
+    fn open_flow(
+        &mut self,
+        file: PathBuf,
+        sender: &relm4::ComponentSender<FlowsModel>,
+    ) -> Result<Vec<usize>, SaveOrOpenFlowError> {
         let data = &fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?;
 
         let versioned_file: VersionedFile =
@@ -211,7 +242,7 @@ impl FlowsModel {
             self.open_flow.is_some(),
         ));
         self.open_path = Some(file);
-        self.needs_saving = false;
+        self.set_needs_saving(false, sender);
         tracing::debug!("New flow open.");
         tracing::debug!("Flow: {:?}", self.open_flow);
         Ok(steps_reset)
@@ -219,11 +250,17 @@ impl FlowsModel {
 
     /// Ask the user if they want to save this file. If they response yes, this will also trigger the save function.
     /// This function will only ask the user if needed, otherwise it will emit immediately.
-    fn prompt_to_save(&self, sender: &relm4::Sender<FlowInputs>, then: FlowInputs) {
+    fn prompt_to_save(
+        &self,
+        sender: &relm4::Sender<FlowInputs>,
+        then: FlowInputs,
+        transient_for: &impl IsA<gtk::Window>,
+    ) {
         if self.needs_saving {
             let question = self.create_message_dialog_skeleton(
                 lang::lookup("flow-save-before"),
                 lang::lookup("flow-save-before-message"),
+                transient_for,
             );
             question.add_response("discard", &lang::lookup("discard"));
             question.add_response("save", &lang::lookup("save"));
@@ -288,20 +325,23 @@ impl FlowsModel {
     }
 
     /// Just save the flow to disk with the current `open_path` as the destination
-    fn save_flow(&mut self) -> Result<(), SaveOrOpenFlowError> {
+    fn save_flow(
+        &mut self,
+        sender: &relm4::ComponentSender<FlowsModel>,
+    ) -> Result<(), SaveOrOpenFlowError> {
         let save_path = self.open_path.as_ref().unwrap();
         let data = ron::to_string(self.open_flow.as_ref().unwrap())
             .map_err(SaveOrOpenFlowError::SerializingError)?;
         fs::write(save_path, data).map_err(SaveOrOpenFlowError::IoError)?;
-        self.needs_saving = false;
+        self.set_needs_saving(false, sender);
         Ok(())
     }
 
     /// Close this flow without checking first
-    fn close_flow(&mut self) {
+    fn close_flow(&mut self, sender: &relm4::ComponentSender<FlowsModel>) {
         self.open_flow = None;
         self.open_path = None;
-        self.needs_saving = false;
+        self.set_needs_saving(false, sender);
         self.live_actions_list.guard().clear();
         self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
             self.open_flow.is_some(),
@@ -359,7 +399,9 @@ impl Component for FlowsModel {
                     header::FlowsHeaderOutput::OpenFlow => FlowInputs::OpenFlow,
                     header::FlowsHeaderOutput::SaveFlow => FlowInputs::SaveFlow,
                     header::FlowsHeaderOutput::SaveAsFlow => FlowInputs::SaveAsFlow,
-                    header::FlowsHeaderOutput::CloseFlow => FlowInputs::CloseFlow,
+                    header::FlowsHeaderOutput::CloseFlow => {
+                        FlowInputs::CloseFlowThen(Box::new(FlowInputs::NoOp))
+                    }
                     header::FlowsHeaderOutput::RunFlow => FlowInputs::RunFlow,
                     header::FlowsHeaderOutput::AddStep(step) => FlowInputs::AddStep(step),
                 }),
@@ -406,6 +448,9 @@ impl Component for FlowsModel {
     ) {
         match message {
             FlowInputs::NoOp => (),
+            FlowInputs::RequestProgramExit => {
+                sender.output(FlowOutputs::RequestProgramExit).unwrap();
+            }
             FlowInputs::ActionsMapChanged(new_map) => {
                 self.action_map = new_map.clone();
                 self.header
@@ -480,24 +525,32 @@ impl Component for FlowsModel {
                     widgets.toast_target.add_toast(toast);
                 }
                 if close_flow {
-                    self.close_flow();
+                    self.close_flow(&sender);
                 }
             }
             FlowInputs::ConfigUpdate(step, new_config) => {
                 // unwrap rationale: config updates can't happen if nothing is open
                 let flow = self.open_flow.as_mut().unwrap();
                 flow.actions[step.current_index()] = new_config;
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
             }
             FlowInputs::NewFlow => {
-                self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    FlowInputs::_NewFlow,
+                    root.toplevel_window().as_ref().unwrap(),
+                );
             }
             FlowInputs::_NewFlow => {
-                self.new_flow();
+                self.new_flow(&sender);
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
             FlowInputs::OpenFlow => {
-                self.prompt_to_save(sender.input_sender(), FlowInputs::_OpenFlow);
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    FlowInputs::_OpenFlow,
+                    root.toplevel_window().as_ref().unwrap(),
+                );
             }
             FlowInputs::_OpenFlow => {
                 let dialog = gtk::FileDialog::builder()
@@ -525,7 +578,7 @@ impl Component for FlowsModel {
                 );
             }
             FlowInputs::__OpenFlow(path) => {
-                match self.open_flow(path) {
+                match self.open_flow(path, &sender) {
                     Ok(changes) => {
                         // Reload UI
                         sender.input(FlowInputs::UpdateStepsFromModel);
@@ -542,6 +595,7 @@ impl Component for FlowsModel {
                                     "flow-action-changed-message",
                                     lang_args!("stepCount", changes.len(), "steps", changed_steps),
                                 ),
+                                root.toplevel_window().as_ref().unwrap(),
                             )
                             .set_visible(true);
                         }
@@ -551,6 +605,7 @@ impl Component for FlowsModel {
                         self.create_message_dialog(
                             lang::lookup("flow-error-opening"),
                             e.to_string(),
+                            root.toplevel_window().as_ref().unwrap(),
                         )
                         .set_visible(true);
                     }
@@ -589,9 +644,13 @@ impl Component for FlowsModel {
             }
             FlowInputs::__SaveFlowThen(path, then) => {
                 self.open_path = Some(path);
-                if let Err(e) = self.save_flow() {
-                    self.create_message_dialog(lang::lookup("flow-error-saving"), e.to_string())
-                        .set_visible(true);
+                if let Err(e) = self.save_flow(&sender) {
+                    self.create_message_dialog(
+                        lang::lookup("flow-error-saving"),
+                        e.to_string(),
+                        root.toplevel_window().as_ref().unwrap(),
+                    )
+                    .set_visible(true);
                 } else {
                     widgets
                         .toast_target
@@ -599,11 +658,16 @@ impl Component for FlowsModel {
                     sender.input_sender().emit(*then);
                 }
             }
-            FlowInputs::CloseFlow => {
-                self.prompt_to_save(sender.input_sender(), FlowInputs::_CloseFlow);
+            FlowInputs::CloseFlowThen(then) => {
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    FlowInputs::_CloseFlowThen(then),
+                    root.toplevel_window().as_ref().unwrap(),
+                );
             }
-            FlowInputs::_CloseFlow => {
-                self.close_flow();
+            FlowInputs::_CloseFlowThen(then) => {
+                self.close_flow(&sender);
+                sender.input(*then);
             }
 
             FlowInputs::RunFlow => {
@@ -624,7 +688,7 @@ impl Component for FlowsModel {
 
             FlowInputs::AddStep(step_id) => {
                 if self.open_flow.is_none() {
-                    self.new_flow();
+                    self.new_flow(&sender);
                 }
 
                 // unwrap rationale: we've just guaranteed a flow is open
@@ -633,7 +697,7 @@ impl Component for FlowsModel {
                 flow.actions.push(ActionConfiguration::from(
                     self.action_map.get_action_by_id(&step_id).unwrap(),
                 ));
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
@@ -702,7 +766,7 @@ impl Component for FlowsModel {
                     }
                 }
 
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
 
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
@@ -736,7 +800,7 @@ impl Component for FlowsModel {
 
                 tracing::debug!("After cut, flow is: {flow:?}");
 
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
             }
             FlowInputs::PasteStep(idx, mut config) => {
                 let flow = self.open_flow.as_mut().unwrap();
@@ -774,7 +838,7 @@ impl Component for FlowsModel {
 
                 tracing::debug!("After paste, flow is: {flow:?}");
 
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
 
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
