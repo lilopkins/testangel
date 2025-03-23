@@ -69,6 +69,8 @@ impl fmt::Display for SaveOrOpenActionError {
 pub enum ActionInputs {
     /// Do nothing
     NoOp,
+    /// Request that TestAngel is closed
+    RequestProgramExit,
     /// Prompt to save before adding this action to the open flow
     AddOpenActionToFlow,
     /// Add this action to the open flow
@@ -94,9 +96,9 @@ pub enum ActionInputs {
     /// Actually write the action to disk, then emit then input. First bool is whether a new ID should be used.
     __SaveActionThen(bool, PathBuf, Box<ActionInputs>),
     /// Close the action, prompting if needing to save first
-    CloseAction,
+    CloseActionThen(Box<ActionInputs>),
     /// Actually close the action
-    _CloseAction,
+    _CloseActionThen(Box<ActionInputs>),
     /// Add the step with the ID provided
     AddStep(String),
     /// The contents of the text buffer have changed
@@ -104,6 +106,8 @@ pub enum ActionInputs {
 }
 #[derive(Clone, Debug)]
 pub enum ActionOutputs {
+    /// Request that TestAngel is closed.
+    RequestProgramExit,
     /// Inform other parts that actions may have changed, reload them!
     ReloadActions,
     /// Add the open action to the open flow
@@ -145,14 +149,17 @@ impl ActionsModel {
     }
 
     /// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
-    fn create_message_dialog_skeleton<S>(&self, title: S, message: S) -> adw::MessageDialog
+    fn create_message_dialog_skeleton<S>(
+        &self,
+        title: S,
+        message: S,
+        transient_for: &impl IsA<gtk::Window>,
+    ) -> adw::MessageDialog
     where
         S: AsRef<str>,
     {
         adw::MessageDialog::builder()
-            .transient_for(&self.header.widget().toplevel_window().expect(
-                "ActionsModel::create_message_dialog cannot be called until the header is attached",
-            ))
+            .transient_for(transient_for)
             .title(title.as_ref())
             .heading(title.as_ref())
             .body(message.as_ref())
@@ -161,11 +168,16 @@ impl ActionsModel {
     }
 
     /// Create a message dialog attached to the toplevel window. This includes default implementations of an 'OK' button.
-    fn create_message_dialog<S>(&self, title: S, message: S) -> adw::MessageDialog
+    fn create_message_dialog<S>(
+        &self,
+        title: S,
+        message: S,
+        transient_for: &impl IsA<gtk::Window>,
+    ) -> adw::MessageDialog
     where
         S: AsRef<str>,
     {
-        let dialog = self.create_message_dialog_skeleton(title, message);
+        let dialog = self.create_message_dialog_skeleton(title, message, transient_for);
         dialog.add_response("ok", &lang::lookup("ok"));
         dialog.set_default_response(Some("ok"));
         dialog.set_close_response("ok");
@@ -243,11 +255,17 @@ impl ActionsModel {
 
     /// Ask the user if they want to save this file. If they response yes, this will also trigger the save function.
     /// This function will only ask the user if needed, otherwise it will emit immediately.
-    fn prompt_to_save(&self, sender: &relm4::Sender<ActionInputs>, then: ActionInputs) {
+    fn prompt_to_save(
+        &self,
+        sender: &relm4::Sender<ActionInputs>,
+        then: ActionInputs,
+        transient_for: &impl IsA<gtk::Window>,
+    ) {
         if self.needs_saving {
             let question = self.create_message_dialog_skeleton(
                 lang::lookup("action-save-before"),
                 lang::lookup("action-save-before-message"),
+                transient_for,
             );
             question.add_response("discard", &lang::lookup("discard"));
             question.add_response("save", &lang::lookup("save"));
@@ -409,7 +427,9 @@ impl Component for ActionsModel {
                     header::ActionsHeaderOutput::OpenAction => ActionInputs::OpenAction,
                     header::ActionsHeaderOutput::SaveAction => ActionInputs::SaveAction,
                     header::ActionsHeaderOutput::SaveAsAction => ActionInputs::SaveAsAction,
-                    header::ActionsHeaderOutput::CloseAction => ActionInputs::CloseAction,
+                    header::ActionsHeaderOutput::CloseAction => {
+                        ActionInputs::CloseActionThen(Box::new(ActionInputs::NoOp))
+                    }
                     header::ActionsHeaderOutput::AddOpenActionToFlow => {
                         ActionInputs::AddOpenActionToFlow
                     }
@@ -480,8 +500,16 @@ impl Component for ActionsModel {
         match message {
             ActionInputs::NoOp => (),
 
+            ActionInputs::RequestProgramExit => {
+                sender.output(ActionOutputs::RequestProgramExit).unwrap();
+            }
+
             ActionInputs::AddOpenActionToFlow => {
-                self.prompt_to_save(sender.input_sender(), ActionInputs::_AddOpenActionToFlow);
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    ActionInputs::_AddOpenActionToFlow,
+                    root.toplevel_window().as_ref().unwrap(),
+                );
             }
 
             ActionInputs::_AddOpenActionToFlow => {
@@ -499,13 +527,21 @@ impl Component for ActionsModel {
             }
 
             ActionInputs::NewAction => {
-                self.prompt_to_save(sender.input_sender(), ActionInputs::_NewAction);
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    ActionInputs::_NewAction,
+                    root.toplevel_window().as_ref().unwrap(),
+                );
             }
             ActionInputs::_NewAction => {
                 self.new_action(&sender);
             }
             ActionInputs::OpenAction => {
-                self.prompt_to_save(sender.input_sender(), ActionInputs::_OpenAction);
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    ActionInputs::_OpenAction,
+                    root.toplevel_window().as_ref().unwrap(),
+                );
             }
             ActionInputs::_OpenAction => {
                 let dialog = gtk::FileDialog::builder()
@@ -542,6 +578,7 @@ impl Component for ActionsModel {
                         self.create_message_dialog(
                             lang::lookup("action-error-opening"),
                             e.to_string(),
+                            root.toplevel_window().as_ref().unwrap(),
                         )
                         .set_visible(true);
                     }
@@ -586,8 +623,12 @@ impl Component for ActionsModel {
                     }
                 }
                 if let Err(e) = self.save_action(&sender) {
-                    self.create_message_dialog(lang::lookup("action-error-saving"), e.to_string())
-                        .set_visible(true);
+                    self.create_message_dialog(
+                        lang::lookup("action-error-saving"),
+                        e.to_string(),
+                        root.toplevel_window().as_ref().unwrap(),
+                    )
+                    .set_visible(true);
                 } else {
                     widgets
                         .toast_target
@@ -596,7 +637,7 @@ impl Component for ActionsModel {
                 }
                 let _ = sender.output(ActionOutputs::ReloadActions);
             }
-            ActionInputs::CloseAction => {
+            ActionInputs::CloseActionThen(then) => {
                 // Establish if needs_saving needs updating from text change
                 if let Some(action) = &self.open_action {
                     let buf = self.source_view.buffer();
@@ -606,10 +647,15 @@ impl Component for ActionsModel {
                     }
                 }
 
-                self.prompt_to_save(sender.input_sender(), ActionInputs::_CloseAction);
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    ActionInputs::_CloseActionThen(then),
+                    root.toplevel_window().as_ref().unwrap(),
+                );
             }
-            ActionInputs::_CloseAction => {
+            ActionInputs::_CloseActionThen(then) => {
                 self.close_action(&sender);
+                sender.input(*then);
             }
             ActionInputs::TextBufferChanged => {
                 self.set_needs_saving(true, &sender);
