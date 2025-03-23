@@ -8,8 +8,7 @@ use std::{
 
 use libc::{malloc, strcpy};
 use testangel_engine::{
-    ta_engine_metadata, ta_instruction_metadata, ta_named_value, ta_result_code, EngineInterface,
-    EvidenceList, OutputMap,
+    ta_engine_metadata, ta_instruction_metadata, ta_logging_level, ta_named_value, ta_result_code, EngineInterface, EvidenceList, OutputMap
 };
 use testangel_ipc::{
     ffi::{
@@ -18,6 +17,22 @@ use testangel_ipc::{
     },
     prelude::*,
 };
+
+unsafe extern "C" fn log_fn(level: ta_logging_level, message: *const c_char) {
+    let message = {
+        let cstr = CStr::from_ptr(message);
+        let str_slice = cstr.to_str().unwrap();
+        str_slice.to_owned()
+    };
+
+    match level {
+        ta_logging_level::TA_LOG_TRACE => tracing::trace!("[From engine]: {message}"),
+        ta_logging_level::TA_LOG_DEBUG => tracing::debug!("[From engine]: {message}"),
+        ta_logging_level::TA_LOG_INFO => tracing::info!("[From engine]: {message}"),
+        ta_logging_level::TA_LOG_WARN => tracing::warn!("[From engine]: {message}"),
+        ta_logging_level::TA_LOG_ERROR => tracing::error!("[From engine]: {message}"),
+    }
+}
 
 #[derive(Debug)]
 pub enum IpcError {
@@ -121,18 +136,19 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
             let mut r = None;
             for instruction in &engine.instructions {
                 if inst_with_params.instruction == *instruction.id() {
+                    tracing::trace!("Found matching instruction in engine");
                     let mut output = OutputMap::new();
                     let mut evidence = EvidenceList::new();
 
                     // run this instruction
                     // Validate parameters
+                    tracing::trace!("Validating parameters");
                     if let Err((kind, reason)) = instruction.validate(inst_with_params) {
                         r = Some(Response::Error { kind, reason });
                         break;
                     }
 
-                    // let parameters = requested_instruction_with_params.parameters;
-
+                    tracing::trace!("Converting parameters to C ABI");
                     let sz_instruction_id =
                         CString::new(inst_with_params.instruction.clone()).unwrap();
 
@@ -204,6 +220,7 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                     let mut parp_output_evidence_list = std::ptr::null_mut();
 
                     // Execute instruction
+                    tracing::trace!("Executing instruction");
                     let result = lib
                         .ta_execute(
                             sz_instruction_id.as_ptr(),
@@ -216,6 +233,7 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                         .map_err(|_| IpcError::EngineNotCompliant)?;
 
                     // Free parameters, param.szName, param inner value
+                    tracing::trace!("Freeing parameters");
                     let mut i = 0;
                     loop {
                         let parameter_raw = unsafe { *arp_parameter_list.add(i) };
@@ -248,6 +266,7 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                     }
 
                     // Validate response
+                    tracing::trace!("Validating response");
                     if unsafe { (*result).code } != ta_result_code::TESTANGEL_OK {
                         let reason = {
                             if unsafe { (*result).szReason }.is_null() {
@@ -267,6 +286,7 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                     }
 
                     // Convert output and evidence back
+                    tracing::trace!("Converting output and evidence");
                     let mut i = 0;
                     loop {
                         let output_raw = unsafe { *parp_output_list.add(i) };
@@ -357,6 +377,7 @@ pub fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError
                     }
 
                     // Send output and evidence back to be freed
+                    tracing::trace!("Freeing output and evidence");
                     lib.ta_free_named_value_array(parp_output_list.cast())
                         .map_err(|_| IpcError::EngineNotCompliant)?;
                     lib.ta_free_evidence_array(parp_output_evidence_list.cast())
@@ -520,6 +541,12 @@ fn search_engine_dir<P: AsRef<Path>>(
                             lib: Some(Arc::new(lib)),
                             ..Default::default()
                         };
+
+                        if let Some(lib) = &engine.lib {
+                            if let Err(e) = lib.ta_register_logger(log_fn) {
+                                tracing::warn!("Failed to register logger with engine: {e}");
+                            }
+                        }
 
                         match ipc_call(&engine, &Request::Instructions) {
                             Ok(res) => {

@@ -135,9 +135,28 @@ pub fn engine(stream: TokenStream) -> TokenStream {
     quote! {
         #state_struct
 
+        static LOGGING_FN_CELL: ::std::sync::OnceLock<extern fn(::testangel_engine::ta_logging_level, *const ::std::ffi::c_char)> =
+            ::std::sync::OnceLock::new();
+
         ::testangel_engine::lazy_static! {
             static ref #engine_ref: ::std::sync::Mutex<::testangel_engine::Engine<'static, #state_struct_ident>> = {
-                use ::testangel_engine::InstructionFlags;
+                use ::testangel_engine::{InstructionFlags, ta_logging_level};
+                use ta_logging_level::{
+                    TA_LOG_TRACE,
+                    TA_LOG_DEBUG,
+                    TA_LOG_INFO,
+                    TA_LOG_WARN,
+                    TA_LOG_ERROR,
+                };
+
+                fn log(level: ta_logging_level, message: &'_ str) {
+                    if let Some(logger) = LOGGING_FN_CELL.get() {
+                        let msg = ::std::ffi::CString::new(message)
+                            .expect("Nul bytes in the log message");
+                        logger(level, msg.as_ptr());
+                    }
+                }
+
                 let mut engine = ::testangel_engine::Engine::<#state_struct_ident>::new(#name, #lua_name, #version, #description);
                 #instrucs
                 ::std::sync::Mutex::new(engine)
@@ -147,11 +166,19 @@ pub fn engine(stream: TokenStream) -> TokenStream {
         ::testangel_engine::plugin_impl! {
             ::testangel_engine::EngineInterface,
 
+            fn ta_register_logger(fn_log: extern fn(::testangel_engine::ta_logging_level, *const ::std::ffi::c_char)) {
+                let _ = LOGGING_FN_CELL.set(fn_log);
+            }
+
             unsafe fn ta_request_instructions(
                 p_output_engine_metadata: *mut ::testangel_engine::ta_engine_metadata,
                 parp_output_instructions: *mut *mut *const ::testangel_engine::ta_instruction_metadata,
             ) -> *mut ::testangel_engine::ta_result {
-                use ::testangel_engine::{ta_result, ta_result_code, ta_instruction_metadata, ta_instruction_named_kind, ta_parameter_kind, InstructionNamedKind, ParameterKind, malloc, strcpy};
+                use ::testangel_engine::{
+                    ta_result, ta_result_code, ta_instruction_metadata,
+                    ta_instruction_named_kind, ta_parameter_kind, InstructionNamedKind,
+                    ParameterKind, malloc, strcpy
+                };
                 use ::std::boxed::Box;
                 use ::std::ffi::{CString, c_char};
                 use ::std::mem::{forget, size_of};
@@ -209,7 +236,8 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                     strcpy((*instMeta).szDescription.cast_mut(), description.as_ptr());
 
                     // Parameters
-                    let parameters_array: *mut *mut ta_instruction_named_kind = malloc((instruction.parameters().len() + 1) * size_of::<*mut ta_instruction_named_kind>()).cast();
+                    let parameters_array: *mut *mut ta_instruction_named_kind =
+                        malloc((instruction.parameters().len() + 1) * size_of::<*mut ta_instruction_named_kind>()).cast();
                     *parameters_array.add(instruction.parameters().len()) = ptr::null_mut();
                     for (idx, InstructionNamedKind { id, friendly_name, kind }) in instruction.parameters().iter().enumerate() {
                         let param: *mut ta_instruction_named_kind = malloc(size_of::<ta_instruction_named_kind>()).cast();
@@ -236,7 +264,8 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                     (*instMeta).arpParameterList = parameters_array;
 
                     // Outputs
-                    let outputs_array: *mut *mut ta_instruction_named_kind = malloc((instruction.outputs().len() + 1) * size_of::<*mut ta_instruction_named_kind>()).cast();
+                    let outputs_array: *mut *mut ta_instruction_named_kind =
+                        malloc((instruction.outputs().len() + 1) * size_of::<*mut ta_instruction_named_kind>()).cast();
                     *outputs_array.add(instruction.outputs().len()) = ptr::null_mut();
                     for (idx, InstructionNamedKind { id, friendly_name, kind }) in instruction.outputs().iter().enumerate() {
                         let param: *mut ta_instruction_named_kind = malloc(size_of::<ta_instruction_named_kind>()).cast();
@@ -279,7 +308,11 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                 parp_output_list: *mut *mut *mut ::testangel_engine::ta_named_value,
                 parp_output_evidence_list: *mut *mut *mut ::testangel_engine::ta_evidence,
             ) -> *mut ::testangel_engine::ta_result {
-                use ::testangel_engine::{ta_result, ta_result_code, ta_parameter_kind, ta_evidence, ta_evidence_kind, ta_named_value, ta_inner_value, ParameterKind, ParameterValue, EvidenceContent, ErrorKind, OutputMap, EvidenceList, malloc, strcpy};
+                use ::testangel_engine::{
+                    ta_result, ta_result_code, ta_parameter_kind, ta_evidence, ta_evidence_kind,
+                    ta_named_value, ta_inner_value, ParameterKind, ParameterValue,
+                    EvidenceContent, ErrorKind, OutputMap, EvidenceList, malloc, strcpy
+                };
                 use ::std::boxed::Box;
                 use ::std::ptr;
                 use ::std::ffi::{CStr, CString, c_char};
@@ -363,7 +396,8 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                     let (output, evidence) = instruction_result.unwrap();
 
                     // Convert output
-                    let output_array: *mut *mut ta_named_value = malloc((output.len() + 1) + size_of::<*mut ta_named_value>()).cast();
+                    let output_array: *mut *mut ta_named_value =
+                        malloc((output.len() + 1) + size_of::<*mut ta_named_value>()).cast();
                     *parp_output_list = output_array;
                     *output_array.add(output.len()) = ptr::null_mut();
                     for (idx, (id, value)) in output.iter().enumerate() {
@@ -410,7 +444,8 @@ pub fn engine(stream: TokenStream) -> TokenStream {
                     }
 
                     // Convert evidence
-                    let evidence_array: *mut *mut ta_evidence = malloc((evidence.len() + 1) + size_of::<*mut ta_evidence>()).cast();
+                    let evidence_array: *mut *mut ta_evidence =
+                        malloc((evidence.len() + 1) + size_of::<*mut ta_evidence>()).cast();
                     *parp_output_evidence_list = evidence_array;
                     *evidence_array.add(evidence.len()) = ptr::null_mut();
                     for (idx, ev) in evidence.iter().enumerate() {
