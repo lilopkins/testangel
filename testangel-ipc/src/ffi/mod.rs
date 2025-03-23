@@ -3,6 +3,7 @@ use std::ffi::c_char;
 pub mod evidence;
 pub mod example_prototypes;
 pub mod instruction;
+pub mod logging;
 pub mod result;
 pub mod value;
 

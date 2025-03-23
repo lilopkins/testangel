@@ -72,6 +72,7 @@ engine! {
                 .set_description(message)
                 .show() == rfd::MessageDialogResult::No
             {
+                log(TA_LOG_INFO, "Flow terminating due to user input");
                 Err::<(), FlowTermination>(FlowTermination::UserTerminated)?;
             }
         }
@@ -93,6 +94,7 @@ engine! {
                 .set_description(message)
                 .show();
 
+            log(TA_LOG_INFO, "Flow terminating due to triggered instruction");
             Err::<(), FlowTermination>(FlowTermination::StepTerminated)?;
         }
     }

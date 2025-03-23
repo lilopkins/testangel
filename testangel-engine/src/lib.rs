@@ -10,6 +10,7 @@ pub use testangel_engine_macros::*;
 pub use testangel_ipc::ffi::{
     evidence::{ta_evidence, ta_evidence_kind},
     instruction::{ta_instruction_metadata, ta_instruction_named_kind},
+    logging::ta_logging_level,
     result::{ta_result, ta_result_code},
     ta_engine_metadata,
     value::{ta_inner_value, ta_named_value, ta_parameter_kind},
@@ -44,6 +45,9 @@ macro_rules! iwp {
 
 plugin_interface! {
     extern trait EngineInterface {
+        /// Register a logger
+        fn ta_register_logger(fn_log: unsafe extern fn(ta_logging_level, *const c_char));
+
         /// Return a list of instructions this engine supports
         fn ta_request_instructions(
             p_output_engine_metadata: *mut ta_engine_metadata,

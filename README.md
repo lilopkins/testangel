@@ -53,6 +53,11 @@ Engines are dynamically linked libraries (`.dll`s on Windows, `.dylib`s on Mac, 
 
 ```mermaid
 sequenceDiagram
+    TestAngel->>Engine: ta_register_logger(fnLog)
+    activate Engine
+    Engine->>Engine: Logger registered internally.
+    deactivate Engine
+
     TestAngel->>Engine: ta_request_instructions()
     activate Engine
     Engine->>TestAngel: ta_result: TESTANGEL_OK

@@ -8,6 +8,16 @@ uint64_t _dynamic_plugin_signature(void) {
     return 0;
 }
 
+static void (*log)(enum ta_logging_level, const char*) = NULL;
+
+/**
+ * Register a logger
+ */
+void ta_register_logger(void (*fnLog)(enum ta_logging_level, const char*)) {
+    log = fnLog;
+    log(TA_LOG_DEBUG, "Logger registered");
+}
+
 /**
  * Return a list of instructions this engine supports
  */
@@ -15,6 +25,9 @@ ta_result * ta_request_instructions(
     ta_engine_metadata * pOutputEngineMetadata,
     ta_instruction_metadata *** parpOutputInstructions
 ) {
+    log(TA_LOG_TRACE, "ta_request_instructions");
+    log(TA_LOG_INFO, "Registering Demo C Engine…");
+
     pOutputEngineMetadata->iSupportsIpcVersion = 3;
     pOutputEngineMetadata->szFriendlyName = "Demo C Engine";
     pOutputEngineMetadata->szLuaName = "DemoC";
@@ -76,6 +89,8 @@ ta_result * ta_execute(
     ta_named_value ***parpOutputList,
     ta_evidence ***parpOutputEvidenceList
 ) {
+    log(TA_LOG_TRACE, "ta_execute");
+
     // This implementation is pure, so dry runs can be identical to real runs.
     (void)(bDryRun);
 
@@ -133,8 +148,15 @@ ta_result * ta_execute(
         return pResult;
     }
 
-    printf("paramA = %d\n", paramA);
-    printf("paramB = %d\n", paramB);
+    char *logLineA = (char *)malloc(255 * sizeof(char));
+    snprintf(logLineA, 255, "paramA = %d", paramA);
+    log(TA_LOG_DEBUG, logLineA);
+    free(logLineA);
+
+    char *logLineB = (char *)malloc(255 * sizeof(char));
+    snprintf(logLineB, 255, "paramB = %d", paramB);
+    log(TA_LOG_DEBUG, logLineB);
+    free(logLineB);
 
     int32_t *pOutputResult = (int32_t *)malloc(sizeof(int32_t));
     *pOutputResult = paramA + paramB;
@@ -144,7 +166,7 @@ ta_result * ta_execute(
     pEvidence->szLabel = "Sum";
     pEvidence->kind = TA_EVIDENCE_TEXTUAL;
     char *buf = (char *)malloc(255 * sizeof(char));
-    sprintf(buf, "%d + %d = %d", paramA, paramB, *pOutputResult);
+    snprintf(buf, 255, "%d + %d = %d", paramA, paramB, *pOutputResult);
     buf = realloc(buf, (strlen(buf) + 1) * sizeof(char));
     pEvidence->value = buf;
 
@@ -174,6 +196,8 @@ ta_result * ta_execute(
 * Reset engine state
 */
 ta_result * ta_reset_state(void) {
+    log(TA_LOG_TRACE, "ta_reset_state");
+
     ta_result * pResult = (ta_result *) malloc(sizeof(ta_result));
     pResult->code = TESTANGEL_OK;
     pResult->szReason = NULL;
@@ -184,6 +208,8 @@ ta_result * ta_reset_state(void) {
 * Free a result struct
 */
 void ta_free_result(const ta_result *pTarget) {
+    log(TA_LOG_TRACE, "ta_free_result");
+
     if (pTarget->szReason != NULL) {
         free((void *)pTarget->szReason);
     }
@@ -194,7 +220,9 @@ void ta_free_result(const ta_result *pTarget) {
 * Free an engine metadata struct
 */
 void ta_free_engine_metadata(const ta_engine_metadata *pTarget) {
-    // Nothing to do in this implementation, all the metadata is static.
+    log(TA_LOG_TRACE, "ta_free_engine_metadata");
+
+    // Nothing to do in this implementation, all the metadata is static (nothing malloc'd).
     (void)(pTarget);
 }
 
@@ -202,14 +230,29 @@ void ta_free_engine_metadata(const ta_engine_metadata *pTarget) {
 * Free an array of instruction metadata structs
 */
 void ta_free_instruction_metadata_array(const ta_instruction_metadata *const *arpTarget) {
+    log(TA_LOG_TRACE, "ta_free_instruction_metadata_array");
+
     // Loop through array and free each instruction
     for (uint32_t i = 0; arpTarget[i] != NULL; i++) {
+        char *logMsg = (char *)malloc(255 * sizeof(char));
+        snprintf(logMsg, 255, "ta_free_instruction_metadata_array -> arpTarget[%d]", i);
+        log(TA_LOG_TRACE, logMsg);
+        free(logMsg);
+
         const ta_instruction_metadata *const pMeta = arpTarget[i];
         for (uint32_t j = 0; pMeta->arpParameterList[j] != NULL; j++) {
+            char *logMsg = (char *)malloc(255 * sizeof(char));
+            snprintf(logMsg, 255, "ta_free_instruction_metadata_array -> arpTarget[%d] -> arpParameterList[%d]", i, j);
+            log(TA_LOG_TRACE, logMsg);
+            free(logMsg);
             ta_instruction_named_kind *pInk = pMeta->arpParameterList[j];
             free((void *)pInk);
         }
         for (uint32_t j = 0; pMeta->arpOutputList[j] != NULL; j++) {
+            char *logMsg = (char *)malloc(255 * sizeof(char));
+            snprintf(logMsg, 255, "ta_free_instruction_metadata_array -> arpTarget[%d] -> arpOutputList[%d]", i, j);
+            log(TA_LOG_TRACE, logMsg);
+            free(logMsg);
             ta_instruction_named_kind *pInk = pMeta->arpOutputList[j];
             free((void *)pInk);
         }
@@ -222,9 +265,17 @@ void ta_free_instruction_metadata_array(const ta_instruction_metadata *const *ar
 * Free an array of named value structs
 */
 void ta_free_named_value_array(const ta_named_value *const *arpTarget) {
+    log(TA_LOG_TRACE, "ta_free_named_value_array");
+
     for (uint32_t i = 0; arpTarget[i] != NULL; i++) {
+        char *logMsg = (char *)malloc(255 * sizeof(char));
+        snprintf(logMsg, 255, "ta_free_named_value_array -> arpTarget[%d]", i);
+        log(TA_LOG_TRACE, logMsg);
+        free(logMsg);
+
         const ta_named_value *const pNamedValue = arpTarget[i];
-        free((void *)pNamedValue->szName);
+        // Don't free szName here as it's always static!
+        // free((void *)pNamedValue->szName);
         // Type here doesn't matter as it'll be a void* either way
         free((void *)pNamedValue->value.value.iValue);
         free((void *)pNamedValue);
@@ -236,9 +287,17 @@ void ta_free_named_value_array(const ta_named_value *const *arpTarget) {
 * Free an array of evidence structs
 */
 void ta_free_evidence_array(const ta_evidence *const *arpTarget) {
+    log(TA_LOG_TRACE, "ta_free_evidence_array");
+
     for (uint32_t i = 0; arpTarget[i] != NULL; i++) {
+        char *logMsg = (char *)malloc(255 * sizeof(char));
+        snprintf(logMsg, 255, "ta_free_evidence_array -> arpTarget[%d]", i);
+        log(TA_LOG_TRACE, logMsg);
+        free(logMsg);
+
         const ta_evidence *const pEvidence = arpTarget[i];
-        free((void *)pEvidence->szLabel);
+        // Don't free szLabel here as it's always static!
+        // free((void *)pEvidence->szLabel);
         free((void *)pEvidence->value);
         free((void *)pEvidence);
     }

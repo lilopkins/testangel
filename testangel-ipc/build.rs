@@ -6,7 +6,7 @@ fn main() {
     bindings.write_to_file("testangel.h");
 
     println!("cargo::rerun-if-changed=demo_c_engine.c");
-    let path = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let path = PathBuf::from(env::var("OUT_DIR").unwrap());
     let path = path.parent().unwrap().parent().unwrap().parent().unwrap();
     cc::Build::new()
         .pic(true)
