@@ -7,16 +7,36 @@ use testangel_ipc::prelude::ParameterKind;
 struct DescriptorParser;
 
 #[derive(Debug)]
-pub struct Descriptor {
-    pub descriptor_kind: DescriptorKind,
-    pub kind: ParameterKind,
-    pub name: String,
+pub enum Descriptor {
+    TypedDescriptor {
+        descriptor_kind: TypedDescriptorKind,
+        kind: ParameterKind,
+        name: String,
+    },
+    KeyValueDescriptor {
+        descriptor_kind: KeyValueDescriptorKind,
+        value: String,
+    },
+    FlagDescriptor(FlagDescriptorKind),
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum DescriptorKind {
+pub enum TypedDescriptorKind {
     Parameter,
     Return,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum KeyValueDescriptorKind {
+    Name,
+    Group,
+    Creator,
+    Description,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum FlagDescriptorKind {
+    HideInFlowEditor,
 }
 
 impl Descriptor {
@@ -39,33 +59,67 @@ impl Descriptor {
 
         let descriptor_pair = line_pair.into_inner().next()?;
         assert_eq!(descriptor_pair.as_rule(), Rule::Descriptor);
-        let mut descriptor = Descriptor {
-            descriptor_kind: DescriptorKind::Parameter,
-            kind: ParameterKind::Integer,
-            name: String::new(),
-        };
-        for pair in descriptor_pair.into_inner() {
-            match pair.as_rule() {
-                Rule::DescriptorKind => {
-                    descriptor.descriptor_kind = match pair.as_str() {
-                        "param" => DescriptorKind::Parameter,
-                        "return" => DescriptorKind::Return,
+        let descriptor_inner = descriptor_pair.into_inner().next()?;
+        assert!([
+            Rule::TypedDescriptor,
+            Rule::KeyValueDescriptor,
+            Rule::FlagDescriptor
+        ]
+        .contains(&descriptor_inner.as_rule()));
+
+        Some(match descriptor_inner.as_rule() {
+            Rule::TypedDescriptor => {
+                let mut inner = descriptor_inner.into_inner();
+                let kind = inner.next()?;
+                assert_eq!(Rule::TypedDescriptorKind, kind.as_rule());
+                let ty = inner.next()?;
+                assert_eq!(Rule::Type, ty.as_rule());
+                let value = inner.next()?;
+                assert_eq!(Rule::Value, value.as_rule());
+
+                Descriptor::TypedDescriptor {
+                    descriptor_kind: match kind.as_str() {
+                        "param" => TypedDescriptorKind::Parameter,
+                        "return" => TypedDescriptorKind::Return,
                         _ => unreachable!(),
-                    }
-                }
-                Rule::Kind => {
-                    descriptor.kind = match pair.as_str() {
+                    },
+                    kind: match ty.as_str() {
                         "Boolean" => ParameterKind::Boolean,
                         "Decimal" => ParameterKind::Decimal,
                         "Integer" => ParameterKind::Integer,
                         "Text" => ParameterKind::String,
                         _ => unreachable!(),
-                    }
+                    },
+                    name: value.as_str().to_owned(),
                 }
-                Rule::Name => descriptor.name = pair.as_str().to_string(),
-                _ => unreachable!(),
             }
-        }
-        Some(descriptor)
+            Rule::KeyValueDescriptor => {
+                let mut inner = descriptor_inner.into_inner();
+                let kind = inner.next()?;
+                assert_eq!(Rule::KeyValueDescriptorKind, kind.as_rule());
+                let value = inner.next()?;
+                assert_eq!(Rule::Value, value.as_rule());
+
+                Descriptor::KeyValueDescriptor {
+                    descriptor_kind: match kind.as_str() {
+                        "name" => KeyValueDescriptorKind::Name,
+                        "group" => KeyValueDescriptorKind::Group,
+                        "creator" => KeyValueDescriptorKind::Creator,
+                        "description" => KeyValueDescriptorKind::Description,
+                        _ => unreachable!(),
+                    },
+                    value: value.as_str().to_owned(),
+                }
+            }
+            Rule::FlagDescriptor => {
+                let inner = descriptor_inner.into_inner().next()?;
+                assert_eq!(Rule::FlagDescriptorKind, inner.as_rule());
+                Descriptor::FlagDescriptor(match inner.as_str() {
+                    "hide-in-flow-editor" => FlagDescriptorKind::HideInFlowEditor,
+                    _ => unreachable!(),
+                })
+            }
+            _ => unreachable!(),
+        })
     }
 }

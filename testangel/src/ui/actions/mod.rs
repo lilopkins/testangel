@@ -9,8 +9,7 @@ use sourceview::StyleSchemeManager;
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
-    types::action_v1::ActionV1,
-    types::{Action, VersionedFile},
+    types::{action_v1::ActionV1, action_v2::ActionV2, Action, VersionedFile},
 };
 use testangel_engine::InstructionNamedKind;
 
@@ -20,7 +19,6 @@ use super::{file_filters, lang};
 use sourceview5 as sourceview;
 
 pub mod header;
-mod metadata_component;
 
 pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
@@ -70,6 +68,10 @@ impl fmt::Display for SaveOrOpenActionError {
 pub enum ActionInputs {
     /// Do nothing
     NoOp,
+    /// Prompt to save before adding this action to the open flow
+    AddOpenActionToFlow,
+    /// Add this action to the open flow
+    _AddOpenActionToFlow,
     /// The map of actions has changed and should be updated
     ActionsMapChanged(Arc<ActionMap>),
     /// Create a new action
@@ -96,13 +98,13 @@ pub enum ActionInputs {
     _CloseAction,
     /// Add the step with the ID provided
     AddStep(String),
-    /// The metadata has been updated and the action should be updated to reflect that
-    MetadataUpdated(metadata_component::MetadataOutput),
 }
 #[derive(Clone, Debug)]
 pub enum ActionOutputs {
     /// Inform other parts that actions may have changed, reload them!
     ReloadActions,
+    /// Add the open action to the open flow
+    AddOpenActionToFlow(String),
 }
 
 #[derive(Debug)]
@@ -114,7 +116,6 @@ pub struct ActionsModel {
     open_path: Option<PathBuf>,
     needs_saving: bool,
     header: Rc<Controller<header::ActionsHeader>>,
-    metadata: Controller<metadata_component::Metadata>,
     source_view: sourceview::View,
 }
 
@@ -163,10 +164,6 @@ impl ActionsModel {
             .emit(header::ActionsHeaderInput::ChangeActionOpen(
                 self.open_action.is_some(),
             ));
-        self.metadata
-            .emit(metadata_component::MetadataInput::ChangeAction(
-                Action::default(),
-            ));
     }
 
     /// Open an action. This does not ask to save first.
@@ -180,10 +177,18 @@ impl ActionsModel {
             // This doesn't save anything, just changes what loads to something compatible
             let action_v1: ActionV1 =
                 ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
-            let action_upgraded = action_v1.upgrade_action(&self.engine_list);
+            let action_v2 = action_v1.upgrade_action(&self.engine_list);
+            let action_upgraded = action_v2.upgrade_action();
             data = ron::to_string(&action_upgraded)
                 .map_err(SaveOrOpenActionError::SerializingError)?;
-        } else if versioned_file.version() != 2 {
+        } else if versioned_file.version() == 2 {
+            // This doesn't save anything, just changes what loads to something compatible
+            let action_v2: ActionV2 =
+                ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
+            let action_upgraded = action_v2.upgrade_action();
+            data = ron::to_string(&action_upgraded)
+                .map_err(SaveOrOpenActionError::SerializingError)?;
+        } else if versioned_file.version() != 3 {
             return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }
 
@@ -198,10 +203,6 @@ impl ActionsModel {
         self.header
             .emit(header::ActionsHeaderInput::ChangeActionOpen(
                 self.open_action.is_some(),
-            ));
-        self.metadata
-            .emit(metadata_component::MetadataInput::ChangeAction(
-                action.clone(),
             ));
         self.open_path = Some(file);
         self.needs_saving = false;
@@ -354,12 +355,6 @@ impl Component for ActionsModel {
                         set_margin_all: 10,
                         set_spacing: 10,
 
-                        model.metadata.widget(),
-
-                        gtk::Separator {
-                            set_orientation: gtk::Orientation::Horizontal,
-                        },
-
                         #[local_ref]
                         source_view -> sourceview::View,
                     }
@@ -382,6 +377,9 @@ impl Component for ActionsModel {
                     header::ActionsHeaderOutput::SaveAction => ActionInputs::SaveAction,
                     header::ActionsHeaderOutput::SaveAsAction => ActionInputs::SaveAsAction,
                     header::ActionsHeaderOutput::CloseAction => ActionInputs::CloseAction,
+                    header::ActionsHeaderOutput::AddOpenActionToFlow => {
+                        ActionInputs::AddOpenActionToFlow
+                    }
                     header::ActionsHeaderOutput::AddStep(step) => ActionInputs::AddStep(step),
                 }),
         );
@@ -396,11 +394,6 @@ impl Component for ActionsModel {
             open_path: None,
             needs_saving: false,
             header,
-            metadata: metadata_component::Metadata::builder()
-                .launch(())
-                .forward(sender.input_sender(), |msg| {
-                    ActionInputs::MetadataUpdated(msg)
-                }),
             source_view: sourceview::View::builder()
                 .show_line_numbers(true)
                 .monospace(true)
@@ -445,24 +438,15 @@ impl Component for ActionsModel {
         match message {
             ActionInputs::NoOp => (),
 
-            ActionInputs::MetadataUpdated(meta) => {
-                if let Some(action) = self.open_action.as_mut() {
-                    if let Some(new_name) = meta.new_name {
-                        action.friendly_name = new_name;
-                    }
-                    if let Some(new_group) = meta.new_group {
-                        action.group = new_group;
-                    }
-                    if let Some(new_author) = meta.new_author {
-                        action.author = new_author;
-                    }
-                    if let Some(new_description) = meta.new_description {
-                        action.description = new_description;
-                    }
-                    if let Some(new_visible) = meta.new_visible {
-                        action.visible = new_visible;
-                    }
-                    self.needs_saving = true;
+            ActionInputs::AddOpenActionToFlow => {
+                self.prompt_to_save(sender.input_sender(), ActionInputs::_AddOpenActionToFlow);
+            }
+
+            ActionInputs::_AddOpenActionToFlow => {
+                if let Some(action) = &self.open_action {
+                    sender
+                        .output(ActionOutputs::AddOpenActionToFlow(action.id.clone()))
+                        .unwrap();
                 }
             }
 

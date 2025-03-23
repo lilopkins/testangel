@@ -33,7 +33,10 @@ pub struct ActionV1 {
 
 impl ActionV1 {
     #[must_use]
-    pub fn upgrade_action(self, engine_list: &Arc<EngineList>) -> crate::types::Action {
+    pub fn upgrade_action(
+        self,
+        engine_list: &Arc<EngineList>,
+    ) -> crate::types::action_v2::ActionV2 {
         let mut script = String::new();
 
         // Add descriptors
@@ -171,7 +174,7 @@ impl ActionV1 {
         // end function
         script.push_str("end\n");
 
-        crate::types::Action {
+        crate::types::action_v2::ActionV2 {
             version: 2,
             id: self.id,
             friendly_name: self.friendly_name,

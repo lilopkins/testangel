@@ -6,11 +6,12 @@ use testangel_ipc::prelude::*;
 
 use crate::{
     action_loader::ActionMap,
-    action_syntax::{Descriptor, DescriptorKind},
+    action_syntax::{Descriptor, FlagDescriptorKind, KeyValueDescriptorKind, TypedDescriptorKind},
     ipc::{self, EngineList, IpcError},
 };
 
 pub mod action_v1;
+pub mod action_v2;
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct VersionedFile {
@@ -31,16 +32,6 @@ pub struct Action {
     version: usize,
     /// The internal ID of this action. Must be unique.
     pub id: String,
-    /// The friendly name of this action.
-    pub friendly_name: String,
-    /// A description of this action.
-    pub description: String,
-    /// A group this action belongs to.
-    pub group: String,
-    /// The author of this action.
-    pub author: String,
-    /// Whether this action should be visible in the flow editor.
-    pub visible: bool,
     /// The Lua code driving this action.
     pub script: String,
     /// A vector of required instruction IDs for this action to work.
@@ -50,14 +41,9 @@ pub struct Action {
 impl Default for Action {
     fn default() -> Self {
         Self {
-            version: 2,
+            version: 3,
             id: uuid::Uuid::new_v4().to_string(),
-            friendly_name: String::new(),
-            description: String::new(),
-            author: String::new(),
-            visible: true,
-            group: String::new(),
-            script: "--: param Integer Example Parameter\n--: return Text Some value to return\nfunction run_action(x)\n  \n  return 'Hello, world!'\nend\n".to_string(),
+            script: include_str!("new_action.lua").to_string(),
             required_instructions: Vec::new(),
         }
     }
@@ -97,14 +83,107 @@ impl Action {
         }
     }
 
+    /// Get the name of the action
+    #[must_use]
+    pub fn name(&self) -> Option<String> {
+        let descriptors = Descriptor::parse_all(&self.script);
+        for d in descriptors {
+            if let Descriptor::KeyValueDescriptor {
+                descriptor_kind,
+                value,
+            } = d
+            {
+                if descriptor_kind == KeyValueDescriptorKind::Name {
+                    return Some(value);
+                }
+            }
+        }
+        None
+    }
+
+    /// Get the group of the action
+    #[must_use]
+    pub fn group(&self) -> Option<String> {
+        let descriptors = Descriptor::parse_all(&self.script);
+        for d in descriptors {
+            if let Descriptor::KeyValueDescriptor {
+                descriptor_kind,
+                value,
+            } = d
+            {
+                if descriptor_kind == KeyValueDescriptorKind::Group {
+                    return Some(value);
+                }
+            }
+        }
+        None
+    }
+
+    /// Get the creator of the action
+    #[must_use]
+    pub fn creator(&self) -> Option<String> {
+        let descriptors = Descriptor::parse_all(&self.script);
+        for d in descriptors {
+            if let Descriptor::KeyValueDescriptor {
+                descriptor_kind,
+                value,
+            } = d
+            {
+                if descriptor_kind == KeyValueDescriptorKind::Creator {
+                    return Some(value);
+                }
+            }
+        }
+        None
+    }
+
+    /// Get the description of the action
+    #[must_use]
+    pub fn description(&self) -> Option<String> {
+        let descriptors = Descriptor::parse_all(&self.script);
+        for d in descriptors {
+            if let Descriptor::KeyValueDescriptor {
+                descriptor_kind,
+                value,
+            } = d
+            {
+                if descriptor_kind == KeyValueDescriptorKind::Description {
+                    return Some(value);
+                }
+            }
+        }
+        None
+    }
+
+    /// Should the action be hidden in the flow editor?
+    #[must_use]
+    pub fn hide_in_flow_editor(&self) -> bool {
+        let descriptors = Descriptor::parse_all(&self.script);
+        for d in descriptors {
+            if let Descriptor::FlagDescriptor(flag) = d {
+                if flag == FlagDescriptorKind::HideInFlowEditor {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Get a list of parameters that need to be provided to this action.
     #[must_use]
     pub fn parameters(&self) -> Vec<(String, ParameterKind)> {
         let descriptors = Descriptor::parse_all(&self.script);
         let mut params = vec![];
         for d in descriptors {
-            if d.descriptor_kind == DescriptorKind::Parameter {
-                params.push((d.name.clone(), d.kind));
+            if let Descriptor::TypedDescriptor {
+                descriptor_kind,
+                kind,
+                name,
+            } = d
+            {
+                if descriptor_kind == TypedDescriptorKind::Parameter {
+                    params.push((name.clone(), kind));
+                }
             }
         }
         params
@@ -116,8 +195,15 @@ impl Action {
         let descriptors = Descriptor::parse_all(&self.script);
         let mut outputs = vec![];
         for d in descriptors {
-            if d.descriptor_kind == DescriptorKind::Return {
-                outputs.push((d.name.clone(), d.kind));
+            if let Descriptor::TypedDescriptor {
+                descriptor_kind,
+                kind,
+                name,
+            } = d
+            {
+                if descriptor_kind == TypedDescriptorKind::Return {
+                    outputs.push((name.clone(), kind));
+                }
             }
         }
         outputs
@@ -404,7 +490,7 @@ impl ActionConfiguration {
 
         lua_env
             .load(&action.script)
-            .set_name(action.friendly_name.clone())
+            .set_name(action.name().unwrap_or("Unnamed Action".to_string()))
             .exec()
             .map_err(|e| FlowError::Lua(e.to_string()))?;
 

@@ -82,6 +82,7 @@ flow-step-label = Step { $step }: { $name }
 # Actions
 
 action-header-add = Add step
+action-header-add-to-open-flow = Add action to open flow
 action-nothing-open-description = Open an action or add a step to get started
 
 action-save-before = Save this action?
@@ -96,12 +97,8 @@ action-save-open-error-serializing-error = The action could not be saved due to 
 action-save-open-error-action-not-version-compatible = The action you tried to load is not compatible with this version of { app-name }.
 action-save-open-error-missing-instruction = The instruction with internal ID: { $error } in this action is missing.
 
-action-metadata-label = Action Metadata
-action-metadata-name = Action Name
-action-metadata-group = Action Group
-action-metadata-author = Author
-action-metadata-description = Description
-action-metadata-visible = Visible in Flow Editor
+action-default-group = Ungrouped
+action-default-name = Untitled Action
 
 action-params-new = New Input Parameter
 action-params-name-placeholder = Parameter name

@@ -51,6 +51,8 @@ enum AppInput {
     AttachGeneralActionGroup(RelmActionGroup<header_bar::GeneralActionGroup>),
     /// Attach the action group to the window
     AttachFileActionGroup(RelmActionGroup<header_bar::FileActionGroup>),
+    /// Add the given action to the flow
+    AddActionToFlow(String),
 }
 
 #[derive(Debug)]
@@ -107,6 +109,9 @@ impl Component for AppModel {
             .launch((init.actions.clone(), init.engines.clone()))
             .forward(sender.input_sender(), |msg| match msg {
                 actions::ActionOutputs::ReloadActions => AppInput::ReloadActionsMap,
+                actions::ActionOutputs::AddOpenActionToFlow(action_id) => {
+                    AppInput::AddActionToFlow(action_id)
+                }
             });
 
         let stack = Rc::new(adw::ViewStack::new());
@@ -189,6 +194,10 @@ impl Component for AppModel {
             AppInput::ChangedView(new_view) => {
                 self.header
                     .emit(HeaderBarInput::ChangedView(new_view.unwrap_or_default()));
+            }
+            AppInput::AddActionToFlow(action_id) => {
+                self.stack.set_visible_child_name("flows");
+                self.flows.emit(flows::FlowInputs::AddStep(action_id));
             }
             AppInput::ReloadActionsMap => {
                 self.actions_map = Arc::new(action_loader::get_actions(&self.engines_list));

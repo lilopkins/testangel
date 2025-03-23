@@ -97,9 +97,9 @@ impl FactoryComponent for ActionComponent {
                 #[watch]
                 set_title: &lang::lookup_with_args(
                     "flow-step-label",
-                    lang_args!("step", self.step.current_index() + 1, "name", self.action.friendly_name.clone())
+                    lang_args!("step", self.step.current_index() + 1, "name", self.action.name().unwrap_or(lang::lookup("action-default-name")))
                 ),
-                set_description: Some(&self.action.description),
+                set_description: self.action.description().as_deref(),
                 #[watch]
                 set_visible: self.visible,
 

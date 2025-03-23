@@ -1,6 +1,6 @@
 [package]
 name = "testangel-ipc"
-version.workspace = true
+version = "3.0.0"
 edition.workspace = true
 authors = [
     "Lily Hopkins <lily@hpkns.uk>",
