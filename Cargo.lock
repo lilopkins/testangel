@@ -4310,7 +4310,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine"
-version = "0.22.0-alpha.5"
+version = "1.0.0"
 dependencies = [
  "dynamic-plugin",
  "getset",
@@ -4321,7 +4321,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-engine-macros"
-version = "0.22.0-alpha.5"
+version = "1.0.0"
 dependencies = [
  "heck 0.5.0",
  "proc-macro-error2",
@@ -4340,7 +4340,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-ipc"
-version = "0.22.0-alpha.5"
+version = "3.0.0"
 dependencies = [
  "bitflags 2.9.0",
  "cbindgen",

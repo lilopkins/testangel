@@ -62,7 +62,7 @@ sequenceDiagram
     deactivate Engine
 
     loop During execution
-        TestAngel->>Engine: ta_execute(szInstructionId, arpParameterList, nParameterCount)
+        TestAngel->>Engine: ta_execute(szInstructionId, arpParameterList, nParameterCount, bDryRun)
         activate Engine
         Engine->>TestAngel: ta_result: TESTANGEL_OK
         Engine->>TestAngel: ta_named_value[]
