@@ -5,6 +5,7 @@ engine! {
     #[engine(
         version = env!("CARGO_PKG_VERSION"),
     )]
+    #[derive(Default)]
     struct Evidence;
 
     impl Evidence {

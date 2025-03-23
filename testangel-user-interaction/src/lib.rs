@@ -15,6 +15,7 @@ engine! {
         lua_name = "Interaction",
         version = env!("CARGO_PKG_VERSION"),
     )]
+    #[derive(Default)]
     struct UserInteraction;
 
     impl UserInteraction {

@@ -69,11 +69,13 @@ impl InstructionsImpl {
             );
         }
 
+        let engine_name = struct_ident.to_string();
+
         let instrucs = self
             .items
             .iter()
             .map(|item| {
-                let instruc = item.to_tokens();
+                let instruc = item.to_tokens(&engine_name);
                 quote!(#instruc)
             })
             .collect::<Vec<_>>();
@@ -105,10 +107,15 @@ pub struct InstructionFn {
 }
 
 impl InstructionFn {
-    pub fn to_tokens(&self) -> TokenStream2 {
+    pub fn to_tokens(&self, engine_name: &String) -> TokenStream2 {
         let ident = &self.sig.ident;
 
-        let mut id = parse_str(&format!(r#""{}""#, ident.to_string().to_kebab_case())).unwrap();
+        let mut id = parse_str(&format!(
+            r#""{}-{}""#,
+            engine_name.to_kebab_case(),
+            ident.to_string().to_kebab_case()
+        ))
+        .unwrap();
         let mut lua_name =
             parse_str(&format!(r#""{}""#, ident.to_string().to_upper_camel_case())).unwrap();
         let mut friendly_name =

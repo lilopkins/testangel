@@ -14,6 +14,7 @@ engine! {
     #[engine(
         version = env!("CARGO_PKG_VERSION"),
     )]
+    #[derive(Default)]
     struct Time;
 
     impl Time {
