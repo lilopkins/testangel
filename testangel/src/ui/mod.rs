@@ -53,6 +53,8 @@ enum AppInput {
     AttachFileActionGroup(RelmActionGroup<header_bar::FileActionGroup>),
     /// Add the given action to the flow
     AddActionToFlow(String),
+    /// Set a page needs attention
+    SetPageNeedsAttention(&'static str, bool),
 }
 
 #[derive(Debug)]
@@ -104,11 +106,18 @@ impl Component for AppModel {
         // Initialise the sub-components (pages)
         let flows = flows::FlowsModel::builder()
             .launch((init.actions.clone(), init.engines.clone()))
-            .forward(sender.input_sender(), |msg| match msg {});
+            .forward(sender.input_sender(), |msg| match msg {
+                flows::FlowOutputs::SetNeedsSaving(needs_saving) => {
+                    AppInput::SetPageNeedsAttention("flows", needs_saving)
+                }
+            });
         let actions = actions::ActionsModel::builder()
             .launch((init.actions.clone(), init.engines.clone()))
             .forward(sender.input_sender(), |msg| match msg {
                 actions::ActionOutputs::ReloadActions => AppInput::ReloadActionsMap,
+                actions::ActionOutputs::SetNeedsSaving(needs_saving) => {
+                    AppInput::SetPageNeedsAttention("actions", needs_saving)
+                }
                 actions::ActionOutputs::AddOpenActionToFlow(action_id) => {
                     AppInput::AddActionToFlow(action_id)
                 }
@@ -198,6 +207,11 @@ impl Component for AppModel {
             AppInput::AddActionToFlow(action_id) => {
                 self.stack.set_visible_child_name("flows");
                 self.flows.emit(flows::FlowInputs::AddStep(action_id));
+            }
+            AppInput::SetPageNeedsAttention(page, needs_attention) => {
+                if let Some(page) = self.stack.child_by_name(&page) {
+                    self.stack.page(&page).set_needs_attention(needs_attention);
+                }
             }
             AppInput::ReloadActionsMap => {
                 self.actions_map = Arc::new(action_loader::get_actions(&self.engines_list));

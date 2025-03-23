@@ -114,7 +114,10 @@ pub enum FlowInputs {
 }
 
 #[derive(Debug)]
-pub enum FlowOutputs {}
+pub enum FlowOutputs {
+    /// Updates if the flow needs saving or not
+    SetNeedsSaving(bool),
+}
 
 #[derive(Debug)]
 pub struct FlowsModel {
@@ -134,6 +137,18 @@ impl FlowsModel {
     /// Get an [`Rc`] clone of the header controller
     pub fn header_controller_rc(&self) -> Rc<Controller<header::FlowsHeader>> {
         self.header.clone()
+    }
+
+    /// Set whether the open flow needs saving
+    pub fn set_needs_saving(
+        &mut self,
+        needs_saving: bool,
+        sender: &relm4::ComponentSender<FlowsModel>,
+    ) {
+        self.needs_saving = needs_saving;
+        sender
+            .output(FlowOutputs::SetNeedsSaving(needs_saving))
+            .unwrap();
     }
 
     /// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
@@ -165,9 +180,9 @@ impl FlowsModel {
     }
 
     /// Just open a brand new flow
-    fn new_flow(&mut self) {
+    fn new_flow(&mut self, sender: &relm4::ComponentSender<FlowsModel>) {
         self.open_path = None;
-        self.needs_saving = true;
+        self.set_needs_saving(true, sender);
         self.open_flow = Some(AutomationFlow::default());
         self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
             self.open_flow.is_some(),
@@ -175,7 +190,11 @@ impl FlowsModel {
     }
 
     /// Open a flow. This does not ask to save first.
-    fn open_flow(&mut self, file: PathBuf) -> Result<Vec<usize>, SaveOrOpenFlowError> {
+    fn open_flow(
+        &mut self,
+        file: PathBuf,
+        sender: &relm4::ComponentSender<FlowsModel>,
+    ) -> Result<Vec<usize>, SaveOrOpenFlowError> {
         let data = &fs::read_to_string(&file).map_err(SaveOrOpenFlowError::IoError)?;
 
         let versioned_file: VersionedFile =
@@ -211,7 +230,7 @@ impl FlowsModel {
             self.open_flow.is_some(),
         ));
         self.open_path = Some(file);
-        self.needs_saving = false;
+        self.set_needs_saving(false, sender);
         tracing::debug!("New flow open.");
         tracing::debug!("Flow: {:?}", self.open_flow);
         Ok(steps_reset)
@@ -288,20 +307,23 @@ impl FlowsModel {
     }
 
     /// Just save the flow to disk with the current `open_path` as the destination
-    fn save_flow(&mut self) -> Result<(), SaveOrOpenFlowError> {
+    fn save_flow(
+        &mut self,
+        sender: &relm4::ComponentSender<FlowsModel>,
+    ) -> Result<(), SaveOrOpenFlowError> {
         let save_path = self.open_path.as_ref().unwrap();
         let data = ron::to_string(self.open_flow.as_ref().unwrap())
             .map_err(SaveOrOpenFlowError::SerializingError)?;
         fs::write(save_path, data).map_err(SaveOrOpenFlowError::IoError)?;
-        self.needs_saving = false;
+        self.set_needs_saving(false, sender);
         Ok(())
     }
 
     /// Close this flow without checking first
-    fn close_flow(&mut self) {
+    fn close_flow(&mut self, sender: &relm4::ComponentSender<FlowsModel>) {
         self.open_flow = None;
         self.open_path = None;
-        self.needs_saving = false;
+        self.set_needs_saving(false, sender);
         self.live_actions_list.guard().clear();
         self.header.emit(header::FlowsHeaderInput::ChangeFlowOpen(
             self.open_flow.is_some(),
@@ -480,20 +502,20 @@ impl Component for FlowsModel {
                     widgets.toast_target.add_toast(toast);
                 }
                 if close_flow {
-                    self.close_flow();
+                    self.close_flow(&sender);
                 }
             }
             FlowInputs::ConfigUpdate(step, new_config) => {
                 // unwrap rationale: config updates can't happen if nothing is open
                 let flow = self.open_flow.as_mut().unwrap();
                 flow.actions[step.current_index()] = new_config;
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
             }
             FlowInputs::NewFlow => {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_NewFlow);
             }
             FlowInputs::_NewFlow => {
-                self.new_flow();
+                self.new_flow(&sender);
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
             FlowInputs::OpenFlow => {
@@ -525,7 +547,7 @@ impl Component for FlowsModel {
                 );
             }
             FlowInputs::__OpenFlow(path) => {
-                match self.open_flow(path) {
+                match self.open_flow(path, &sender) {
                     Ok(changes) => {
                         // Reload UI
                         sender.input(FlowInputs::UpdateStepsFromModel);
@@ -589,7 +611,7 @@ impl Component for FlowsModel {
             }
             FlowInputs::__SaveFlowThen(path, then) => {
                 self.open_path = Some(path);
-                if let Err(e) = self.save_flow() {
+                if let Err(e) = self.save_flow(&sender) {
                     self.create_message_dialog(lang::lookup("flow-error-saving"), e.to_string())
                         .set_visible(true);
                 } else {
@@ -603,7 +625,7 @@ impl Component for FlowsModel {
                 self.prompt_to_save(sender.input_sender(), FlowInputs::_CloseFlow);
             }
             FlowInputs::_CloseFlow => {
-                self.close_flow();
+                self.close_flow(&sender);
             }
 
             FlowInputs::RunFlow => {
@@ -624,7 +646,7 @@ impl Component for FlowsModel {
 
             FlowInputs::AddStep(step_id) => {
                 if self.open_flow.is_none() {
-                    self.new_flow();
+                    self.new_flow(&sender);
                 }
 
                 // unwrap rationale: we've just guaranteed a flow is open
@@ -633,7 +655,7 @@ impl Component for FlowsModel {
                 flow.actions.push(ActionConfiguration::from(
                     self.action_map.get_action_by_id(&step_id).unwrap(),
                 ));
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
@@ -702,7 +724,7 @@ impl Component for FlowsModel {
                     }
                 }
 
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
 
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
@@ -736,7 +758,7 @@ impl Component for FlowsModel {
 
                 tracing::debug!("After cut, flow is: {flow:?}");
 
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
             }
             FlowInputs::PasteStep(idx, mut config) => {
                 let flow = self.open_flow.as_mut().unwrap();
@@ -774,7 +796,7 @@ impl Component for FlowsModel {
 
                 tracing::debug!("After paste, flow is: {flow:?}");
 
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
 
                 // Trigger UI steps refresh
                 sender.input(FlowInputs::UpdateStepsFromModel);
