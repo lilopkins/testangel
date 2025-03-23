@@ -133,7 +133,6 @@ pub fn engine(stream: TokenStream) -> TokenStream {
     let instrucs = instruction_implementations.map(|impl_| impl_.to_tokens(&state_struct_ident));
 
     quote! {
-        #[derive(Default)]
         #state_struct
 
         ::testangel_engine::lazy_static! {
