@@ -109,7 +109,9 @@ impl Component for AppModel {
             .launch((init.actions.clone(), init.engines.clone()))
             .forward(sender.input_sender(), |msg| match msg {
                 actions::ActionOutputs::ReloadActions => AppInput::ReloadActionsMap,
-                actions::ActionOutputs::AddOpenActionToFlow(action_id) => AppInput::AddActionToFlow(action_id),
+                actions::ActionOutputs::AddOpenActionToFlow(action_id) => {
+                    AppInput::AddActionToFlow(action_id)
+                }
             });
 
         let stack = Rc::new(adw::ViewStack::new());

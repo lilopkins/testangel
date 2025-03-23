@@ -377,7 +377,9 @@ impl Component for ActionsModel {
                     header::ActionsHeaderOutput::SaveAction => ActionInputs::SaveAction,
                     header::ActionsHeaderOutput::SaveAsAction => ActionInputs::SaveAsAction,
                     header::ActionsHeaderOutput::CloseAction => ActionInputs::CloseAction,
-                    header::ActionsHeaderOutput::AddOpenActionToFlow => ActionInputs::AddOpenActionToFlow,
+                    header::ActionsHeaderOutput::AddOpenActionToFlow => {
+                        ActionInputs::AddOpenActionToFlow
+                    }
                     header::ActionsHeaderOutput::AddStep(step) => ActionInputs::AddStep(step),
                 }),
         );
@@ -442,7 +444,9 @@ impl Component for ActionsModel {
 
             ActionInputs::_AddOpenActionToFlow => {
                 if let Some(action) = &self.open_action {
-                    sender.output(ActionOutputs::AddOpenActionToFlow(action.id.clone())).unwrap();
+                    sender
+                        .output(ActionOutputs::AddOpenActionToFlow(action.id.clone()))
+                        .unwrap();
                 }
             }
 
