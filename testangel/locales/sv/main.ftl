@@ -93,12 +93,8 @@ action-save-open-error-serializing-error = Det går inte att spara åtgärden p�
 action-save-open-error-action-not-version-compatible = Åtgärden du har öppnat är inte kompatibelt med den här versionen av { app-name }.
 action-save-open-error-missing-instruction = Instruktionen med internt identifierare: { $error } i denna åtgärden saknas.
 
-action-metadata-label = Åtgärdsdata
-action-metadata-name = Åtgärdsnamn
-action-metadata-group = Åtgärdsgrupp
-action-metadata-author = Skapare
-action-metadata-description = Beskrivning
-action-metadata-visible = Synlig i flödesredigeraren
+action-default-group = Ogrupperad
+action-default-name = Nämnlös Åtgärd
 
 action-params-new = Ny ingångsparameter
 action-params-name-placeholder = Parametersnamn

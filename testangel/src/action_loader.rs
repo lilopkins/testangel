@@ -24,8 +24,9 @@ impl ActionMap {
     pub fn get_by_group(&self) -> HashMap<String, Vec<Action>> {
         let mut map = HashMap::new();
         for action in self.0.values() {
-            map.entry(action.group.clone()).or_default();
-            map.entry(action.group.clone())
+            let group = action.group().unwrap_or("Ungrouped".to_string());
+            map.entry(group.clone()).or_default();
+            map.entry(group)
                 .and_modify(|vec: &mut Vec<Action>| vec.push(action.clone()));
         }
         map
@@ -74,7 +75,7 @@ pub fn get_actions(engine_list: &Arc<EngineList>) -> ActionMap {
                 tracing::debug!("Detected possible action {str}");
                 if let Ok(res) = fs::read_to_string(path.path()) {
                     if let Ok(versioned_file) = ron::from_str::<VersionedFile>(&res) {
-                        if versioned_file.version() != 2 {
+                        if versioned_file.version() != 3 {
                             tracing::warn!("Action {str} uses an incompatible file version.");
                             continue 'action_loop;
                         }
@@ -85,7 +86,7 @@ pub fn get_actions(engine_list: &Arc<EngineList>) -> ActionMap {
                         if let Err(missing) = action.check_instructions_available(engine_list) {
                             tracing::warn!(
                                 "Couldn't load action {} because instructions {:?} aren't available.",
-                                action.friendly_name,
+                                action.name().unwrap_or("Unnamed action".to_string()),
                                 missing,
                             );
                             continue 'action_loop;
@@ -93,7 +94,7 @@ pub fn get_actions(engine_list: &Arc<EngineList>) -> ActionMap {
 
                         tracing::info!(
                             "Discovered action {} ({}) at {:?}",
-                            action.friendly_name,
+                            action.name().unwrap_or("Unnamed action".to_string()),
                             action.id,
                             path.path(),
                         );
