@@ -31,6 +31,7 @@ pub enum ActionsHeaderOutput {
     SaveAsAction,
     CloseAction,
     AddStep(String),
+    AddOpenActionToFlow,
 }
 
 #[derive(Debug)]
@@ -100,6 +101,17 @@ impl Component for ActionsHeader {
                             },
                         },
                     },
+                },
+            },
+
+            gtk::Button {
+                set_icon_name: relm4_icons::icon_names::PAPYRUS_VERTICAL_ADD,
+                set_tooltip: &lang::lookup("action-header-add-to-open-flow"),
+                #[watch]
+                set_sensitive: model.action_open,
+
+                connect_clicked[sender] => move |_| {
+                    sender.output(ActionsHeaderOutput::AddOpenActionToFlow).unwrap();
                 },
             },
         },

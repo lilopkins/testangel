@@ -68,6 +68,10 @@ impl fmt::Display for SaveOrOpenActionError {
 pub enum ActionInputs {
     /// Do nothing
     NoOp,
+    /// Prompt to save before adding this action to the open flow
+    AddOpenActionToFlow,
+    /// Add this action to the open flow
+    _AddOpenActionToFlow,
     /// The map of actions has changed and should be updated
     ActionsMapChanged(Arc<ActionMap>),
     /// Create a new action
@@ -99,6 +103,8 @@ pub enum ActionInputs {
 pub enum ActionOutputs {
     /// Inform other parts that actions may have changed, reload them!
     ReloadActions,
+    /// Add the open action to the open flow
+    AddOpenActionToFlow(String),
 }
 
 #[derive(Debug)]
@@ -371,6 +377,7 @@ impl Component for ActionsModel {
                     header::ActionsHeaderOutput::SaveAction => ActionInputs::SaveAction,
                     header::ActionsHeaderOutput::SaveAsAction => ActionInputs::SaveAsAction,
                     header::ActionsHeaderOutput::CloseAction => ActionInputs::CloseAction,
+                    header::ActionsHeaderOutput::AddOpenActionToFlow => ActionInputs::AddOpenActionToFlow,
                     header::ActionsHeaderOutput::AddStep(step) => ActionInputs::AddStep(step),
                 }),
         );
@@ -428,6 +435,16 @@ impl Component for ActionsModel {
     ) {
         match message {
             ActionInputs::NoOp => (),
+
+            ActionInputs::AddOpenActionToFlow => {
+                self.prompt_to_save(sender.input_sender(), ActionInputs::_AddOpenActionToFlow);
+            }
+
+            ActionInputs::_AddOpenActionToFlow => {
+                if let Some(action) = &self.open_action {
+                    sender.output(ActionOutputs::AddOpenActionToFlow(action.id.clone())).unwrap();
+                }
+            }
 
             ActionInputs::ActionsMapChanged(new_map) => {
                 self.action_map = new_map.clone();

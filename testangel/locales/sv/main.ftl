@@ -79,6 +79,7 @@ flow-step-label = Steg { $step }: { $name }
 # Actions
 
 action-header-add = Lägg till steg
+action-header-add-to-open-flow = Lägg åtgärd till det öppnat flödet
 action-nothing-open-description = Öppna en åtgärd eller lägg till ett steg för att komma igång
 
 action-save-before = Spara denna åtgärden?

@@ -82,6 +82,7 @@ flow-step-label = Step { $step }: { $name }
 # Actions
 
 action-header-add = Add step
+action-header-add-to-open-flow = Add action to open flow
 action-nothing-open-description = Open an action or add a step to get started
 
 action-save-before = Save this action?
