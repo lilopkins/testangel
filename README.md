@@ -121,7 +121,10 @@ engine! {
     struct Demo;
 
     impl Demo {
-        #[instruction(name = "Demo Instruction")]
+        #[instruction(
+            name = "Demo Instruction",
+            flags = InstructionFlags::PURE | InstructionFlags::INFALLIBLE | InstructionFlags::AUTOMATIC,
+        )]
         /// Just a demo instruction
         fn demo(
             #[arg(name = "A")] a: i32,
