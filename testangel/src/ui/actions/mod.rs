@@ -389,28 +389,22 @@ impl Component for ActionsModel {
     view! {
         #[root]
         toast_target = adw::ToastOverlay {
-            gtk::ScrolledWindow {
-                set_vexpand: true,
-                set_hscrollbar_policy: gtk::PolicyType::Never,
-
-                if model.open_action.is_none() {
-                    adw::StatusPage {
-                        set_title: &lang::lookup("nothing-open"),
-                        set_description: Some(&lang::lookup("action-nothing-open-description")),
-                        set_icon_name: Some(relm4_icons::icon_names::LIGHTBULB),
-                        set_vexpand: true,
-                    }
-                } else {
-                    gtk::Box {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_margin_all: 10,
-                        set_spacing: 10,
-
-                        #[local_ref]
-                        source_view -> sourceview::View,
-                    }
+            if model.open_action.is_none() {
+                adw::StatusPage {
+                    set_title: &lang::lookup("nothing-open"),
+                    set_description: Some(&lang::lookup("action-nothing-open-description")),
+                    set_icon_name: Some(relm4_icons::icon_names::LIGHTBULB),
+                    set_vexpand: true,
                 }
-            },
+            } else {
+                gtk::ScrolledWindow {
+                    set_vexpand: true,
+                    set_hscrollbar_policy: gtk::PolicyType::Never,
+
+                    #[local_ref]
+                    source_view -> sourceview::View,
+                }
+            }
         },
     }
 
