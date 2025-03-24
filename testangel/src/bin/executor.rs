@@ -46,7 +46,7 @@ fn main() {
     let mut outputs: Vec<HashMap<usize, ParameterValue>> = Vec::new();
     let mut evidence = Vec::new();
 
-    for engine in engine_map.inner() {
+    for engine in &**engine_map {
         if engine.reset_state().is_err() {
             evidence.push(Evidence {
                 label: String::from("WARNING: State Warning"),

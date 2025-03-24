@@ -2,6 +2,7 @@ use std::{
     env,
     ffi::{c_char, CStr, CString},
     fmt, fs, io,
+    ops::Deref,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -396,7 +397,7 @@ pub struct Engine {
     path: PathBuf,
     pub name: String,
     pub lua_name: String,
-    description: String,
+    pub description: String,
     pub instructions: Vec<Instruction>,
     lib: Option<Arc<EngineInterface>>,
 }
@@ -416,13 +417,25 @@ impl fmt::Display for Engine {
 
 impl fmt::Debug for Engine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { name, lua_name, .. } = self;
-        write!(f, "Engine {{ {name} ({lua_name}) }}")
+        f.debug_struct("Engine")
+            .field("path", &self.path)
+            .field("name", &self.name)
+            .field("lua_name", &self.lua_name)
+            .field("instructions", &self.instructions)
+            .finish_non_exhaustive()
     }
 }
 
 #[derive(Default, Debug)]
 pub struct EngineList(Vec<Engine>);
+
+impl Deref for EngineList {
+    type Target = Vec<Engine>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl EngineList {
     /// Get an instruction from an instruction ID by iterating through available engines.
@@ -449,12 +462,6 @@ impl EngineList {
             }
         }
         None
-    }
-
-    /// Return the inner list of engines
-    #[must_use]
-    pub fn inner(&self) -> &Vec<Engine> {
-        &self.0
     }
 }
 

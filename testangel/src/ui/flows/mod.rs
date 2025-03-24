@@ -298,7 +298,7 @@ impl FlowsModel {
                 .initial_folder(&gtk::gio::File::for_path(
                     std::env::var("TA_FLOW_DIR").unwrap_or(".".to_string()),
                 ))
-                .filters(&file_filters::filter_list(vec![
+                .filters(&file_filters::filter_list(&[
                     file_filters::flows(),
                     file_filters::all(),
                 ]))
@@ -556,7 +556,7 @@ impl Component for FlowsModel {
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
                     .title(lang::lookup("header-open"))
-                    .filters(&file_filters::filter_list(vec![
+                    .filters(&file_filters::filter_list(&[
                         file_filters::flows(),
                         file_filters::all(),
                     ]))

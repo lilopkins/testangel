@@ -329,7 +329,7 @@ impl ActionConfiguration {
         lua_env.set_app_data::<Vec<Evidence>>(vec![]);
 
         // unwrap rationale: this will only fail under memory issues
-        for engine in engine_map.inner().clone() {
+        for engine in &***engine_map {
             let engine_lua_name = engine.lua_name.clone();
             let engine_tbl = lua_env.create_table().unwrap();
             for instruction in engine.instructions.clone() {

@@ -303,7 +303,7 @@ impl ActionsModel {
                 .initial_folder(&gtk::gio::File::for_path(
                     testangel::action_loader::get_action_directory(),
                 ))
-                .filters(&file_filters::filter_list(vec![
+                .filters(&file_filters::filter_list(&[
                     file_filters::actions(),
                     file_filters::all(),
                 ]))
@@ -348,7 +348,7 @@ impl ActionsModel {
 
         // Loop through all possible instruction luanames in the environment, then save a vector of which are used by this action
         action.required_instructions.clear();
-        for engine in self.engine_list.inner().clone() {
+        for engine in &**self.engine_list {
             let engine_lua_name = engine.lua_name.clone();
             for instruction in engine.instructions.clone() {
                 let instruction_lua_name = instruction.lua_name().clone();
@@ -541,7 +541,7 @@ impl Component for ActionsModel {
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
                     .title(lang::lookup("header-open"))
-                    .filters(&file_filters::filter_list(vec![
+                    .filters(&file_filters::filter_list(&[
                         file_filters::actions(),
                         file_filters::all(),
                     ]))

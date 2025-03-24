@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::{fmt, rc::Rc, sync::Arc};
 
 use gtk::prelude::*;
 use relm4::{
@@ -59,7 +59,6 @@ enum AppInput {
     CheckAndCloseProgram,
 }
 
-#[derive(Debug)]
 struct AppModel {
     stack: Rc<adw::ViewStack>,
     header: Controller<header_bar::HeaderBarModel>,
@@ -72,6 +71,17 @@ struct AppModel {
 
     flow_needs_saving: bool,
     action_needs_saving: bool,
+}
+
+impl fmt::Debug for AppModel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AppModel")
+            .field("engines_list", &self.engines_list)
+            .field("actions_map", &self.actions_map)
+            .field("flow_needs_saving", &self.flow_needs_saving)
+            .field("action_needs_saving", &self.action_needs_saving)
+            .finish_non_exhaustive()
+    }
 }
 
 #[relm4::component]

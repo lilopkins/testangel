@@ -83,7 +83,7 @@ impl SimpleComponent for AppAbout {
             env!("CARGO_PKG_VERSION"),
             lang::current_locale(),
             sys_locale::get_locales().collect::<Vec<_>>(),
-            engine_list.inner(),
+            **engine_list,
             action_map.get_by_group(),
         );
         let support_url = std::env::var("TA_LOCAL_SUPPORT_CONTACT")

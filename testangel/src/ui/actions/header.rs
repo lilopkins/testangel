@@ -193,7 +193,7 @@ impl Component for ActionsHeader {
                 if query.is_empty() {
                     // List all alphabetically
                     let mut unsorted_results = vec![];
-                    for engine in self.engine_list.inner() {
+                    for engine in &**self.engine_list {
                         for instruction in &engine.instructions {
                             unsorted_results.push((
                                 format!("{}: {}", engine.name, instruction.friendly_name()),
@@ -215,7 +215,7 @@ impl Component for ActionsHeader {
                     use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
                     let mut unsorted_results = vec![];
                     let matcher = SkimMatcherV2::default();
-                    for engine in self.engine_list.inner() {
+                    for engine in &**self.engine_list {
                         for instruction in &engine.instructions {
                             if let Some(score) = matcher.fuzzy_match(
                                 &format!("{}: {}", engine.name, instruction.friendly_name()),

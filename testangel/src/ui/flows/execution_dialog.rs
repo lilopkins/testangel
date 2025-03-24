@@ -127,7 +127,7 @@ impl Component for ExecutionDialog {
             let mut outputs: Vec<HashMap<usize, ParameterValue>> = Vec::new();
             let mut evidence = Vec::new();
 
-            for engine in engine_list.inner() {
+            for engine in &**engine_list {
                 if engine.reset_state().is_err() {
                     evidence.push(Evidence {
                         label: String::from("WARNING: State Warning"),
@@ -193,7 +193,7 @@ impl Component for ExecutionDialog {
                     .modal(true)
                     .title(lang::lookup("evidence-save-title"))
                     .initial_name(lang::lookup("evidence-default-name"))
-                    .filters(&file_filters::filter_list(vec![
+                    .filters(&file_filters::filter_list(&[
                         file_filters::evps(),
                         file_filters::all(),
                     ]))
