@@ -25,7 +25,8 @@ engine! {
             lua_name = "WaitForOK",
             flags = InstructionFlags::INFALLIBLE,
         )]
-        /// Display a message dialog and don't continue running the test flow until the user presses 'OK'.
+        /// Display a message dialog and don't continue running the test flow
+        /// until the user presses 'OK'.
         fn wait(
             message: String,
         ) {

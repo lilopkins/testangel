@@ -67,7 +67,7 @@ impl Instruction {
             str_slice.to_owned()
         };
 
-        let flags = InstructionFlags::from_bits_retain((*metadata).iFlags as u16);
+        let flags = InstructionFlags::from_bits_truncate((*metadata).iFlags as u16);
 
         let mut i = 0;
         let raw_parameters = (*metadata).arpParameterList;

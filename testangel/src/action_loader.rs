@@ -37,10 +37,15 @@ impl ActionMap {
 pub fn get_action_directory() -> PathBuf {
     let p = if let Ok(env_path) = env::var("TA_ACTION_DIR") {
         PathBuf::from(env_path)
-    } else if let Some(exe_path) = env::current_exe()
+    } else if let Some(mut exe_path) = env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(Path::to_path_buf))
     {
+        // Fix for #265
+        if cfg!(windows) && cfg!(feature = "ui") {
+            // Traverse one more level up to get out of `bin`
+            exe_path = exe_path.parent().unwrap().to_path_buf();
+        }
         exe_path.join("actions")
     } else {
         PathBuf::from(".").join("actions")
