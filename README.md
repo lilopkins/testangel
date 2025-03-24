@@ -138,6 +138,15 @@ engine! {
             // Two variables exist without being declared, and you can mutate these as desired:
             //     state: &mut Self
             //     evidence: &mut Vec<testangel_engine::Evidence>
+            //
+            // A third variable is also present, `dry_run`, a bool, which if true indicates that this should be
+            // a dry run where no real actions are taken. Use this to validate parameters and return as many
+            // errors as possible before the flow really runs!
+            //
+            // There is also a logging function, which you can use as follows:
+            //     log(TA_LOG_DEBUG, "Debug log message");
+            // It supports TA_LOG_TRACE, TA_LOG_DEBUG, TA_LOG_INFO, TA_LOG_WARN and TA_LOG_ERROR, and is merged
+            // with TestAngel's usual logging data.
             a + b
         }
     }
