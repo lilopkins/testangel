@@ -101,7 +101,10 @@ pub fn engine(stream: TokenStream) -> TokenStream {
             if let Meta::NameValue(name_val) = &attr.meta {
                 if let Expr::Lit(lit) = &name_val.value {
                     if let Lit::Str(s) = &lit.lit {
-                        description = s.value().trim().to_string();
+                        if !description.is_empty() && !description.ends_with(' ') {
+                            description.push(' ');
+                        }
+                        description.push_str(s.value().trim());
                     }
                 }
             }
