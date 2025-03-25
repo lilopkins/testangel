@@ -1,8 +1,10 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use glib::subclass::prelude::*;
 use relm4::gtk::glib;
 use sourceview5::{subclass::prelude::CompletionProposalImpl, CompletionProposal};
+
+use crate::ui::actions::completion_proposal_list::ProposalSource;
 
 #[derive(Debug, Default)]
 pub struct EngineInstructionCompletionProposal {
@@ -11,6 +13,7 @@ pub struct EngineInstructionCompletionProposal {
     pub(super) documentation: RefCell<String>,
     pub(super) parameters: RefCell<Vec<String>>,
     pub(super) returns: RefCell<Vec<String>>,
+    pub(super) source: Cell<ProposalSource>,
 }
 
 #[glib::object_subclass]

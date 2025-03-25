@@ -1,13 +1,14 @@
 use std::{cell::RefCell, sync::Arc};
 
 use convert_case::Casing;
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use glib::prelude::*;
 use gtk::subclass::prelude::*;
 use relm4::gtk::{self, gio::ListModel, glib};
 use sourceview5::{prelude::TextBufferExt, subclass::prelude::*, CompletionProvider};
 use testangel::ipc::EngineList;
 
-use crate::ui::actions::completion_proposal_list::CompletionProposalListModel;
+use crate::ui::actions::completion_proposal_list::{CompletionProposalListModel, ProposalSource};
 
 use super::item::EngineInstructionCompletionProposal;
 
@@ -131,7 +132,7 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
                     cell.set_text(Some(&format!(
                         "{}{}",
                         if params.is_empty() {
-                            proposal.instruction_lua_name()
+                            format!("{}()", proposal.instruction_lua_name())
                         } else {
                             format!("{}({})", proposal.instruction_lua_name(), params.join(", "))
                         },
@@ -222,33 +223,57 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
 
                 let line = buffer.slice(&start, &end, false).to_string();
                 if let Some(engine_lua_name) = line.trim().split('.').next() {
+                    let matcher = SkimMatcherV2::default();
                     for engine in &**engines {
-                        if engine.lua_name == engine_lua_name {
+                        if engine.lua_name.eq_ignore_ascii_case(engine_lua_name) {
                             for instruction in &engine.instructions {
+                                let proposal = EngineInstructionCompletionProposal::new(
+                                    engine.lua_name.to_owned(),
+                                    instruction.lua_name().clone(),
+                                    instruction.description().clone(),
+                                    instruction
+                                        .parameters()
+                                        .iter()
+                                        .map(|p| {
+                                            p.friendly_name()
+                                                .chars()
+                                                .filter(|c| {
+                                                    c.is_ascii_alphanumeric()
+                                                        || c.is_ascii_whitespace()
+                                                })
+                                                .collect::<String>()
+                                                .to_case(convert_case::Case::Snake)
+                                        })
+                                        .collect(),
+                                    instruction
+                                        .outputs()
+                                        .iter()
+                                        .map(|p| {
+                                            p.friendly_name()
+                                                .chars()
+                                                .filter(|c| {
+                                                    c.is_ascii_alphanumeric()
+                                                        || c.is_ascii_whitespace()
+                                                })
+                                                .collect::<String>()
+                                                .to_case(convert_case::Case::Snake)
+                                        })
+                                        .collect(),
+                                );
+
                                 if instruction
                                     .lua_name()
                                     .to_ascii_lowercase()
                                     .starts_with(&word.to_ascii_lowercase())
                                 {
-                                    list.append(EngineInstructionCompletionProposal::new(
-                                        engine_lua_name.to_owned(),
-                                        instruction.lua_name().clone(),
-                                        instruction.description().clone(),
-                                        instruction
-                                            .parameters()
-                                            .iter()
-                                            .map(|p| {
-                                                p.friendly_name().to_case(convert_case::Case::Snake)
-                                            })
-                                            .collect(),
-                                        instruction
-                                            .outputs()
-                                            .iter()
-                                            .map(|p| {
-                                                p.friendly_name().to_case(convert_case::Case::Snake)
-                                            })
-                                            .collect(),
-                                    ));
+                                    proposal.set_source(ProposalSource::Exact);
+                                    list.append(proposal);
+                                } else if let Some(score) = matcher.fuzzy_match(
+                                    &instruction.lua_name().to_ascii_lowercase(),
+                                    &word.to_ascii_lowercase(),
+                                ) {
+                                    proposal.set_source(ProposalSource::Fuzzy { score });
+                                    list.append(proposal);
                                 }
                             }
                         }
@@ -256,6 +281,26 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
                 }
             }
 
+            list.sort(|prop1, prop2| {
+                if let Ok(prop1) = prop1
+                    .clone()
+                    .downcast::<EngineInstructionCompletionProposal>()
+                {
+                    if let Ok(prop2) = prop2
+                        .clone()
+                        .downcast::<EngineInstructionCompletionProposal>()
+                    {
+                        // Sort by source first, then alphabetical
+                        return match prop1.source().cmp(&prop2.source()) {
+                            std::cmp::Ordering::Equal => prop1
+                                .instruction_lua_name()
+                                .cmp(&prop2.instruction_lua_name()),
+                            ord => ord,
+                        };
+                    }
+                }
+                std::cmp::Ordering::Equal
+            });
             Ok(list.upcast::<ListModel>())
         })
     }

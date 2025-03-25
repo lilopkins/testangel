@@ -2,6 +2,8 @@ use glib::subclass::prelude::*;
 use relm4::gtk::glib;
 use sourceview5::CompletionProposal;
 
+use crate::ui::actions::completion_proposal_list::ProposalSource;
+
 mod imp;
 
 glib::wrapper! {
@@ -55,5 +57,17 @@ impl EngineInstructionCompletionProposal {
     pub fn returns(&self) -> Vec<String> {
         let imp::EngineInstructionCompletionProposal { returns, .. } = self.imp();
         returns.borrow().clone()
+    }
+
+    /// Set the source of this proposal.
+    pub fn set_source(&self, new_source: ProposalSource) {
+        let imp::EngineInstructionCompletionProposal { source, .. } = self.imp();
+        source.set(new_source);
+    }
+
+    /// Get the source of this proposal.
+    pub fn source(&self) -> ProposalSource {
+        let imp::EngineInstructionCompletionProposal { source, .. } = self.imp();
+        source.get()
     }
 }

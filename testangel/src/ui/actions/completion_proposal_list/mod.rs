@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use relm4::gtk::{gio, glib, prelude::*, subclass::prelude::*};
 use sourceview5::CompletionProposal;
 
@@ -44,10 +46,48 @@ impl CompletionProposalListModel {
         list.retain(retain_fn);
         self.imp().inner.replace(list);
     }
+
+    pub fn sort<F>(&self, compare: F)
+    where
+        F: FnMut(&CompletionProposal, &CompletionProposal) -> Ordering,
+    {
+        let mut list = self.imp().inner.borrow_mut();
+        list.sort_by(compare);
+    }
 }
 
 impl Default for CompletionProposalListModel {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ProposalSource {
+    #[default]
+    Exact,
+    Fuzzy {
+        score: i64,
+    },
+}
+
+impl ProposalSource {
+    fn numerical_value(&self) -> i64 {
+        match self {
+            Self::Exact => i64::MIN,
+            Self::Fuzzy { score } => *score,
+        }
+    }
+}
+
+impl PartialOrd for ProposalSource {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ProposalSource {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.numerical_value().cmp(&other.numerical_value())
     }
 }

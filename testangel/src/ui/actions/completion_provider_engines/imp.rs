@@ -1,12 +1,13 @@
 use std::{cell::RefCell, sync::Arc};
 
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use glib::prelude::*;
 use gtk::subclass::prelude::*;
 use relm4::gtk::{self, gio::ListModel, glib};
 use sourceview5::{prelude::TextBufferExt, subclass::prelude::*, CompletionProvider};
 use testangel::ipc::EngineList;
 
-use crate::ui::actions::completion_proposal_list::CompletionProposalListModel;
+use crate::ui::actions::completion_proposal_list::{CompletionProposalListModel, ProposalSource};
 
 use super::item::EngineCompletionProposal;
 
@@ -159,16 +160,39 @@ impl CompletionProviderImpl for CompletionProviderEngines {
             let engines = engines_arc;
             let list = CompletionProposalListModel::new();
 
+            let matcher = SkimMatcherV2::default();
             for engine in &**engines {
                 if engine
                     .lua_name
                     .to_ascii_lowercase()
                     .starts_with(&word.to_ascii_lowercase())
                 {
-                    list.append(EngineCompletionProposal::new(engine));
+                    list.append(EngineCompletionProposal::new(engine, ProposalSource::Exact));
+                } else if let Some(score) = matcher.fuzzy_match(
+                    &engine.lua_name.to_ascii_lowercase(),
+                    &word.to_ascii_lowercase(),
+                ) {
+                    list.append(EngineCompletionProposal::new(
+                        engine,
+                        ProposalSource::Fuzzy { score },
+                    ));
                 }
             }
 
+            list.sort(|prop1, prop2| {
+                if let Ok(prop1) = prop1.clone().downcast::<EngineCompletionProposal>() {
+                    if let Ok(prop2) = prop2.clone().downcast::<EngineCompletionProposal>() {
+                        // Sort by source first, then alphabetical
+                        return match prop1.source().cmp(&prop2.source()) {
+                            std::cmp::Ordering::Equal => {
+                                prop1.engine_lua_name().cmp(&prop2.engine_lua_name())
+                            }
+                            ord => ord,
+                        };
+                    }
+                }
+                std::cmp::Ordering::Equal
+            });
             Ok(list.upcast::<ListModel>())
         })
     }
