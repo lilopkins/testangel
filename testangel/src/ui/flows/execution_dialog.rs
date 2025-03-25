@@ -1,7 +1,6 @@
 use std::{collections::HashMap, fs, sync::Arc};
 
 use adw::prelude::*;
-use arboard::Clipboard;
 use base64::{Engine, prelude::BASE64_STANDARD};
 use evidenceangel::{Author, EvidencePackage};
 use relm4::{Component, ComponentParts, RelmWidgetExt, adw, gtk};
@@ -286,8 +285,10 @@ impl Component for ExecutionDialog {
                 let sender_c = sender.clone();
                 dialog.connect_response(None, move |dlg, response| match response {
                     "copy" => {
-                        if let Ok(mut cb) = Clipboard::new() {
-                            let _ = cb.set_text(reason.to_string());
+                        if let Some(display) = gtk::gdk::Display::default() {
+                            display.clipboard().set_text(reason.to_string().as_str());
+                        } else {
+                            tracing::warn!("No display is present, so no clipboard could be accessed!");
                         }
                         sender_c.input(ExecutionDialogInput::Close);
                         dlg.close();
