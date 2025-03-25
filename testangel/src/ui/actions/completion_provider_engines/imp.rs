@@ -35,6 +35,7 @@ impl CompletionProviderImpl for CompletionProviderEngines {
             if let Some((mut start, mut end)) = context.bounds() {
                 let buffer = start.buffer();
                 let engine_lua_name = proposal.engine_lua_name();
+                let mut len_to_insert = engine_lua_name.len();
                 let mut end_mark = None;
 
                 // If the insertion cursor is within a word and the trailing
@@ -48,6 +49,7 @@ impl CompletionProviderImpl for CompletionProviderEngines {
 
                         if engine_lua_name.ends_with(&text) {
                             assert!(engine_lua_name.len() >= text.len());
+                            len_to_insert = engine_lua_name.len() - text.len();
                             end_mark = Some(buffer.create_mark(None, &word_end, false));
                         }
                     }
@@ -55,7 +57,7 @@ impl CompletionProviderImpl for CompletionProviderEngines {
 
                 buffer.begin_user_action();
                 buffer.delete(&mut start, &mut end);
-                buffer.insert(&mut start, &engine_lua_name);
+                buffer.insert(&mut start, &engine_lua_name[0..len_to_insert]);
                 buffer.end_user_action();
 
                 if let Some(end_mark) = end_mark {
@@ -78,8 +80,17 @@ impl CompletionProviderImpl for CompletionProviderEngines {
                 sourceview5::CompletionColumn::Icon => {
                     cell.set_icon_name(relm4_icons::icon_names::GEAR);
                 }
+                sourceview5::CompletionColumn::Before => {
+                    cell.set_text(None);
+                }
                 sourceview5::CompletionColumn::TypedText => {
                     cell.set_text(Some(&proposal.engine_lua_name()));
+                }
+                sourceview5::CompletionColumn::After => {
+                    cell.set_text(None);
+                }
+                sourceview5::CompletionColumn::Comment => {
+                    cell.set_text(proposal.documentation().lines().next());
                 }
                 sourceview5::CompletionColumn::Details => {
                     cell.set_text(Some(&proposal.documentation()));
@@ -105,10 +116,10 @@ impl CompletionProviderImpl for CompletionProviderEngines {
         &self,
         _context: &sourceview5::CompletionContext,
         _proposal: &sourceview5::CompletionProposal,
-        _keyval: gtk::gdk::Key,
+        keyval: gtk::gdk::Key,
         _state: gtk::gdk::ModifierType,
     ) -> bool {
-        false
+        [gtk::gdk::Key::Tab, gtk::gdk::Key::period].contains(&keyval)
     }
 
     fn refilter(&self, context: &sourceview5::CompletionContext, model: &gtk::gio::ListModel) {

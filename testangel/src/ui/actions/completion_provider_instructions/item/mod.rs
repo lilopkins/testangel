@@ -1,6 +1,6 @@
 use glib::subclass::prelude::*;
 use relm4::gtk::glib;
-use sourceview5::{CompletionProposal, Snippet, SnippetChunk};
+use sourceview5::CompletionProposal;
 
 mod imp;
 
@@ -47,36 +47,13 @@ impl EngineInstructionCompletionProposal {
         documentation.borrow().clone()
     }
 
-    /// Generate the line of code from this proposal.
-    pub fn as_line_of_code(&self) -> String {
-        let imp::EngineInstructionCompletionProposal {
-            engine_lua_name,
-            instruction_lua_name,
-            parameters,
-            returns,
-            ..
-        } = self.imp();
-
-        let var_init = if returns.borrow().is_empty() {
-            String::new()
-        } else {
-            format!("local {} = ", returns.borrow().join(", "))
-        };
-        format!(
-            "{var_init}{}.{}({})",
-            engine_lua_name.borrow(),
-            instruction_lua_name.borrow(),
-            parameters.borrow().join(", "),
-        )
+    pub fn parameters(&self) -> Vec<String> {
+        let imp::EngineInstructionCompletionProposal { parameters, .. } = self.imp();
+        parameters.borrow().clone()
     }
 
-    /// Generate a [`Snippet`] from this proposal.
-    pub fn as_snippet(&self) -> Snippet {
-        let loc = self.as_line_of_code();
-        let s = Snippet::new(None, None);
-        let c = SnippetChunk::new();
-        c.set_text(&loc);
-        s.add_chunk(&c);
-        s
+    pub fn returns(&self) -> Vec<String> {
+        let imp::EngineInstructionCompletionProposal { returns, .. } = self.imp();
+        returns.borrow().clone()
     }
 }

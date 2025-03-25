@@ -1,6 +1,6 @@
 use glib::subclass::prelude::*;
 use relm4::gtk::glib::{self, property::PropertySet};
-use sourceview5::{CompletionProposal, Snippet, SnippetChunk};
+use sourceview5::CompletionProposal;
 use testangel::ipc::Engine;
 
 mod imp;
@@ -31,14 +31,5 @@ impl EngineCompletionProposal {
     pub fn documentation(&self) -> String {
         let imp::EngineCompletionProposal { documentation, .. } = self.imp();
         documentation.borrow().clone()
-    }
-
-    /// Generate a [`Snippet`] from this proposal.
-    pub fn as_snippet(&self) -> Snippet {
-        let s = Snippet::new(None, None);
-        let c = SnippetChunk::new();
-        c.set_text(&self.engine_lua_name());
-        s.add_chunk(&c);
-        s
     }
 }

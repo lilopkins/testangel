@@ -39,7 +39,21 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
             if let Some((mut start, mut end)) = context.bounds() {
                 let buffer = start.buffer();
                 let instruction_lua_name = proposal.instruction_lua_name();
-                let mut end_mark = None;
+                let mut len_to_insert = instruction_lua_name.len();
+
+                // Move start iter to beginning of engine name
+                start.backward_word_start();
+
+                // Determine if we should add `local _ =`
+                let mut start_of_line = start;
+                while !start_of_line.starts_line() {
+                    start_of_line.backward_char();
+                }
+                let need_to_create_variable = buffer
+                    .slice(&start_of_line, &start, false)
+                    .to_string()
+                    .trim()
+                    .is_empty();
 
                 // If the insertion cursor is within a word and the trailing
                 // characters of the word match the suffix of the proposal, then
@@ -52,20 +66,43 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
 
                         if instruction_lua_name.ends_with(&text) {
                             assert!(instruction_lua_name.len() >= text.len());
-                            end_mark = Some(buffer.create_mark(None, &word_end, false));
+                            len_to_insert = instruction_lua_name.len() - text.len();
                         }
                     }
                 }
 
                 buffer.begin_user_action();
                 buffer.delete(&mut start, &mut end);
-                buffer.insert(&mut start, &instruction_lua_name);
+
+                let param_list = proposal.parameters().join(", ");
+                let insertion_text = format!(
+                    "{}{}.{}({})",
+                    if need_to_create_variable && !proposal.returns().is_empty() {
+                        format!("local {} = ", proposal.returns().join(", "),)
+                    } else {
+                        String::new()
+                    },
+                    proposal.engine_lua_name(),
+                    &instruction_lua_name[0..len_to_insert],
+                    param_list,
+                );
+                buffer.insert(&mut start, &insertion_text);
                 buffer.end_user_action();
 
-                if let Some(end_mark) = end_mark {
-                    let new_end = buffer.iter_at_mark(&end_mark);
-                    buffer.select_range(&new_end, &new_end);
-                    buffer.delete_mark(&end_mark);
+                // Focus first parameter if needed
+                if !proposal.parameters().is_empty() {
+                    // At this point, `start` is actually *after* the newly inserted text.
+                    let mut start_of_params = start;
+
+                    // Move cursor back by param_list + 1
+                    start_of_params.backward_chars(i32::try_from(param_list.len()).unwrap() + 1);
+
+                    // Select region from insert_end to (insert_end + len(first param))
+                    let mut after_first_param = start_of_params;
+                    after_first_param.forward_chars(
+                        i32::try_from(proposal.parameters().first().unwrap().len()).unwrap(),
+                    );
+                    buffer.select_range(&start_of_params, &after_first_param);
                 }
             }
         }
@@ -86,10 +123,30 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
                     cell.set_icon_name(relm4_icons::icon_names::PUZZLE_PIECE);
                 }
                 sourceview5::CompletionColumn::Before => {
-                    cell.set_text(Some(&proposal.engine_lua_name()));
+                    cell.set_text(Some(&format!("{}.", proposal.engine_lua_name())));
                 }
                 sourceview5::CompletionColumn::TypedText => {
-                    cell.set_text(Some(&proposal.instruction_lua_name()));
+                    let params = proposal.parameters();
+                    let returns = proposal.returns();
+                    cell.set_text(Some(&format!(
+                        "{}{}",
+                        if params.is_empty() {
+                            proposal.instruction_lua_name()
+                        } else {
+                            format!("{}({})", proposal.instruction_lua_name(), params.join(", "))
+                        },
+                        if returns.is_empty() {
+                            String::new()
+                        } else {
+                            format!(" -> {}", returns.join(", "))
+                        }
+                    )));
+                }
+                sourceview5::CompletionColumn::After => {
+                    cell.set_text(None);
+                }
+                sourceview5::CompletionColumn::Comment => {
+                    cell.set_text(proposal.documentation().lines().next());
                 }
                 sourceview5::CompletionColumn::Details => {
                     cell.set_text(Some(&proposal.documentation()));
@@ -104,7 +161,7 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
     }
 
     fn priority(&self, _context: &sourceview5::CompletionContext) -> i32 {
-        0
+        1
     }
 
     fn is_trigger(&self, _iter: &gtk::TextIter, c: char) -> bool {
@@ -115,10 +172,10 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
         &self,
         _context: &sourceview5::CompletionContext,
         _proposal: &sourceview5::CompletionProposal,
-        _keyval: gtk::gdk::Key,
+        keyval: gtk::gdk::Key,
         _state: gtk::gdk::ModifierType,
     ) -> bool {
-        false
+        [gtk::gdk::Key::Tab, gtk::gdk::Key::parenleft].contains(&keyval)
     }
 
     fn refilter(&self, context: &sourceview5::CompletionContext, model: &gtk::gio::ListModel) {
@@ -157,15 +214,11 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
         Box::pin(async move {
             let engines = engines_arc;
             let list = CompletionProposalListModel::new();
-            if let Some((mut start, mut end)) = context.bounds() {
+            if let Some((mut start, end)) = context.bounds() {
                 let word = context.word().to_string();
                 let buffer = start.buffer();
-                while !start.starts_line() {
-                    start.backward_char();
-                }
-                while !end.ends_line() {
-                    end.forward_char();
-                }
+                // Move to start of engine name
+                start.backward_word_start();
 
                 let line = buffer.slice(&start, &end, false).to_string();
                 if let Some(engine_lua_name) = line.trim().split('.').next() {

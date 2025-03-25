@@ -31,6 +31,8 @@ pub fn initialise_ui() {
     theme.add_resource_path("/uk/hpkns/testangel/icons/");
     theme.add_resource_path("/uk/hpkns/testangel/icons/scalable/actions/");
 
+    sourceview5::init();
+
     let engines = Arc::new(ipc::get_engines());
     let actions = Arc::new(action_loader::get_actions(&engines));
     app.run::<AppModel>(AppInit { engines, actions });
