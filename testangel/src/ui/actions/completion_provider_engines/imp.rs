@@ -1,0 +1,164 @@
+use std::{cell::RefCell, sync::Arc};
+
+use glib::prelude::*;
+use gtk::subclass::prelude::*;
+use relm4::gtk::{self, gio::ListModel, glib};
+use sourceview5::{prelude::TextBufferExt, subclass::prelude::*, CompletionProvider};
+use testangel::ipc::EngineList;
+
+use crate::ui::actions::completion_proposal_list::CompletionProposalListModel;
+
+use super::item::EngineCompletionProposal;
+
+#[derive(Default)]
+pub struct CompletionProviderEngines {
+    pub(super) engine_list: RefCell<Arc<EngineList>>,
+}
+
+#[glib::object_subclass]
+impl ObjectSubclass for CompletionProviderEngines {
+    const NAME: &'static str = "TestAngelCompletionProviderEngines";
+    type Type = super::CompletionProviderEngines;
+    type ParentType = glib::Object;
+    type Interfaces = (CompletionProvider,);
+}
+
+impl ObjectImpl for CompletionProviderEngines {}
+
+impl CompletionProviderImpl for CompletionProviderEngines {
+    fn activate(
+        &self,
+        context: &sourceview5::CompletionContext,
+        proposal: &sourceview5::CompletionProposal,
+    ) {
+        if let Ok(proposal) = proposal.clone().downcast::<EngineCompletionProposal>() {
+            if let Some((mut start, mut end)) = context.bounds() {
+                let buffer = start.buffer();
+                let engine_lua_name = proposal.engine_lua_name();
+                let mut end_mark = None;
+
+                // If the insertion cursor is within a word and the trailing
+                // characters of the word match the suffix of the proposal, then
+                // limit how much text we insert so that the word is completed
+                // properly.
+                if !end.ends_line() && !end.char().is_whitespace() && !end.ends_word() {
+                    let mut word_end = end;
+                    if word_end.forward_word_end() {
+                        let text = end.slice(&word_end).to_string();
+
+                        if engine_lua_name.ends_with(&text) {
+                            assert!(engine_lua_name.len() >= text.len());
+                            end_mark = Some(buffer.create_mark(None, &word_end, false));
+                        }
+                    }
+                }
+
+                buffer.begin_user_action();
+                buffer.delete(&mut start, &mut end);
+                buffer.insert(&mut start, &engine_lua_name);
+                buffer.end_user_action();
+
+                if let Some(end_mark) = end_mark {
+                    let new_end = buffer.iter_at_mark(&end_mark);
+                    buffer.select_range(&new_end, &new_end);
+                    buffer.delete_mark(&end_mark);
+                }
+            }
+        }
+    }
+
+    fn display(
+        &self,
+        _context: &sourceview5::CompletionContext,
+        proposal: &sourceview5::CompletionProposal,
+        cell: &sourceview5::CompletionCell,
+    ) {
+        if let Ok(proposal) = proposal.clone().downcast::<EngineCompletionProposal>() {
+            match cell.column() {
+                sourceview5::CompletionColumn::Icon => {
+                    cell.set_icon_name(relm4_icons::icon_names::GEAR);
+                }
+                sourceview5::CompletionColumn::TypedText => {
+                    cell.set_text(Some(&proposal.engine_lua_name()));
+                }
+                sourceview5::CompletionColumn::Details => {
+                    cell.set_text(Some(&proposal.documentation()));
+                }
+                _ => (),
+            }
+        }
+    }
+
+    fn title(&self) -> Option<glib::GString> {
+        None
+    }
+
+    fn priority(&self, _context: &sourceview5::CompletionContext) -> i32 {
+        0
+    }
+
+    fn is_trigger(&self, _iter: &gtk::TextIter, c: char) -> bool {
+        ['='].contains(&c) || c.is_alphabetic()
+    }
+
+    fn key_activates(
+        &self,
+        _context: &sourceview5::CompletionContext,
+        _proposal: &sourceview5::CompletionProposal,
+        _keyval: gtk::gdk::Key,
+        _state: gtk::gdk::ModifierType,
+    ) -> bool {
+        false
+    }
+
+    fn refilter(&self, context: &sourceview5::CompletionContext, model: &gtk::gio::ListModel) {
+        let word = context.word().to_string();
+        if let Ok(model) = model.clone().downcast::<CompletionProposalListModel>() {
+            model.retain(|item| {
+                item.clone()
+                    .downcast::<EngineCompletionProposal>()
+                    .is_ok_and(|item| {
+                        item.engine_lua_name()
+                            .to_ascii_lowercase()
+                            .starts_with(&word.to_ascii_lowercase())
+                    })
+            });
+        }
+    }
+
+    fn list_alternates(
+        &self,
+        _context: &sourceview5::CompletionContext,
+        _proposal: &sourceview5::CompletionProposal,
+    ) -> Vec<sourceview5::CompletionProposal> {
+        vec![]
+    }
+
+    fn populate_future(
+        &self,
+        context: &sourceview5::CompletionContext,
+    ) -> std::pin::Pin<
+        Box<dyn std::prelude::rust_2024::Future<Output = Result<gtk::gio::ListModel, glib::Error>>>,
+    > {
+        let engines_box = self.engine_list.borrow();
+        let engines_arc = (*engines_box).clone();
+        let word = context.word().to_string();
+
+        Box::pin(async move {
+            let engines = engines_arc;
+            let list = CompletionProposalListModel::new();
+
+            for engine in &**engines {
+                if engine
+                    .lua_name
+                    .to_ascii_lowercase()
+                    .starts_with(&word.to_ascii_lowercase())
+                {
+                    list.append(EngineCompletionProposal::new(engine));
+                }
+            }
+
+            Ok(list.upcast::<ListModel>())
+        })
+    }
+}

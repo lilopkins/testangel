@@ -17,8 +17,10 @@ use testangel_engine::InstructionNamedKind;
 use crate::lang_args;
 
 use super::{file_filters, lang};
-use sourceview5 as sourceview;
+use sourceview5::{self as sourceview, prelude::ViewExt};
 
+mod completion_proposal_list;
+mod completion_provider_engines;
 pub mod header;
 
 pub enum SaveOrOpenActionError {
@@ -402,7 +404,26 @@ impl Component for ActionsModel {
                     set_hscrollbar_policy: gtk::PolicyType::Never,
 
                     #[local_ref]
-                    source_view -> sourceview::View,
+                    source_view -> sourceview::View {
+                        set_vexpand: true,
+
+                        // Look and Feel
+                        set_show_line_numbers: true,
+                        set_monospace: true,
+
+                        // Visual Spacing
+                        set_pixels_below_lines: 2,
+                        set_bottom_margin: 200,
+                        set_wrap_mode: gtk::WrapMode::WordChar,
+
+                        // Behaviour
+                        set_indent_on_tab: true,
+                        set_indent_width: 2,
+                        set_insert_spaces_instead_of_tabs: true,
+                        set_auto_indent: true,
+                        set_smart_home_end: sourceview::SmartHomeEndType::Before,
+                        set_smart_backspace: true,
+                    },
                 }
             }
         },
@@ -443,14 +464,6 @@ impl Component for ActionsModel {
             header,
             signal_text_buffer_changed: None,
             source_view: sourceview::View::builder()
-                .show_line_numbers(true)
-                .monospace(true)
-                .indent_on_tab(true)
-                .indent_width(2)
-                .insert_spaces_instead_of_tabs(true)
-                .show_right_margin(true)
-                .auto_indent(true)
-                .vexpand(true)
                 .buffer(
                     &sourceview::Buffer::builder()
                         .highlight_syntax(true)
@@ -480,6 +493,12 @@ impl Component for ActionsModel {
                     sender.input(ActionInputs::TextBufferChanged);
                 }));
         }
+
+        // Code completion
+        let completion = source_view.completion();
+        let provider =
+            completion_provider_engines::CompletionProviderEngines::new(model.engine_list.clone());
+        completion.add_provider(&provider);
 
         ComponentParts { model, widgets }
     }
