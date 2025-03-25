@@ -21,6 +21,7 @@ use sourceview5::{self as sourceview, prelude::ViewExt};
 
 mod completion_proposal_list;
 mod completion_provider_engines;
+mod completion_provider_instructions;
 pub mod header;
 
 pub enum SaveOrOpenActionError {
@@ -498,6 +499,10 @@ impl Component for ActionsModel {
         let completion = source_view.completion();
         let provider =
             completion_provider_engines::CompletionProviderEngines::new(model.engine_list.clone());
+        completion.add_provider(&provider);
+        let provider = completion_provider_instructions::CompletionProviderEngineInstructions::new(
+            model.engine_list.clone(),
+        );
         completion.add_provider(&provider);
 
         ComponentParts { model, widgets }
