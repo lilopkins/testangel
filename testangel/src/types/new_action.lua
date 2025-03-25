@@ -15,6 +15,6 @@
 --: return Text Some value to return
 
 function run_action(x)
-  -- Start writing your action here...
+  
   return 'Hello, world!'
 end
