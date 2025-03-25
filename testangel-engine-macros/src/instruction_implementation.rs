@@ -144,10 +144,17 @@ impl InstructionFn {
                 if let Meta::NameValue(name_val) = &attr.meta {
                     if let Expr::Lit(lit) = &name_val.value {
                         if let Lit::Str(s) = &lit.lit {
-                            if !description.is_empty() && !description.ends_with(' ') {
-                                description.push(' ');
+                            let doc_line = s.value();
+                            let doc_line = doc_line.trim();
+                            if doc_line.is_empty() {
+                                description.push('\n');
+                            } else {
+                                if description.chars().last().is_some_and(|c| !c.is_whitespace()) {
+                                    description.push(' ');
+                                }
+
+                                description.push_str(doc_line);
                             }
-                            description.push_str(s.value().trim());
                         }
                     }
                 }
