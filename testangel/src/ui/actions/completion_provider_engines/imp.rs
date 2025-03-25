@@ -81,14 +81,11 @@ impl CompletionProviderImpl for CompletionProviderEngines {
                 sourceview5::CompletionColumn::Icon => {
                     cell.set_icon_name(relm4_icons::icon_names::GEAR);
                 }
-                sourceview5::CompletionColumn::Before => {
+                sourceview5::CompletionColumn::Before | sourceview5::CompletionColumn::After => {
                     cell.set_text(None);
                 }
                 sourceview5::CompletionColumn::TypedText => {
                     cell.set_text(Some(&proposal.engine_lua_name()));
-                }
-                sourceview5::CompletionColumn::After => {
-                    cell.set_text(None);
                 }
                 sourceview5::CompletionColumn::Comment => {
                     cell.set_text(proposal.documentation().lines().next());

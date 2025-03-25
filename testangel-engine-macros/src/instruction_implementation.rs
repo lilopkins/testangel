@@ -107,7 +107,8 @@ pub struct InstructionFn {
 }
 
 impl InstructionFn {
-    pub fn to_tokens(&self, engine_name: &String) -> TokenStream2 {
+    #[allow(clippy::too_many_lines)]
+    pub fn to_tokens(&self, engine_name: &str) -> TokenStream2 {
         let ident = &self.sig.ident;
 
         let mut id = parse_str(&format!(
@@ -121,7 +122,7 @@ impl InstructionFn {
         let mut friendly_name =
             parse_str(&format!(r#""{}""#, ident.to_string().to_title_case())).unwrap();
         let mut description = String::new();
-        let mut flags = parse_str(r#"InstructionFlags::NONE"#).unwrap();
+        let mut flags = parse_str("InstructionFlags::NONE").unwrap();
 
         // Validate struct attributes
         for attr in &self.attrs {

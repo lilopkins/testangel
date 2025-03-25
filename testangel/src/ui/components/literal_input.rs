@@ -76,7 +76,7 @@ impl SimpleComponent for LiteralInput {
                 let sender_c = sender.clone();
                 entry.connect_value_changed(move |spn| {
                     let _ = sender_c.clone().output(LiteralInputOutput::ValueChanged(
-                        ParameterValue::Integer(spn.value() as i32),
+                        ParameterValue::Integer(spn.value_as_int()),
                     ));
                 });
                 root.set_child(Some(&entry));

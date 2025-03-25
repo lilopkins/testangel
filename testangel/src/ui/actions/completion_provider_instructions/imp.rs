@@ -228,7 +228,7 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
                         if engine.lua_name.eq_ignore_ascii_case(engine_lua_name) {
                             for instruction in &engine.instructions {
                                 let proposal = EngineInstructionCompletionProposal::new(
-                                    engine.lua_name.to_owned(),
+                                    engine.lua_name.clone(),
                                     instruction.lua_name().clone(),
                                     instruction.description().clone(),
                                     instruction

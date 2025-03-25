@@ -25,7 +25,7 @@ impl FileFilterListModel {
             data.len() - 1
         };
         // Emits a signal that 1 item was added, 0 removed at the position index
-        self.items_changed(index as u32, 0, 1);
+        self.items_changed(u32::try_from(index).unwrap(), 0, 1);
     }
 
     pub fn remove(&self, index: u32) {

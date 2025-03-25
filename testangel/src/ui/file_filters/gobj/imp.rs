@@ -24,7 +24,7 @@ impl ListModelImpl for FileFilterListModel {
     }
 
     fn n_items(&self) -> u32 {
-        self.inner.borrow().len() as u32
+        u32::try_from(self.inner.borrow().len()).unwrap()
     }
 
     fn item(&self, position: u32) -> Option<glib::Object> {

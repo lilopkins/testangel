@@ -17,8 +17,7 @@ glib::wrapper! {
 }
 
 impl CompletionProviderEngines {
-    /// Create a new [`CompletionProvider`] that suggests TestAngel engines and
-    /// their instructions.
+    /// Create a new [`CompletionProvider`] that suggests engines.
     pub fn new(engine_list: Arc<EngineList>) -> Self {
         let obj: Self = Object::builder().build();
         obj.imp().engine_list.set(engine_list);

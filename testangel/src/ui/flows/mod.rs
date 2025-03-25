@@ -67,32 +67,32 @@ impl fmt::Display for SaveOrOpenFlowError {
 pub enum FlowInputs {
     /// Do nothing
     NoOp,
-    /// Request that TestAngel is closed
+    /// Request that the application is closed
     RequestProgramExit,
     /// The map of actions has changed and should be updated
     ActionsMapChanged(Arc<ActionMap>),
     /// Create a new flow
     NewFlow,
     /// Actually create the new flow
-    _NewFlow,
+    NewFlow_,
     /// Prompt the user to open a flow. This will ask to save first if needed.
     OpenFlow,
     /// Actually show the user the open file dialog
-    _OpenFlow,
+    OpenFlow_,
     /// Actually open a flow after the user has finished selecting
-    __OpenFlow(PathBuf),
+    OpenFlow__(PathBuf),
     /// Save the flow, prompting if needed to set file path
     SaveFlow,
     /// Save the flow as a new file, always prompting for a file path
     SaveAsFlow,
     /// Ask where to save if needed, then save
-    _SaveFlowThen(Box<FlowInputs>),
+    SaveFlowThen_(Box<FlowInputs>),
     /// Actually write the flow to disk, then emit then input
-    __SaveFlowThen(PathBuf, Box<FlowInputs>),
+    SaveFlowThen__(PathBuf, Box<FlowInputs>),
     /// Close the flow, prompting if needing to save first
     CloseFlowThen(Box<FlowInputs>),
     /// Actually close the flow
-    _CloseFlowThen(Box<FlowInputs>),
+    CloseFlowThen_(Box<FlowInputs>),
     /// Add the step with the ID provided
     AddStep(String),
     /// Update the UI steps from the open flow. This will clear first and overwrite any changes!
@@ -119,7 +119,7 @@ pub enum FlowInputs {
 pub enum FlowOutputs {
     /// Updates if the flow needs saving or not
     SetNeedsSaving(bool),
-    /// Request that TestAngel is closed
+    /// Request that the application is closed
     RequestProgramExit,
 }
 
@@ -153,42 +153,6 @@ impl FlowsModel {
         sender
             .output(FlowOutputs::SetNeedsSaving(needs_saving))
             .unwrap();
-    }
-
-    /// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
-    fn create_message_dialog_skeleton<S>(
-        &self,
-        title: S,
-        message: S,
-        transient_for: &impl IsA<gtk::Window>,
-    ) -> adw::MessageDialog
-    where
-        S: AsRef<str>,
-    {
-        adw::MessageDialog::builder()
-            .transient_for(transient_for)
-            .title(title.as_ref())
-            .heading(title.as_ref())
-            .body(message.as_ref())
-            .modal(true)
-            .build()
-    }
-
-    /// Create a message dialog attached to the toplevel window. This includes default implementations of an 'OK' button.
-    fn create_message_dialog<S>(
-        &self,
-        title: S,
-        message: S,
-        transient_for: &impl IsA<gtk::Window>,
-    ) -> adw::MessageDialog
-    where
-        S: AsRef<str>,
-    {
-        let dialog = self.create_message_dialog_skeleton(title, message, transient_for);
-        dialog.add_response("ok", &lang::lookup("ok"));
-        dialog.set_default_response(Some("ok"));
-        dialog.set_close_response("ok");
-        dialog
     }
 
     /// Just open a brand new flow
@@ -257,7 +221,7 @@ impl FlowsModel {
         transient_for: &impl IsA<gtk::Window>,
     ) {
         if self.needs_saving {
-            let question = self.create_message_dialog_skeleton(
+            let question = create_message_dialog_skeleton(
                 lang::lookup("flow-save-before"),
                 lang::lookup("flow-save-before-message"),
                 transient_for,
@@ -270,7 +234,7 @@ impl FlowsModel {
             let sender_c = sender.clone();
             let then_c = then.clone();
             question.connect_response(Some("save"), move |_, _| {
-                sender_c.emit(FlowInputs::_SaveFlowThen(Box::new(then_c.clone())));
+                sender_c.emit(FlowInputs::SaveFlowThen_(Box::new(then_c.clone())));
             });
             let sender_c = sender.clone();
             question.connect_response(Some("discard"), move |_, _| {
@@ -312,12 +276,12 @@ impl FlowsModel {
                     if let Ok(file) = res {
                         let mut path = file.path().unwrap();
                         path.set_extension("taflow");
-                        sender_c.emit(FlowInputs::__SaveFlowThen(path, Box::new(then.clone())));
+                        sender_c.emit(FlowInputs::SaveFlowThen__(path, Box::new(then.clone())));
                     }
                 },
             );
         } else {
-            sender.emit(FlowInputs::__SaveFlowThen(
+            sender.emit(FlowInputs::SaveFlowThen__(
                 self.open_path.clone().unwrap(),
                 Box::new(then),
             ));
@@ -439,6 +403,7 @@ impl Component for FlowsModel {
         ComponentParts { model, widgets }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn update_with_view(
         &mut self,
         widgets: &mut Self::Widgets,
@@ -537,22 +502,22 @@ impl Component for FlowsModel {
             FlowInputs::NewFlow => {
                 self.prompt_to_save(
                     sender.input_sender(),
-                    FlowInputs::_NewFlow,
+                    FlowInputs::NewFlow_,
                     root.toplevel_window().as_ref().unwrap(),
                 );
             }
-            FlowInputs::_NewFlow => {
+            FlowInputs::NewFlow_ => {
                 self.new_flow(&sender);
                 sender.input(FlowInputs::UpdateStepsFromModel);
             }
             FlowInputs::OpenFlow => {
                 self.prompt_to_save(
                     sender.input_sender(),
-                    FlowInputs::_OpenFlow,
+                    FlowInputs::OpenFlow_,
                     root.toplevel_window().as_ref().unwrap(),
                 );
             }
-            FlowInputs::_OpenFlow => {
+            FlowInputs::OpenFlow_ => {
                 let dialog = gtk::FileDialog::builder()
                     .modal(true)
                     .title(lang::lookup("header-open"))
@@ -572,12 +537,12 @@ impl Component for FlowsModel {
                     move |res| {
                         if let Ok(file) = res {
                             let path = file.path().unwrap();
-                            sender_c.input(FlowInputs::__OpenFlow(path));
+                            sender_c.input(FlowInputs::OpenFlow__(path));
                         }
                     },
                 );
             }
-            FlowInputs::__OpenFlow(path) => {
+            FlowInputs::OpenFlow__(path) => {
                 match self.open_flow(path, &sender) {
                     Ok(changes) => {
                         // Reload UI
@@ -589,7 +554,7 @@ impl Component for FlowsModel {
                                 .map(ToString::to_string)
                                 .collect::<Vec<_>>()
                                 .join(",");
-                            self.create_message_dialog(
+                            create_message_dialog(
                                 lang::lookup("flow-action-changed"),
                                 lang::lookup_with_args(
                                     "flow-action-changed-message",
@@ -602,7 +567,7 @@ impl Component for FlowsModel {
                     }
                     Err(e) => {
                         // Show error dialog
-                        self.create_message_dialog(
+                        create_message_dialog(
                             lang::lookup("flow-error-opening"),
                             e.to_string(),
                             root.toplevel_window().as_ref().unwrap(),
@@ -633,7 +598,7 @@ impl Component for FlowsModel {
                     );
                 }
             }
-            FlowInputs::_SaveFlowThen(then) => {
+            FlowInputs::SaveFlowThen_(then) => {
                 // unwrap rationale: this cannot be triggered if not attached to a window
                 self.ask_where_to_save(
                     sender.input_sender(),
@@ -642,10 +607,10 @@ impl Component for FlowsModel {
                     *then,
                 );
             }
-            FlowInputs::__SaveFlowThen(path, then) => {
+            FlowInputs::SaveFlowThen__(path, then) => {
                 self.open_path = Some(path);
                 if let Err(e) = self.save_flow(&sender) {
-                    self.create_message_dialog(
+                    create_message_dialog(
                         lang::lookup("flow-error-saving"),
                         e.to_string(),
                         root.toplevel_window().as_ref().unwrap(),
@@ -661,11 +626,11 @@ impl Component for FlowsModel {
             FlowInputs::CloseFlowThen(then) => {
                 self.prompt_to_save(
                     sender.input_sender(),
-                    FlowInputs::_CloseFlowThen(then),
+                    FlowInputs::CloseFlowThen_(then),
                     root.toplevel_window().as_ref().unwrap(),
                 );
             }
-            FlowInputs::_CloseFlowThen(then) => {
+            FlowInputs::CloseFlowThen_(then) => {
                 self.close_flow(&sender);
                 sender.input(*then);
             }
@@ -849,7 +814,9 @@ impl Component for FlowsModel {
                 sender.input(FlowInputs::CutStep(from));
 
                 // Establish new position
-                let mut to = (to.current_index() as isize + offset).max(0) as usize;
+                let mut to =
+                    usize::try_from((isize::try_from(to.current_index()).unwrap() + offset).max(0))
+                        .unwrap();
                 if to > current_from && to > 0 {
                     to -= 1;
                 }
@@ -859,4 +826,38 @@ impl Component for FlowsModel {
         }
         self.update_view(widgets, sender);
     }
+}
+
+/// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
+fn create_message_dialog_skeleton<S>(
+    title: S,
+    message: S,
+    transient_for: &impl IsA<gtk::Window>,
+) -> adw::MessageDialog
+where
+    S: AsRef<str>,
+{
+    adw::MessageDialog::builder()
+        .transient_for(transient_for)
+        .title(title.as_ref())
+        .heading(title.as_ref())
+        .body(message.as_ref())
+        .modal(true)
+        .build()
+}
+
+/// Create a message dialog attached to the toplevel window. This includes default implementations of an 'OK' button.
+fn create_message_dialog<S>(
+    title: S,
+    message: S,
+    transient_for: &impl IsA<gtk::Window>,
+) -> adw::MessageDialog
+where
+    S: AsRef<str>,
+{
+    let dialog = create_message_dialog_skeleton(title, message, transient_for);
+    dialog.add_response("ok", &lang::lookup("ok"));
+    dialog.set_default_response(Some("ok"));
+    dialog.set_close_response("ok");
+    dialog
 }

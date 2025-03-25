@@ -1,3 +1,6 @@
+#![allow(clippy::unused_unit)]
+#![warn(clippy::pedantic)]
+
 use testangel_engine::{engine, Evidence as Ev, EvidenceContent};
 
 engine! {

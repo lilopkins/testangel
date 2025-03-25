@@ -57,7 +57,7 @@ enum AppInput {
     AddActionToFlow(String),
     /// Set a page needs attention
     SetPageNeedsSaving(&'static str, bool),
-    /// Check and then close TestAngel
+    /// Check and then close the application
     CheckAndCloseProgram,
 }
 
@@ -261,7 +261,7 @@ impl Component for AppModel {
                     "actions" => self.action_needs_saving = needs_saving,
                     _ => (),
                 }
-                if let Some(page) = self.stack.child_by_name(&page) {
+                if let Some(page) = self.stack.child_by_name(page) {
                     self.stack.page(&page).set_needs_attention(needs_saving);
                 }
             }

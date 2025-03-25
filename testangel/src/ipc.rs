@@ -44,6 +44,27 @@ pub enum IpcError {
     CantLockEngineIo,
 }
 
+/// Trigger an IPC call to an engine.
+///
+/// ## Errors
+///
+/// - [`IpcError::IoError`] if the engine DLL cannot be opened properly
+/// - [`IpcError::EngineNotStarted`] if the engine is not ready to communicate
+/// - [`IpcError::EngineNotCompliant`] if the engine is not responding in a
+///   manner deemed valid.
+/// - [`IpcError::CantLockEngineIo`] if the engine library cannot be locked
+///   because it is being used elsewhere.
+///
+/// ## Safety
+///
+/// As this function crosses the FFI boundary, safety cannot be guaranteed.
+/// However, as long as functions adhere to the expected structure of an engine,
+/// this should behave correctly.
+///
+/// ## Panics
+///
+/// This function can pan
+#[allow(clippy::too_many_lines)]
 pub unsafe fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, IpcError> {
     tracing::debug!(
         "Sending request {:?} to engine {} at {:?}.",
@@ -113,7 +134,7 @@ pub unsafe fn ipc_call(engine: &Engine, request: &Request) -> Result<Response, I
                 }
                 instructions.push(
                     Instruction::from_ffi(instruction_raw)
-                        .map_err(|()| IpcError::EngineNotCompliant)?,
+                        .map_err(|_| IpcError::EngineNotCompliant)?,
                 );
                 i += 1;
             }
@@ -404,6 +425,15 @@ pub struct Engine {
 
 impl Engine {
     /// Ask the engine to reset it's state for test repeatability.
+    ///
+    /// ## Errors
+    ///
+    /// - [`IpcError::IoError`] if the engine DLL cannot be opened properly
+    /// - [`IpcError::EngineNotStarted`] if the engine is not ready to communicate
+    /// - [`IpcError::EngineNotCompliant`] if the engine is not responding in a
+    ///   manner deemed valid.
+    /// - [`IpcError::CantLockEngineIo`] if the engine library cannot be locked
+    ///   because it is being used elsewhere.
     pub fn reset_state(&self) -> Result<(), IpcError> {
         unsafe { ipc_call(self, &Request::ResetState) }.map(|_| ())
     }
@@ -485,6 +515,10 @@ fn get_engine_directory() -> PathBuf {
 }
 
 /// Get the list of available engines.
+///
+/// ## Panics
+///
+/// This will panic if the engine directory cannot be created.
 pub fn get_engines() -> EngineList {
     let mut engines = Vec::new();
     let engine_dir = get_engine_directory();

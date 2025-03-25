@@ -40,6 +40,6 @@ pub fn evps() -> FileFilter {
 /// Create a [`FileFilterListModel`] containing the provided list of [`FileFilter`]s.
 pub fn filter_list(filters: &[FileFilter]) -> FileFilterListModel {
     let model = FileFilterListModel::new();
-    filters.into_iter().for_each(|f| model.append(f.clone()));
+    filters.iter().for_each(|f| model.append(f.clone()));
     model
 }

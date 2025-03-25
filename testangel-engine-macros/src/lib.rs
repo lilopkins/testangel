@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 use heck::ToShoutySnakeCase;
 use heck::ToTitleCase;
 use heck::ToUpperCamelCase;
@@ -15,10 +17,10 @@ use syn::Expr;
 use syn::Ident;
 
 mod kv_attributes;
-use kv_attributes::*;
+use kv_attributes::parse_as_kv_attr;
 
 mod instruction_implementation;
-use instruction_implementation::*;
+use instruction_implementation::InstructionsImpl;
 use syn::Lit;
 use syn::Meta;
 

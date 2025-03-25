@@ -45,25 +45,27 @@ impl Instruction {
     /// - szDescription
     /// - arpParameterList (not a null pointer, correctly NULL terminated)
     /// - arpOutputList (not a null pointer, correctly NULL terminated)
-    pub unsafe fn from_ffi(metadata: *const ta_instruction_metadata) -> Result<Self, ()> {
+    pub unsafe fn from_ffi(
+        metadata: *const ta_instruction_metadata,
+    ) -> Result<Self, std::str::Utf8Error> {
         let id = {
-            let cstr = unsafe { CStr::from_ptr((*metadata).szId) };
-            let str_slice = cstr.to_str().map_err(|_| ())?;
+            let cstr = CStr::from_ptr((*metadata).szId);
+            let str_slice = cstr.to_str()?;
             str_slice.to_owned()
         };
         let lua_name = {
-            let cstr = unsafe { CStr::from_ptr((*metadata).szLuaName) };
-            let str_slice = cstr.to_str().map_err(|_| ())?;
+            let cstr = CStr::from_ptr((*metadata).szLuaName);
+            let str_slice = cstr.to_str()?;
             str_slice.to_owned()
         };
         let friendly_name = {
-            let cstr = unsafe { CStr::from_ptr((*metadata).szFriendlyName) };
-            let str_slice = cstr.to_str().map_err(|_| ())?;
+            let cstr = CStr::from_ptr((*metadata).szFriendlyName);
+            let str_slice = cstr.to_str()?;
             str_slice.to_owned()
         };
         let description = {
-            let cstr = unsafe { CStr::from_ptr((*metadata).szDescription) };
-            let str_slice = cstr.to_str().map_err(|_| ())?;
+            let cstr = CStr::from_ptr((*metadata).szDescription);
+            let str_slice = cstr.to_str()?;
             str_slice.to_owned()
         };
 
@@ -73,18 +75,18 @@ impl Instruction {
         let raw_parameters = (*metadata).arpParameterList;
         let mut parameters = vec![];
         loop {
-            let parameter_raw = unsafe { *raw_parameters.add(i) };
+            let parameter_raw = *raw_parameters.add(i);
             if parameter_raw.is_null() {
                 break;
             }
             let id = {
-                let cstr = unsafe { CStr::from_ptr((*parameter_raw).szId) };
-                let str_slice = cstr.to_str().map_err(|_| ())?;
+                let cstr = CStr::from_ptr((*parameter_raw).szId);
+                let str_slice = cstr.to_str()?;
                 str_slice.to_owned()
             };
             let friendly_name = {
-                let cstr = unsafe { CStr::from_ptr((*parameter_raw).szName) };
-                let str_slice = cstr.to_str().map_err(|_| ())?;
+                let cstr = CStr::from_ptr((*parameter_raw).szName);
+                let str_slice = cstr.to_str()?;
                 str_slice.to_owned()
             };
             let kind = match (*parameter_raw).kind {
@@ -106,18 +108,18 @@ impl Instruction {
         let raw_outputs = (*metadata).arpOutputList;
         let mut outputs = vec![];
         loop {
-            let output_raw = unsafe { *raw_outputs.add(i) };
+            let output_raw = *raw_outputs.add(i);
             if output_raw.is_null() {
                 break;
             }
             let id = {
-                let cstr = unsafe { CStr::from_ptr((*output_raw).szId) };
-                let str_slice = cstr.to_str().map_err(|_| ())?;
+                let cstr = CStr::from_ptr((*output_raw).szId);
+                let str_slice = cstr.to_str()?;
                 str_slice.to_owned()
             };
             let friendly_name = {
-                let cstr = unsafe { CStr::from_ptr((*output_raw).szName) };
-                let str_slice = cstr.to_str().map_err(|_| ())?;
+                let cstr = CStr::from_ptr((*output_raw).szName);
+                let str_slice = cstr.to_str()?;
                 str_slice.to_owned()
             };
             let kind = match (*output_raw).kind {
