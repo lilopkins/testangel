@@ -149,7 +149,11 @@ impl InstructionFn {
                             if doc_line.is_empty() {
                                 description.push('\n');
                             } else {
-                                if description.chars().last().is_some_and(|c| !c.is_whitespace()) {
+                                if description
+                                    .chars()
+                                    .last()
+                                    .is_some_and(|c| !c.is_whitespace())
+                                {
                                     description.push(' ');
                                 }
 
