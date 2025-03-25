@@ -10,7 +10,7 @@ pub enum FlowTermination {
 }
 
 engine! {
-    /// Work with evidence.
+    /// Interact with the user, ask them questions and tell them things.
     #[engine(
         lua_name = "Interaction",
         version = env!("CARGO_PKG_VERSION"),

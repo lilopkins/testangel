@@ -724,7 +724,7 @@ impl Component for ActionsModel {
                     tracing::debug!("Offsetting cursor into function");
                     for (i, l) in text.lines().enumerate() {
                         if l.contains("function run_action") {
-                            tracing::debug!("Function on line {}", i);
+                            tracing::debug!("Function on line {}", i + 1);
                             if let Some(text_iter) = buffer.iter_at_line_offset(i as i32 + 1, 2) {
                                 buffer.place_cursor(&text_iter);
                             }
