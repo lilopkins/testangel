@@ -1,10 +1,10 @@
 use heck::{ToKebabCase, ToTitleCase, ToUpperCamelCase};
-use proc_macro2::{Span, TokenStream as TokenStream2};
 use proc_macro_error2::{abort, abort_call_site, emit_call_site_error, emit_error};
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{
-    braced, parenthesized, parse::Parse, parse_str, punctuated::Punctuated, token::Paren,
-    Attribute, Block, Expr, Ident, Lit, Meta, Token, TypePath,
+    Attribute, Block, Expr, Ident, Lit, Meta, Token, TypePath, braced, parenthesized, parse::Parse,
+    parse_str, punctuated::Punctuated, token::Paren,
 };
 
 use crate::kv_attributes::parse_as_kv_attr;
@@ -320,9 +320,15 @@ impl Parse for InstructionParameter {
         let ty = input.parse()?;
 
         if ident.to_string().as_str() == "state" {
-            emit_error!(ident, "Using a parameter with the name `state` will make it impossible to change the engine's state variable.");
+            emit_error!(
+                ident,
+                "Using a parameter with the name `state` will make it impossible to change the engine's state variable."
+            );
         } else if ident.to_string().as_str() == "evidence" {
-            emit_error!(ident, "Using a parameter with the name `evidence` will make it impossible to change the engine's evidence variable.");
+            emit_error!(
+                ident,
+                "Using a parameter with the name `evidence` will make it impossible to change the engine's evidence variable."
+            );
         }
 
         Ok(Self {

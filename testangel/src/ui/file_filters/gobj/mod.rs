@@ -1,4 +1,4 @@
-use relm4::gtk::{gio, glib, prelude::*, subclass::prelude::*, FileFilter};
+use relm4::gtk::{FileFilter, gio, glib, prelude::*, subclass::prelude::*};
 
 mod imp;
 

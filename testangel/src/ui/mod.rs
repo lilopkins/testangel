@@ -2,8 +2,8 @@ use std::{fmt, rc::Rc, sync::Arc};
 
 use gtk::prelude::*;
 use relm4::{
-    actions::RelmActionGroup, adw, gtk, Component, ComponentController, ComponentParts, Controller,
-    RelmApp,
+    Component, ComponentController, ComponentParts, Controller, RelmApp, actions::RelmActionGroup,
+    adw, gtk,
 };
 use testangel::{
     action_loader::{self, ActionMap},

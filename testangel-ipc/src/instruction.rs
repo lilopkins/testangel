@@ -48,104 +48,106 @@ impl Instruction {
     pub unsafe fn from_ffi(
         metadata: *const ta_instruction_metadata,
     ) -> Result<Self, std::str::Utf8Error> {
-        let id = {
-            let cstr = CStr::from_ptr((*metadata).szId);
-            let str_slice = cstr.to_str()?;
-            str_slice.to_owned()
-        };
-        let lua_name = {
-            let cstr = CStr::from_ptr((*metadata).szLuaName);
-            let str_slice = cstr.to_str()?;
-            str_slice.to_owned()
-        };
-        let friendly_name = {
-            let cstr = CStr::from_ptr((*metadata).szFriendlyName);
-            let str_slice = cstr.to_str()?;
-            str_slice.to_owned()
-        };
-        let description = {
-            let cstr = CStr::from_ptr((*metadata).szDescription);
-            let str_slice = cstr.to_str()?;
-            str_slice.to_owned()
-        };
-
-        let flags = InstructionFlags::from_bits_truncate((*metadata).iFlags as u16);
-
-        let mut i = 0;
-        let raw_parameters = (*metadata).arpParameterList;
-        let mut parameters = vec![];
-        loop {
-            let parameter_raw = *raw_parameters.add(i);
-            if parameter_raw.is_null() {
-                break;
-            }
+        unsafe {
             let id = {
-                let cstr = CStr::from_ptr((*parameter_raw).szId);
+                let cstr = CStr::from_ptr((*metadata).szId);
+                let str_slice = cstr.to_str()?;
+                str_slice.to_owned()
+            };
+            let lua_name = {
+                let cstr = CStr::from_ptr((*metadata).szLuaName);
                 let str_slice = cstr.to_str()?;
                 str_slice.to_owned()
             };
             let friendly_name = {
-                let cstr = CStr::from_ptr((*parameter_raw).szName);
+                let cstr = CStr::from_ptr((*metadata).szFriendlyName);
                 let str_slice = cstr.to_str()?;
                 str_slice.to_owned()
             };
-            let kind = match (*parameter_raw).kind {
-                ta_parameter_kind::TA_PARAMETER_STRING => ParameterKind::String,
-                ta_parameter_kind::TA_PARAMETER_BOOLEAN => ParameterKind::Boolean,
-                ta_parameter_kind::TA_PARAMETER_DECIMAL => ParameterKind::Decimal,
-                ta_parameter_kind::TA_PARAMETER_INTEGER => ParameterKind::Integer,
+            let description = {
+                let cstr = CStr::from_ptr((*metadata).szDescription);
+                let str_slice = cstr.to_str()?;
+                str_slice.to_owned()
             };
-            let ink = InstructionNamedKind {
-                id,
-                friendly_name,
-                kind,
-            };
-            parameters.push(ink);
-            i += 1;
-        }
 
-        let mut i = 0;
-        let raw_outputs = (*metadata).arpOutputList;
-        let mut outputs = vec![];
-        loop {
-            let output_raw = *raw_outputs.add(i);
-            if output_raw.is_null() {
-                break;
+            let flags = InstructionFlags::from_bits_truncate((*metadata).iFlags as u16);
+
+            let mut i = 0;
+            let raw_parameters = (*metadata).arpParameterList;
+            let mut parameters = vec![];
+            loop {
+                let parameter_raw = *raw_parameters.add(i);
+                if parameter_raw.is_null() {
+                    break;
+                }
+                let id = {
+                    let cstr = CStr::from_ptr((*parameter_raw).szId);
+                    let str_slice = cstr.to_str()?;
+                    str_slice.to_owned()
+                };
+                let friendly_name = {
+                    let cstr = CStr::from_ptr((*parameter_raw).szName);
+                    let str_slice = cstr.to_str()?;
+                    str_slice.to_owned()
+                };
+                let kind = match (*parameter_raw).kind {
+                    ta_parameter_kind::TA_PARAMETER_STRING => ParameterKind::String,
+                    ta_parameter_kind::TA_PARAMETER_BOOLEAN => ParameterKind::Boolean,
+                    ta_parameter_kind::TA_PARAMETER_DECIMAL => ParameterKind::Decimal,
+                    ta_parameter_kind::TA_PARAMETER_INTEGER => ParameterKind::Integer,
+                };
+                let ink = InstructionNamedKind {
+                    id,
+                    friendly_name,
+                    kind,
+                };
+                parameters.push(ink);
+                i += 1;
             }
-            let id = {
-                let cstr = CStr::from_ptr((*output_raw).szId);
-                let str_slice = cstr.to_str()?;
-                str_slice.to_owned()
-            };
-            let friendly_name = {
-                let cstr = CStr::from_ptr((*output_raw).szName);
-                let str_slice = cstr.to_str()?;
-                str_slice.to_owned()
-            };
-            let kind = match (*output_raw).kind {
-                ta_parameter_kind::TA_PARAMETER_STRING => ParameterKind::String,
-                ta_parameter_kind::TA_PARAMETER_BOOLEAN => ParameterKind::Boolean,
-                ta_parameter_kind::TA_PARAMETER_DECIMAL => ParameterKind::Decimal,
-                ta_parameter_kind::TA_PARAMETER_INTEGER => ParameterKind::Integer,
-            };
-            let ink = InstructionNamedKind {
-                id,
-                friendly_name,
-                kind,
-            };
-            outputs.push(ink);
-            i += 1;
-        }
 
-        Ok(Self {
-            id,
-            lua_name,
-            friendly_name,
-            description,
-            flags,
-            parameters,
-            outputs,
-        })
+            let mut i = 0;
+            let raw_outputs = (*metadata).arpOutputList;
+            let mut outputs = vec![];
+            loop {
+                let output_raw = *raw_outputs.add(i);
+                if output_raw.is_null() {
+                    break;
+                }
+                let id = {
+                    let cstr = CStr::from_ptr((*output_raw).szId);
+                    let str_slice = cstr.to_str()?;
+                    str_slice.to_owned()
+                };
+                let friendly_name = {
+                    let cstr = CStr::from_ptr((*output_raw).szName);
+                    let str_slice = cstr.to_str()?;
+                    str_slice.to_owned()
+                };
+                let kind = match (*output_raw).kind {
+                    ta_parameter_kind::TA_PARAMETER_STRING => ParameterKind::String,
+                    ta_parameter_kind::TA_PARAMETER_BOOLEAN => ParameterKind::Boolean,
+                    ta_parameter_kind::TA_PARAMETER_DECIMAL => ParameterKind::Decimal,
+                    ta_parameter_kind::TA_PARAMETER_INTEGER => ParameterKind::Integer,
+                };
+                let ink = InstructionNamedKind {
+                    id,
+                    friendly_name,
+                    kind,
+                };
+                outputs.push(ink);
+                i += 1;
+            }
+
+            Ok(Self {
+                id,
+                lua_name,
+                friendly_name,
+                description,
+                flags,
+                parameters,
+                outputs,
+            })
+        }
     }
 
     /// Build a new instruction

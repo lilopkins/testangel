@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use adw::prelude::*;
 use relm4::{
-    adw, factory::FactoryVecDeque, gtk, Component, ComponentParts, ComponentSender, RelmWidgetExt,
-    Sender,
+    Component, ComponentParts, ComponentSender, RelmWidgetExt, Sender, adw,
+    factory::FactoryVecDeque, gtk,
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
@@ -212,7 +212,7 @@ impl Component for ActionsHeader {
                         });
                     }
                 } else {
-                    use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+                    use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
                     let mut unsorted_results = vec![];
                     let matcher = SkimMatcherV2::default();
                     for engine in &**self.engine_list {

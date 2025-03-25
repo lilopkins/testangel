@@ -2,9 +2,9 @@ use std::{collections::HashMap, fs, sync::Arc};
 
 use adw::prelude::*;
 use arboard::Clipboard;
-use base64::{prelude::BASE64_STANDARD, Engine};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use evidenceangel::{Author, EvidencePackage};
-use relm4::{adw, gtk, Component, ComponentParts, RelmWidgetExt};
+use relm4::{Component, ComponentParts, RelmWidgetExt, adw, gtk};
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,

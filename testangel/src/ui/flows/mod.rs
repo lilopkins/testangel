@@ -2,8 +2,8 @@ use std::{fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
-    adw, component::Connector, factory::FactoryVecDeque, gtk, prelude::DynamicIndex, Component,
-    ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
+    adw, component::Connector, factory::FactoryVecDeque, gtk, prelude::DynamicIndex,
 };
 use testangel::{
     action_loader::ActionMap,
@@ -191,7 +191,7 @@ impl FlowsModel {
                     return Err(SaveOrOpenFlowError::MissingAction(
                         step,
                         ac.action_id.clone(),
-                    ))
+                    ));
                 }
                 Some(action) => {
                     // Check that action parameters haven't changed. If they have, reset values.

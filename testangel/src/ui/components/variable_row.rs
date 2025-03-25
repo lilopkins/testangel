@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 
 use adw::prelude::*;
 use relm4::{
-    adw, factory::FactoryVecDeque, gtk, prelude::FactoryComponent, Component, ComponentController,
-    Controller, FactorySender,
+    Component, ComponentController, Controller, FactorySender, adw, factory::FactoryVecDeque, gtk,
+    prelude::FactoryComponent,
 };
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 

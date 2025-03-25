@@ -64,12 +64,14 @@ impl Descriptor {
         let descriptor_pair = line_pair.into_inner().next()?;
         assert_eq!(descriptor_pair.as_rule(), Rule::Descriptor);
         let descriptor_inner = descriptor_pair.into_inner().next()?;
-        assert!([
-            Rule::TypedDescriptor,
-            Rule::KeyValueDescriptor,
-            Rule::FlagDescriptor
-        ]
-        .contains(&descriptor_inner.as_rule()));
+        assert!(
+            [
+                Rule::TypedDescriptor,
+                Rule::KeyValueDescriptor,
+                Rule::FlagDescriptor
+            ]
+            .contains(&descriptor_inner.as_rule())
+        );
 
         Some(match descriptor_inner.as_rule() {
             Rule::TypedDescriptor => {

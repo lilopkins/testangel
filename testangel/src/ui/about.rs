@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use relm4::{adw, gtk, SimpleComponent};
+use relm4::{SimpleComponent, adw, gtk};
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 
 use crate::ui::lang;

@@ -1,7 +1,7 @@
 #![allow(clippy::unused_unit)]
 #![warn(clippy::pedantic)]
 
-use testangel_engine::{engine, Evidence as Ev, EvidenceContent};
+use testangel_engine::{Evidence as Ev, EvidenceContent, engine};
 
 engine! {
     /// Work with evidence.

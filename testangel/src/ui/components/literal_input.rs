@@ -1,5 +1,5 @@
 use adw::prelude::*;
-use relm4::{adw, gtk, SimpleComponent};
+use relm4::{SimpleComponent, adw, gtk};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};
 
 use crate::ui::lang;

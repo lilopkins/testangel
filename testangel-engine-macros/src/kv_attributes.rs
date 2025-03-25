@@ -1,5 +1,5 @@
 use proc_macro_error2::emit_error;
-use syn::{parse::Parse, Attribute, Expr, Ident, MacroDelimiter, Meta, Token};
+use syn::{Attribute, Expr, Ident, MacroDelimiter, Meta, Token, parse::Parse};
 
 pub fn parse_as_kv_attr(attr_name: &'static str, attr: &Attribute) -> Option<KVAttributeContent> {
     match &attr.meta {

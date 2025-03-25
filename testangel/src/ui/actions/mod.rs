@@ -2,15 +2,15 @@ use std::{fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
     adw,
     gtk::{self, glib::SignalHandlerId},
-    Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
 };
 use sourceview::StyleSchemeManager;
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
-    types::{action_v1::ActionV1, action_v2::ActionV2, Action, VersionedFile},
+    types::{Action, VersionedFile, action_v1::ActionV1, action_v2::ActionV2},
 };
 use testangel_engine::InstructionNamedKind;
 

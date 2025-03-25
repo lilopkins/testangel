@@ -1,11 +1,11 @@
 use std::{cell::RefCell, sync::Arc};
 
 use convert_case::Casing;
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use glib::prelude::*;
 use gtk::subclass::prelude::*;
 use relm4::gtk::{self, gio::ListModel, glib};
-use sourceview5::{prelude::TextBufferExt, subclass::prelude::*, CompletionProvider};
+use sourceview5::{CompletionProvider, prelude::TextBufferExt, subclass::prelude::*};
 use testangel::ipc::EngineList;
 
 use crate::ui::actions::completion_proposal_list::{CompletionProposalListModel, ProposalSource};
@@ -205,9 +205,7 @@ impl CompletionProviderImpl for CompletionProviderEngineInstructions {
     fn populate_future(
         &self,
         context: &sourceview5::CompletionContext,
-    ) -> std::pin::Pin<
-        Box<dyn std::prelude::rust_2024::Future<Output = Result<gtk::gio::ListModel, glib::Error>>>,
-    > {
+    ) -> std::pin::Pin<Box<dyn Future<Output = Result<gtk::gio::ListModel, glib::Error>>>> {
         let engines_box = self.engine_list.borrow();
         let engines_arc = (*engines_box).clone();
 

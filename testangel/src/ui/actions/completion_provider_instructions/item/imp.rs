@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 
 use glib::subclass::prelude::*;
 use relm4::gtk::glib;
-use sourceview5::{subclass::prelude::CompletionProposalImpl, CompletionProposal};
+use sourceview5::{CompletionProposal, subclass::prelude::CompletionProposalImpl};
 
 use crate::ui::actions::completion_proposal_list::ProposalSource;
 
