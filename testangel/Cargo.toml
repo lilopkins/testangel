@@ -10,46 +10,57 @@ authors = [
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
+name = "testangel"
+path = "src/main.rs"
+required-features = [ "ui" ]
+
+[[bin]]
 name = "testangel-executor"
 path = "src/bin/executor.rs"
 required-features = [ "cli" ]
 
 [features]
 default = [ "ui" ]
-ui = [ "dep:relm4", "dep:relm4-icons", "dep:opener", "dep:fern", "dep:fluent", "dep:fluent-templates", "dep:once_cell", "dep:fuzzy-matcher", "dep:sys-locale", "dep:sourceview5", "dep:arboard" ]
-cli = [ "dep:clap", "dep:pretty_env_logger" ]
+ui = [ "dep:relm4", "dep:relm4-icons", "dep:opener", "dep:tracing-subscriber-multi", "dep:fluent", "dep:fluent-templates", "dep:once_cell", "dep:fuzzy-matcher", "dep:sys-locale", "dep:sourceview5", "dep:arboard" ]
+cli = [ "dep:clap", "dep:tracing-subscriber" ]
 windows-keep-console-window = []
 
 [dependencies]
+testangel-engine = { path = "../testangel-engine" }
 testangel-ipc = { path = "../testangel-ipc" }
 arboard = { version = "3.4.0", optional = true }
 clap = { version = "4.3.19", features = [ "derive" ], optional = true }
-fern = { version = "0.7.0", optional = true }
 libloading = "0.8"
-log = "0.4.19"
 image = { version = "0.25.0", default-features = false, features = ["png"] }
 thiserror = "2.0.4"
-pretty_env_logger = { version = "0.5.0", optional = true }
 serde = { version = "1.0.180", features = [ "derive" ] }
 uuid = { version = "1.4.1", features = [ "v4" ] }
-ron = "0.8.0"
+ron = "0.9.0"
 genpdf = { version = "0.2.0", features = ["images"] }
 chrono = "0.4.26"
 base64 = "0.22.0"
-itertools = "0.13.0"
+itertools = "0.14.0"
 opener = { version = "0.7.0", optional = true }
-octocrab = "0.42.1"
+octocrab = "0.43.0"
 semver = "1.0.19"
 relm4 = { version = "0.9.1", optional = true, features = [ "libadwaita", "gnome_44" ] }
 relm4-icons = { version = "0.9.0", optional = true }
 sourceview5 = { version = "0.9.1", optional = true }
 fluent = { version = "0.16.0", optional = true }
-fluent-templates = { version = "0.11.0", optional = true }
+fluent-templates = { version = "0.13.0", optional = true }
 fuzzy-matcher = { version = "0.3.7", optional = true }
 once_cell = { version = "1.18.0", optional = true }
 sys-locale = { version = "0.3.1", optional = true }
 mlua = { version = "0.10.2", features = [ "luau" ] }
 pest = "2.7.9"
 pest_derive = "2.7.9"
-convert_case = "0.6.0"
-evidenceangel = { git = "https://github.com/lilopkins/evidenceangel.git" }
+convert_case = "0.8.0"
+evidenceangel = { version = "1.4.0", git = "https://github.com/lilopkins/evidenceangel.git" }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", optional = true }
+tracing-subscriber-multi = { version = "0.1.0", optional = true }
+libc = "0.2.171"
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+ico-builder = "0.1"

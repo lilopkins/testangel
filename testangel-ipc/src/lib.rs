@@ -1,11 +1,13 @@
-use std::collections::HashMap;
+#![warn(clippy::pedantic)]
 
-use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// A prelude module to quickly import common imports.
 pub mod prelude {
     pub use crate::evidence::{Evidence, EvidenceContent};
-    pub use crate::instruction::{Instruction, InstructionWithParameters};
+    pub use crate::instruction::{
+        Instruction, InstructionFlags, InstructionNamedKind, InstructionWithParameters,
+    };
     pub use crate::value::{ParameterKind, ParameterValue};
     pub use crate::{ErrorKind, Request, Response};
 }
@@ -14,20 +16,21 @@ mod evidence;
 mod instruction;
 mod value;
 
+#[allow(non_snake_case)]
+#[allow(non_camel_case_types)]
+#[allow(unused)]
+pub mod ffi;
+
 use prelude::*;
-#[cfg(feature = "schemas")]
-use schemars::JsonSchema;
 
 /// The possible request messages that could be sent over the JSON IPC channel.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "schemas", derive(JsonSchema))]
-#[serde(tag = "type")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Request {
     /// Request the list of available instructions from this engine plugin.
     Instructions,
-    /// Run the list of instructions given in the order they are listed.
-    RunInstructions {
-        instructions: Vec<InstructionWithParameters>,
+    /// Run the instruction with the provided parameters.
+    RunInstruction {
+        instruction: InstructionWithParameters,
     },
     /// Reset the state of this engine to the default.
     ResetState,
@@ -35,28 +38,26 @@ pub enum Request {
 
 impl Request {
     /// Convert this request to JSON
+    ///
+    /// # Panics
+    ///
+    /// Theoretically panics if JSON cannot be produced. This should never occur.
+    #[must_use]
+    #[deprecated]
     pub fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap()
-    }
-}
-
-impl TryFrom<String> for Request {
-    type Error = serde_json::Error;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        serde_json::from_str(&value)
+        panic!()
     }
 }
 
 /// The possible response messages that could be sent over the JSON IPC channel.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "schemas", derive(JsonSchema))]
-#[serde(tag = "type")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Response {
     /// The list of instructions this engine is capable of.
     Instructions {
         /// The friendly name of the engine.
         friendly_name: String,
+        /// The description of the engine.
+        description: String,
         /// The semver version of this engine
         engine_version: String,
         /// The name of this engine in code.
@@ -68,10 +69,10 @@ pub enum Response {
     },
     /// Execution finished with the output provided.
     ExecutionOutput {
-        /// TOrder matches the list of instructions sent originally.he execution output. Order matches the list of instructions sent originally.
-        output: Vec<HashMap<String, ParameterValue>>,
-        /// The evidence output. Order matches the list of instructions sent originally.
-        evidence: Vec<Vec<Evidence>>,
+        /// The execution output.
+        output: HashMap<String, ParameterValue>,
+        /// The evidence output.
+        evidence: Vec<Evidence>,
     },
     /// The state of this engine has been reset.
     StateReset,
@@ -79,26 +80,8 @@ pub enum Response {
     Error { kind: ErrorKind, reason: String },
 }
 
-impl Response {
-    /// Convert this response to JSON
-    pub fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap()
-    }
-}
-
-impl TryFrom<String> for Response {
-    type Error = serde_json::Error;
-
-    fn try_from(value: String) -> Result<Self, <Self as TryFrom<String>>::Error> {
-        serde_json::from_str(&value)
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "schemas", derive(JsonSchema))]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ErrorKind {
-    /// The IPC JSON request couldn't be parsed.
-    FailedToParseIPCJson,
     /// You have asked this engine to run an instruction that it is not able to run.
     InvalidInstruction,
     /// You are missing a parameter needed to execute.

@@ -1,10 +1,13 @@
+#![warn(clippy::pedantic)]
+
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
 use base64::{prelude::BASE64_STANDARD, Engine};
 use clap::{arg, Parser};
 use evidenceangel::{Author, EvidencePackage};
-use testangel::{types::AutomationFlow, *};
+use testangel::{action_loader, ipc, types::AutomationFlow};
 use testangel_ipc::prelude::*;
+use tracing_subscriber::util::SubscriberInitExt;
 
 #[derive(Parser)]
 
@@ -19,7 +22,7 @@ struct Cli {
 }
 
 fn main() {
-    pretty_env_logger::init();
+    tracing_subscriber::FmtSubscriber::new().init();
 
     let cli = Cli::parse();
 
@@ -27,7 +30,7 @@ fn main() {
         ron::from_str(&fs::read_to_string(cli.flow).expect("Failed to read flow."))
             .expect("Failed to parse flow.");
     let engine_map = Arc::new(ipc::get_engines());
-    let action_map = Arc::new(action_loader::get_actions(engine_map.clone()));
+    let action_map = Arc::new(action_loader::get_actions(&engine_map));
 
     // Check flow for actions that aren't available.
     for action_config in &flow.actions {
@@ -53,7 +56,7 @@ fn main() {
     }
 
     for action_config in flow.actions {
-        match action_config.execute(action_map.clone(), engine_map.clone(), outputs.clone()) {
+        match action_config.execute(&action_map, &engine_map, &outputs) {
             Ok((output, ev)) => {
                 outputs.push(output);
                 evidence = [evidence, ev].concat();

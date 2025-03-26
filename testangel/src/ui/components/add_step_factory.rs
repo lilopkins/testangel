@@ -35,7 +35,7 @@ impl FactoryComponent for AddStepResult {
             set_label: &self.label,
 
             connect_clicked[sender, id] => move |_| {
-                sender.output(id.clone()).unwrap()
+                sender.output(id.clone()).unwrap();
             }
         }
     }

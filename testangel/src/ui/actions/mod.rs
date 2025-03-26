@@ -1,23 +1,25 @@
-use std::{collections::HashMap, fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
+use std::{fmt, fs, path::PathBuf, rc::Rc, sync::Arc};
 
 use adw::prelude::*;
 use relm4::{
-    adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
-    RelmWidgetExt,
+    adw,
+    gtk::{self, glib::SignalHandlerId},
+    Component, ComponentController, ComponentParts, ComponentSender, Controller, RelmWidgetExt,
 };
 use sourceview::StyleSchemeManager;
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
-    types::action_v1::ActionV1,
-    types::{Action, VersionedFile},
+    types::{action_v1::ActionV1, action_v2::ActionV2, Action, VersionedFile},
 };
+use testangel_engine::InstructionNamedKind;
+
+use crate::lang_args;
 
 use super::{file_filters, lang};
 use sourceview5 as sourceview;
 
 pub mod header;
-mod metadata_component;
 
 pub enum SaveOrOpenActionError {
     IoError(std::io::Error),
@@ -33,34 +35,30 @@ impl fmt::Display for SaveOrOpenActionError {
             f,
             "{}",
             match self {
-                Self::IoError(e) => lang::lookup_with_args("action-save-open-error-io-error", {
-                    let mut map = HashMap::new();
-                    map.insert("error", e.to_string().into());
-                    map
-                }),
+                Self::IoError(e) => lang::lookup_with_args(
+                    "action-save-open-error-io-error",
+                    lang_args!("error", e.to_string())
+                ),
                 Self::ParsingError(e) => {
-                    lang::lookup_with_args("action-save-open-error-parsing-error", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "action-save-open-error-parsing-error",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
                 Self::SerializingError(e) => {
-                    lang::lookup_with_args("action-save-open-error-serializing-error", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "action-save-open-error-serializing-error",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
                 Self::ActionNotVersionCompatible => {
                     lang::lookup("action-save-open-error-action-not-version-compatible")
                 }
                 Self::MissingInstruction(e) => {
-                    lang::lookup_with_args("action-save-open-error-missing-instruction", {
-                        let mut map = HashMap::new();
-                        map.insert("error", e.to_string().into());
-                        map
-                    })
+                    lang::lookup_with_args(
+                        "action-save-open-error-missing-instruction",
+                        lang_args!("error", e.to_string()),
+                    )
                 }
             }
         )
@@ -71,6 +69,12 @@ impl fmt::Display for SaveOrOpenActionError {
 pub enum ActionInputs {
     /// Do nothing
     NoOp,
+    /// Request that TestAngel is closed
+    RequestProgramExit,
+    /// Prompt to save before adding this action to the open flow
+    AddOpenActionToFlow,
+    /// Add this action to the open flow
+    _AddOpenActionToFlow,
     /// The map of actions has changed and should be updated
     ActionsMapChanged(Arc<ActionMap>),
     /// Create a new action
@@ -92,18 +96,24 @@ pub enum ActionInputs {
     /// Actually write the action to disk, then emit then input. First bool is whether a new ID should be used.
     __SaveActionThen(bool, PathBuf, Box<ActionInputs>),
     /// Close the action, prompting if needing to save first
-    CloseAction,
+    CloseActionThen(Box<ActionInputs>),
     /// Actually close the action
-    _CloseAction,
+    _CloseActionThen(Box<ActionInputs>),
     /// Add the step with the ID provided
     AddStep(String),
-    /// The metadata has been updated and the action should be updated to reflect that
-    MetadataUpdated(metadata_component::MetadataOutput),
+    /// The contents of the text buffer have changed
+    TextBufferChanged,
 }
 #[derive(Clone, Debug)]
 pub enum ActionOutputs {
+    /// Request that TestAngel is closed.
+    RequestProgramExit,
     /// Inform other parts that actions may have changed, reload them!
     ReloadActions,
+    /// Add the open action to the open flow
+    AddOpenActionToFlow(String),
+    /// Updates if the flow needs saving or not
+    SetNeedsSaving(bool),
 }
 
 #[derive(Debug)]
@@ -115,8 +125,9 @@ pub struct ActionsModel {
     open_path: Option<PathBuf>,
     needs_saving: bool,
     header: Rc<Controller<header::ActionsHeader>>,
-    metadata: Controller<metadata_component::Metadata>,
     source_view: sourceview::View,
+
+    signal_text_buffer_changed: Option<SignalHandlerId>,
 }
 
 impl ActionsModel {
@@ -125,15 +136,30 @@ impl ActionsModel {
         self.header.clone()
     }
 
+    /// Set whether the open flow needs saving
+    pub fn set_needs_saving(
+        &mut self,
+        needs_saving: bool,
+        sender: &relm4::ComponentSender<ActionsModel>,
+    ) {
+        self.needs_saving = needs_saving;
+        sender
+            .output(ActionOutputs::SetNeedsSaving(needs_saving))
+            .unwrap();
+    }
+
     /// Create the absolute barebones of a message dialog, allowing for custom button and response mapping.
-    fn create_message_dialog_skeleton<S>(&self, title: S, message: S) -> adw::MessageDialog
+    fn create_message_dialog_skeleton<S>(
+        &self,
+        title: S,
+        message: S,
+        transient_for: &impl IsA<gtk::Window>,
+    ) -> adw::MessageDialog
     where
         S: AsRef<str>,
     {
         adw::MessageDialog::builder()
-            .transient_for(&self.header.widget().toplevel_window().expect(
-                "ActionsModel::create_message_dialog cannot be called until the header is attached",
-            ))
+            .transient_for(transient_for)
             .title(title.as_ref())
             .heading(title.as_ref())
             .body(message.as_ref())
@@ -142,11 +168,16 @@ impl ActionsModel {
     }
 
     /// Create a message dialog attached to the toplevel window. This includes default implementations of an 'OK' button.
-    fn create_message_dialog<S>(&self, title: S, message: S) -> adw::MessageDialog
+    fn create_message_dialog<S>(
+        &self,
+        title: S,
+        message: S,
+        transient_for: &impl IsA<gtk::Window>,
+    ) -> adw::MessageDialog
     where
         S: AsRef<str>,
     {
-        let dialog = self.create_message_dialog_skeleton(title, message);
+        let dialog = self.create_message_dialog_skeleton(title, message, transient_for);
         dialog.add_response("ok", &lang::lookup("ok"));
         dialog.set_default_response(Some("ok"));
         dialog.set_close_response("ok");
@@ -154,9 +185,9 @@ impl ActionsModel {
     }
 
     /// Just open a brand new action
-    fn new_action(&mut self) {
+    fn new_action(&mut self, sender: &relm4::ComponentSender<ActionsModel>) {
         self.open_path = None;
-        self.needs_saving = true;
+        self.set_needs_saving(true, sender);
         let action = Action::default();
         self.source_view.buffer().set_text(&action.script);
         self.open_action = Some(action);
@@ -164,14 +195,14 @@ impl ActionsModel {
             .emit(header::ActionsHeaderInput::ChangeActionOpen(
                 self.open_action.is_some(),
             ));
-        self.metadata
-            .emit(metadata_component::MetadataInput::ChangeAction(
-                Action::default(),
-            ));
     }
 
     /// Open an action. This does not ask to save first.
-    fn open_action(&mut self, file: PathBuf) -> Result<(), SaveOrOpenActionError> {
+    fn open_action(
+        &mut self,
+        file: PathBuf,
+        sender: &relm4::ComponentSender<ActionsModel>,
+    ) -> Result<(), SaveOrOpenActionError> {
         let mut data = fs::read_to_string(&file).map_err(SaveOrOpenActionError::IoError)?;
 
         let versioned_file: VersionedFile =
@@ -181,43 +212,60 @@ impl ActionsModel {
             // This doesn't save anything, just changes what loads to something compatible
             let action_v1: ActionV1 =
                 ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
-            let action_upgraded = action_v1.upgrade_action(self.engine_list.clone());
+            let action_v2 = action_v1.upgrade_action(&self.engine_list);
+            let action_upgraded = action_v2.upgrade_action();
             data = ron::to_string(&action_upgraded)
                 .map_err(SaveOrOpenActionError::SerializingError)?;
-        } else if versioned_file.version() != 2 {
+        } else if versioned_file.version() == 2 {
+            // This doesn't save anything, just changes what loads to something compatible
+            let action_v2: ActionV2 =
+                ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
+            let action_upgraded = action_v2.upgrade_action();
+            data = ron::to_string(&action_upgraded)
+                .map_err(SaveOrOpenActionError::SerializingError)?;
+        } else if versioned_file.version() != 3 {
             return Err(SaveOrOpenActionError::ActionNotVersionCompatible);
         }
 
         let action: Action = ron::from_str(&data).map_err(SaveOrOpenActionError::ParsingError)?;
         // Validate that all instructions used in the script are available, or return a MissingInstruction err
         action
-            .check_instructions_available(self.engine_list.clone())
+            .check_instructions_available(&self.engine_list)
             .map_err(|missing| SaveOrOpenActionError::MissingInstruction(missing[0].clone()))?;
+
+        self.source_view
+            .buffer()
+            .block_signal(self.signal_text_buffer_changed.as_ref().unwrap());
         self.source_view.buffer().set_text(&action.script);
+        self.source_view
+            .buffer()
+            .unblock_signal(self.signal_text_buffer_changed.as_ref().unwrap());
 
         self.open_action = Some(action.clone());
         self.header
             .emit(header::ActionsHeaderInput::ChangeActionOpen(
                 self.open_action.is_some(),
             ));
-        self.metadata
-            .emit(metadata_component::MetadataInput::ChangeAction(
-                action.clone(),
-            ));
         self.open_path = Some(file);
-        self.needs_saving = false;
-        log::debug!("New action open.");
-        log::debug!("Action: {:?}", self.open_action);
+        self.set_needs_saving(false, sender);
+        tracing::debug!("New action open.");
+        tracing::debug!("Action: {:?}", self.open_action);
         Ok(())
     }
 
     /// Ask the user if they want to save this file. If they response yes, this will also trigger the save function.
     /// This function will only ask the user if needed, otherwise it will emit immediately.
-    fn prompt_to_save(&self, sender: &relm4::Sender<ActionInputs>, then: ActionInputs) {
+    fn prompt_to_save(
+        &self,
+        sender: &relm4::Sender<ActionInputs>,
+        then: ActionInputs,
+        transient_for: &impl IsA<gtk::Window>,
+    ) {
         if self.needs_saving {
             let question = self.create_message_dialog_skeleton(
                 lang::lookup("action-save-before"),
                 lang::lookup("action-save-before-message"),
+                transient_for,
             );
             question.add_response("discard", &lang::lookup("discard"));
             question.add_response("save", &lang::lookup("save"));
@@ -253,7 +301,7 @@ impl ActionsModel {
                 .modal(true)
                 .title(lang::lookup("header-save"))
                 .initial_folder(&gtk::gio::File::for_path(
-                    std::env::var("TA_ACTION_DIR").unwrap_or("./actions".to_string()),
+                    testangel::action_loader::get_action_directory(),
                 ))
                 .filters(&file_filters::filter_list(vec![
                     file_filters::actions(),
@@ -286,7 +334,10 @@ impl ActionsModel {
     }
 
     /// Just save the action to disk with the current `open_path` as the destination
-    fn save_action(&mut self) -> Result<(), SaveOrOpenActionError> {
+    fn save_action(
+        &mut self,
+        sender: &relm4::ComponentSender<ActionsModel>,
+    ) -> Result<(), SaveOrOpenActionError> {
         // Get content
         let buffer = self.source_view.buffer();
         let script = buffer.text(&buffer.start_iter(), &buffer.end_iter(), false);
@@ -301,7 +352,7 @@ impl ActionsModel {
             let engine_lua_name = engine.lua_name.clone();
             for instruction in engine.instructions.clone() {
                 let instruction_lua_name = instruction.lua_name().clone();
-                let built_call = format!("{}.{}", engine_lua_name, instruction_lua_name);
+                let built_call = format!("{engine_lua_name}.{instruction_lua_name}");
                 if script.contains(&built_call) {
                     action.required_instructions.push(instruction.id().clone());
                 }
@@ -312,15 +363,15 @@ impl ActionsModel {
         let data = ron::to_string(self.open_action.as_ref().unwrap())
             .map_err(SaveOrOpenActionError::SerializingError)?;
         fs::write(save_path, data).map_err(SaveOrOpenActionError::IoError)?;
-        self.needs_saving = false;
+        self.set_needs_saving(false, sender);
         Ok(())
     }
 
     /// Close this action without checking first
-    fn close_action(&mut self) {
+    fn close_action(&mut self, sender: &relm4::ComponentSender<ActionsModel>) {
         self.open_action = None;
         self.open_path = None;
-        self.needs_saving = false;
+        self.set_needs_saving(false, sender);
         self.header
             .emit(header::ActionsHeaderInput::ChangeActionOpen(
                 self.open_action.is_some(),
@@ -338,34 +389,22 @@ impl Component for ActionsModel {
     view! {
         #[root]
         toast_target = adw::ToastOverlay {
-            gtk::ScrolledWindow {
-                set_vexpand: true,
-                set_hscrollbar_policy: gtk::PolicyType::Never,
-
-                if model.open_action.is_none() {
-                    adw::StatusPage {
-                        set_title: &lang::lookup("nothing-open"),
-                        set_description: Some(&lang::lookup("action-nothing-open-description")),
-                        set_icon_name: Some(relm4_icons::icon_names::LIGHTBULB),
-                        set_vexpand: true,
-                    }
-                } else {
-                    gtk::Box {
-                        set_orientation: gtk::Orientation::Vertical,
-                        set_margin_all: 10,
-                        set_spacing: 10,
-
-                        model.metadata.widget(),
-
-                        gtk::Separator {
-                            set_orientation: gtk::Orientation::Horizontal,
-                        },
-
-                        #[local_ref]
-                        source_view -> sourceview::View,
-                    }
+            if model.open_action.is_none() {
+                adw::StatusPage {
+                    set_title: &lang::lookup("nothing-open"),
+                    set_description: Some(&lang::lookup("action-nothing-open-description")),
+                    set_icon_name: Some(relm4_icons::icon_names::LIGHTBULB),
+                    set_vexpand: true,
                 }
-            },
+            } else {
+                gtk::ScrolledWindow {
+                    set_vexpand: true,
+                    set_hscrollbar_policy: gtk::PolicyType::Never,
+
+                    #[local_ref]
+                    source_view -> sourceview::View,
+                }
+            }
         },
     }
 
@@ -382,7 +421,12 @@ impl Component for ActionsModel {
                     header::ActionsHeaderOutput::OpenAction => ActionInputs::OpenAction,
                     header::ActionsHeaderOutput::SaveAction => ActionInputs::SaveAction,
                     header::ActionsHeaderOutput::SaveAsAction => ActionInputs::SaveAsAction,
-                    header::ActionsHeaderOutput::CloseAction => ActionInputs::CloseAction,
+                    header::ActionsHeaderOutput::CloseAction => {
+                        ActionInputs::CloseActionThen(Box::new(ActionInputs::NoOp))
+                    }
+                    header::ActionsHeaderOutput::AddOpenActionToFlow => {
+                        ActionInputs::AddOpenActionToFlow
+                    }
                     header::ActionsHeaderOutput::AddStep(step) => ActionInputs::AddStep(step),
                 }),
         );
@@ -390,18 +434,14 @@ impl Component for ActionsModel {
         // Setup source view style manager
         StyleSchemeManager::default().append_search_path("styles");
 
-        let model = ActionsModel {
+        let mut model = ActionsModel {
             action_map: init.0,
             engine_list: init.1,
             open_action: None,
             open_path: None,
             needs_saving: false,
             header,
-            metadata: metadata_component::Metadata::builder()
-                .launch(())
-                .forward(sender.input_sender(), |msg| {
-                    ActionInputs::MetadataUpdated(msg)
-                }),
+            signal_text_buffer_changed: None,
             source_view: sourceview::View::builder()
                 .show_line_numbers(true)
                 .monospace(true)
@@ -433,6 +473,14 @@ impl Component for ActionsModel {
         let source_view = &model.source_view;
         let widgets = view_output!();
 
+        {
+            let sender = sender.clone();
+            model.signal_text_buffer_changed =
+                Some(source_view.buffer().connect_changed(move |_| {
+                    sender.input(ActionInputs::TextBufferChanged);
+                }));
+        }
+
         ComponentParts { model, widgets }
     }
 
@@ -446,24 +494,23 @@ impl Component for ActionsModel {
         match message {
             ActionInputs::NoOp => (),
 
-            ActionInputs::MetadataUpdated(meta) => {
-                if let Some(action) = self.open_action.as_mut() {
-                    if let Some(new_name) = meta.new_name {
-                        action.friendly_name = new_name;
-                    }
-                    if let Some(new_group) = meta.new_group {
-                        action.group = new_group;
-                    }
-                    if let Some(new_author) = meta.new_author {
-                        action.author = new_author;
-                    }
-                    if let Some(new_description) = meta.new_description {
-                        action.description = new_description;
-                    }
-                    if let Some(new_visible) = meta.new_visible {
-                        action.visible = new_visible;
-                    }
-                    self.needs_saving = true;
+            ActionInputs::RequestProgramExit => {
+                sender.output(ActionOutputs::RequestProgramExit).unwrap();
+            }
+
+            ActionInputs::AddOpenActionToFlow => {
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    ActionInputs::_AddOpenActionToFlow,
+                    root.toplevel_window().as_ref().unwrap(),
+                );
+            }
+
+            ActionInputs::_AddOpenActionToFlow => {
+                if let Some(action) = &self.open_action {
+                    sender
+                        .output(ActionOutputs::AddOpenActionToFlow(action.id.clone()))
+                        .unwrap();
                 }
             }
 
@@ -474,13 +521,21 @@ impl Component for ActionsModel {
             }
 
             ActionInputs::NewAction => {
-                self.prompt_to_save(sender.input_sender(), ActionInputs::_NewAction);
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    ActionInputs::_NewAction,
+                    root.toplevel_window().as_ref().unwrap(),
+                );
             }
             ActionInputs::_NewAction => {
-                self.new_action();
+                self.new_action(&sender);
             }
             ActionInputs::OpenAction => {
-                self.prompt_to_save(sender.input_sender(), ActionInputs::_OpenAction);
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    ActionInputs::_OpenAction,
+                    root.toplevel_window().as_ref().unwrap(),
+                );
             }
             ActionInputs::_OpenAction => {
                 let dialog = gtk::FileDialog::builder()
@@ -491,7 +546,7 @@ impl Component for ActionsModel {
                         file_filters::all(),
                     ]))
                     .initial_folder(&gtk::gio::File::for_path(
-                        std::env::var("TA_ACTION_DIR").unwrap_or("./actions".to_string()),
+                        testangel::action_loader::get_action_directory(),
                     ))
                     .build();
 
@@ -508,8 +563,8 @@ impl Component for ActionsModel {
                 );
             }
             ActionInputs::__OpenAction(path) => {
-                match self.open_action(path) {
-                    Ok(_) => {
+                match self.open_action(path, &sender) {
+                    Ok(()) => {
                         // Nothing more to do...
                     }
                     Err(e) => {
@@ -517,6 +572,7 @@ impl Component for ActionsModel {
                         self.create_message_dialog(
                             lang::lookup("action-error-opening"),
                             e.to_string(),
+                            root.toplevel_window().as_ref().unwrap(),
                         )
                         .set_visible(true);
                     }
@@ -560,9 +616,13 @@ impl Component for ActionsModel {
                         action.id = uuid::Uuid::new_v4().to_string();
                     }
                 }
-                if let Err(e) = self.save_action() {
-                    self.create_message_dialog(lang::lookup("action-error-saving"), e.to_string())
-                        .set_visible(true);
+                if let Err(e) = self.save_action(&sender) {
+                    self.create_message_dialog(
+                        lang::lookup("action-error-saving"),
+                        e.to_string(),
+                        root.toplevel_window().as_ref().unwrap(),
+                    )
+                    .set_visible(true);
                 } else {
                     widgets
                         .toast_target
@@ -571,25 +631,33 @@ impl Component for ActionsModel {
                 }
                 let _ = sender.output(ActionOutputs::ReloadActions);
             }
-            ActionInputs::CloseAction => {
+            ActionInputs::CloseActionThen(then) => {
                 // Establish if needs_saving needs updating from text change
                 if let Some(action) = &self.open_action {
                     let buf = self.source_view.buffer();
                     if action.script != buf.text(&buf.start_iter(), &buf.end_iter(), false) {
-                        log::debug!("Needs saving due to text change.");
-                        self.needs_saving = true;
+                        tracing::debug!("Needs saving due to text change.");
+                        self.set_needs_saving(true, &sender);
                     }
                 }
 
-                self.prompt_to_save(sender.input_sender(), ActionInputs::_CloseAction);
+                self.prompt_to_save(
+                    sender.input_sender(),
+                    ActionInputs::_CloseActionThen(then),
+                    root.toplevel_window().as_ref().unwrap(),
+                );
             }
-            ActionInputs::_CloseAction => {
-                self.close_action();
+            ActionInputs::_CloseActionThen(then) => {
+                self.close_action(&sender);
+                sender.input(*then);
+            }
+            ActionInputs::TextBufferChanged => {
+                self.set_needs_saving(true, &sender);
             }
 
             ActionInputs::AddStep(step_id) => {
                 if self.open_action.is_none() {
-                    self.new_action();
+                    self.new_action(&sender);
                 }
 
                 // unwrap rationale: the header can't ask to add an action that doesn't exist
@@ -600,13 +668,12 @@ impl Component for ActionsModel {
                 let instruction = self.engine_list.get_instruction_by_id(&step_id).unwrap();
                 // Build LoC
                 let mut params = String::new();
-                for param_id in instruction.parameter_order() {
+                for InstructionNamedKind { friendly_name, .. } in instruction.parameters() {
                     use convert_case::{Case, Casing};
 
-                    let (param_name, _param_kind) = instruction.parameters().get(param_id).unwrap();
                     // remove invalid chars
                     let mut sanitised_name = String::new();
-                    for c in param_name.chars() {
+                    for c in friendly_name.chars() {
                         if c.is_ascii_alphanumeric() || c.is_ascii_whitespace() {
                             sanitised_name.push(c);
                         }
@@ -621,11 +688,9 @@ impl Component for ActionsModel {
                     format!("{}.{}({})", engine.lua_name, instruction.lua_name(), params)
                 } else {
                     let mut returns = String::new();
-                    for return_id in instruction.output_order() {
+                    for InstructionNamedKind { friendly_name, .. } in instruction.outputs() {
                         use convert_case::{Case, Casing};
-
-                        let (name, _kind) = instruction.outputs()[return_id].clone();
-                        returns.push_str(&format!("{}, ", name.to_case(Case::Snake)));
+                        returns.push_str(&format!("{}, ", friendly_name.to_case(Case::Snake)));
                     }
 
                     // Remove last ", "
@@ -649,17 +714,17 @@ impl Component for ActionsModel {
 
                 // Decide if cursor needs moving down a line (or into function)
                 let cursor_pos = buffer.cursor_position();
-                log::debug!(
+                tracing::debug!(
                     "Inserting step, cursor pos: {} (text len: {})",
                     cursor_pos,
                     text.len()
                 );
                 if cursor_pos == 0 || cursor_pos == text.len() as i32 {
                     // Move cursor into function
-                    log::debug!("Offsetting cursor into function");
+                    tracing::debug!("Offsetting cursor into function");
                     for (i, l) in text.lines().enumerate() {
                         if l.contains("function run_action") {
-                            log::debug!("Function on line {}", i);
+                            tracing::debug!("Function on line {}", i + 1);
                             if let Some(text_iter) = buffer.iter_at_line_offset(i as i32 + 1, 2) {
                                 buffer.place_cursor(&text_iter);
                             }
@@ -685,10 +750,10 @@ impl Component for ActionsModel {
 
                     // Move cursor to end and insert newline if needed
                     let line = &text[line_starts_at..line_ends_at];
-                    log::debug!("cursor on line: {:?}", line);
+                    tracing::debug!("cursor on line: {:?}", line);
                     if !line.trim().is_empty() {
                         // Offset cursor to end of line
-                        log::debug!(
+                        tracing::debug!(
                             "Moving cursor to end of line {} (pos {})",
                             line_num,
                             line.len()
@@ -707,7 +772,7 @@ impl Component for ActionsModel {
                     true,
                 );
 
-                self.needs_saving = true;
+                self.set_needs_saving(true, &sender);
             }
         }
         self.update_view(widgets, sender);

@@ -17,10 +17,9 @@ impl SimpleComponent for AppAbout {
         #[root]
         #[name = "about"]
         adw::AboutWindow {
-            set_application_icon: "testangel",
             set_application_name: &lang::lookup("app-name"),
             set_version: env!("CARGO_PKG_VERSION"),
-            set_copyright: "© 2023 Lily Hopkins",
+            set_copyright: "© 2023-2025 Lily Hopkins",
             set_license_type: gtk::License::Gpl30Only,
             set_issue_url: &support_url,
             set_developer_name: "Lily Hopkins",

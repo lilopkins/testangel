@@ -31,6 +31,7 @@ pub enum ActionsHeaderOutput {
     SaveAsAction,
     CloseAction,
     AddStep(String),
+    AddOpenActionToFlow,
 }
 
 #[derive(Debug)]
@@ -100,6 +101,17 @@ impl Component for ActionsHeader {
                             },
                         },
                     },
+                },
+            },
+
+            gtk::Button {
+                set_icon_name: relm4_icons::icon_names::PAPYRUS_VERTICAL_ADD,
+                set_tooltip: &lang::lookup("action-header-add-to-open-flow"),
+                #[watch]
+                set_sensitive: model.action_open,
+
+                connect_clicked[sender] => move |_| {
+                    sender.output(ActionsHeaderOutput::AddOpenActionToFlow).unwrap();
                 },
             },
         },
@@ -200,8 +212,8 @@ impl Component for ActionsHeader {
                         });
                     }
                 } else {
-                    let mut unsorted_results = vec![];
                     use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+                    let mut unsorted_results = vec![];
                     let matcher = SkimMatcherV2::default();
                     for engine in self.engine_list.inner() {
                         for instruction in &engine.instructions {

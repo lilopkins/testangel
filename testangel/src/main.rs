@@ -2,39 +2,54 @@
     all(not(debug_assertions), not(feature = "windows-keep-console-window")),
     windows_subsystem = "windows"
 )]
+#![warn(clippy::pedantic)]
+
+use std::{
+    env,
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
+
+use relm4::tokio::runtime;
+use testangel::version;
+use tracing_subscriber_multi::{
+    AnsiStripper, AppendCount, Compression, ContentLimit, DualWriter, FmtSubscriber, RotatingFile,
+};
 
 #[cfg(feature = "ui")]
 mod ui;
 
 fn main() {
-    fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "[{} {} {}] {}",
-                chrono::Local::now(),
-                record.level(),
-                record.target(),
-                message
-            ))
-        })
-        .level(log::LevelFilter::Info)
-        .level_for("testangel", log::LevelFilter::Debug)
-        .chain(std::io::stdout())
-        .chain(fern::log_file("testangel.log").expect("Couldn't open log file."))
-        .apply()
-        .expect("Couldn't start logger!");
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(
+            if cfg!(debug_assertions) || env::var("TA_DEBUG").is_ok_and(|v| !v.is_empty()) {
+                tracing::Level::TRACE
+            } else {
+                tracing::Level::INFO
+            },
+        )
+        .with_ansi(true)
+        .with_writer(Mutex::new(DualWriter::new(
+            std::io::stderr(),
+            AnsiStripper::new(RotatingFile::new(
+                env::current_exe()
+                    .ok()
+                    .and_then(|p| p.parent().map(Path::to_path_buf))
+                    .unwrap_or(PathBuf::from("."))
+                    .join("testangel.log"),
+                AppendCount::new(3),
+                ContentLimit::Lines(1000),
+                Compression::OnRotate(0),
+            )),
+        )))
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("failed to initialise logger");
 
-    #[cfg(feature = "ui")]
-    {
-        use relm4::tokio::runtime;
-        use testangel::version;
+    tracing::info!("Using locale: {}", ui::lang::initialise_i18n());
 
-        log::info!("Using locale: {}", ui::lang::initialise_i18n());
-
-        if let Ok(rt) = runtime::Builder::new_current_thread().enable_all().build() {
-            let _is_latest = rt.block_on(version::check_is_latest());
-        }
-
-        ui::initialise_ui();
+    if let Ok(rt) = runtime::Builder::new_current_thread().enable_all().build() {
+        let _is_latest = rt.block_on(version::check_is_latest());
     }
+
+    ui::initialise_ui();
 }

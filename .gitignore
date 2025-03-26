@@ -1,4 +1,5 @@
 /target
 /actions
 /*.schema.json
-testangel.log
+/icon.ico
+/testangel-ipc/testangel.h

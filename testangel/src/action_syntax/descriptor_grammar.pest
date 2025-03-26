@@ -1,28 +1,50 @@
+// This rule is for testing in the pest.rs editor only. It is not used in code.
+Multiple = {
+  SOI ~
+  (Descriptor ~ "\n"+)* ~
+  EOI
+}
+
 Line = {
   SOI ~
   Descriptor ~
   EOI
 }
 
-Descriptor = ${
+Descriptor = {
   "--:" ~
-  (" ")* ~
-  DescriptorKind ~
-  (" ")+ ~
-  Kind ~
-  (" ")+ ~
-  Name
+  (TypedDescriptor | KeyValueDescriptor | FlagDescriptor)
 }
 
-DescriptorKind = @{
-  "param" | "return"
+TypedDescriptor = {
+  TypedDescriptorKind ~ Type ~ Value
 }
 
-Kind = @{
+Type = @{
   "Integer" | "Decimal" | "Boolean" | "Text"
 }
 
-Name = {
+KeyValueDescriptor = {
+  KeyValueDescriptorKind ~ Value
+}
+
+FlagDescriptor = {
+  FlagDescriptorKind
+}
+
+TypedDescriptorKind = @{
+  "param" | "return"
+}
+
+KeyValueDescriptorKind = @{
+  "name" | "group" | "creator" | "description"
+}
+
+FlagDescriptorKind = @{
+  "hide-in-flow-editor"
+}
+
+Value = {
   (ASCII_ALPHANUMERIC | PUNCTUATION | SYMBOL | " ")+
 }
 

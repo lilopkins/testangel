@@ -1,14 +1,17 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ffi::CStr};
 
-#[cfg(feature = "schemas")]
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use bitflags::bitflags;
+use getset::Getters;
 
-use crate::{prelude::*, value::ParameterValue};
+use crate::{
+    ffi::{instruction::ta_instruction_metadata, value::ta_parameter_kind},
+    prelude::*,
+    value::ParameterValue,
+};
 
 /// An instruction that this engine is capable of providing.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "schemas", derive(JsonSchema))]
+#[derive(Clone, Debug, PartialEq, Getters)]
+#[getset(get = "pub")]
 pub struct Instruction {
     /// The internal ID of this instruction. Must be unique.
     id: String,
@@ -18,19 +21,140 @@ pub struct Instruction {
     friendly_name: String,
     /// A description of this instruction.
     description: String,
+    /// Flags for this instruction
+    flags: InstructionFlags,
     /// The parameters this instruction takes, with a friendly name.
-    parameters: HashMap<String, (String, ParameterKind)>,
-    /// The order of the parameters in the editor.
-    parameter_order: Vec<String>,
+    parameters: Vec<InstructionNamedKind>,
     /// The outputs this instruction produces, with a friendly name
-    outputs: HashMap<String, (String, ParameterKind)>,
-    /// The order of the outputs in the editor.
-    output_order: Vec<String>,
+    outputs: Vec<InstructionNamedKind>,
 }
 
 impl Instruction {
+    /// Convert from the FFI type to this safe type.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if some of the data in the instruction isn't valid UTF-8.
+    ///
+    /// ## Safety
+    ///
+    /// This function will be safe as long as the following are present on the instruction:
+    /// - szId
+    /// - szLuaName
+    /// - szFriendlyName
+    /// - szDescription
+    /// - arpParameterList (not a null pointer, correctly NULL terminated)
+    /// - arpOutputList (not a null pointer, correctly NULL terminated)
+    pub unsafe fn from_ffi(metadata: *const ta_instruction_metadata) -> Result<Self, ()> {
+        let id = {
+            let cstr = unsafe { CStr::from_ptr((*metadata).szId) };
+            let str_slice = cstr.to_str().map_err(|_| ())?;
+            str_slice.to_owned()
+        };
+        let lua_name = {
+            let cstr = unsafe { CStr::from_ptr((*metadata).szLuaName) };
+            let str_slice = cstr.to_str().map_err(|_| ())?;
+            str_slice.to_owned()
+        };
+        let friendly_name = {
+            let cstr = unsafe { CStr::from_ptr((*metadata).szFriendlyName) };
+            let str_slice = cstr.to_str().map_err(|_| ())?;
+            str_slice.to_owned()
+        };
+        let description = {
+            let cstr = unsafe { CStr::from_ptr((*metadata).szDescription) };
+            let str_slice = cstr.to_str().map_err(|_| ())?;
+            str_slice.to_owned()
+        };
+
+        let flags = InstructionFlags::from_bits_truncate((*metadata).iFlags as u16);
+
+        let mut i = 0;
+        let raw_parameters = (*metadata).arpParameterList;
+        let mut parameters = vec![];
+        loop {
+            let parameter_raw = unsafe { *raw_parameters.add(i) };
+            if parameter_raw.is_null() {
+                break;
+            }
+            let id = {
+                let cstr = unsafe { CStr::from_ptr((*parameter_raw).szId) };
+                let str_slice = cstr.to_str().map_err(|_| ())?;
+                str_slice.to_owned()
+            };
+            let friendly_name = {
+                let cstr = unsafe { CStr::from_ptr((*parameter_raw).szName) };
+                let str_slice = cstr.to_str().map_err(|_| ())?;
+                str_slice.to_owned()
+            };
+            let kind = match (*parameter_raw).kind {
+                ta_parameter_kind::TA_PARAMETER_STRING => ParameterKind::String,
+                ta_parameter_kind::TA_PARAMETER_BOOLEAN => ParameterKind::Boolean,
+                ta_parameter_kind::TA_PARAMETER_DECIMAL => ParameterKind::Decimal,
+                ta_parameter_kind::TA_PARAMETER_INTEGER => ParameterKind::Integer,
+            };
+            let ink = InstructionNamedKind {
+                id,
+                friendly_name,
+                kind,
+            };
+            parameters.push(ink);
+            i += 1;
+        }
+
+        let mut i = 0;
+        let raw_outputs = (*metadata).arpOutputList;
+        let mut outputs = vec![];
+        loop {
+            let output_raw = unsafe { *raw_outputs.add(i) };
+            if output_raw.is_null() {
+                break;
+            }
+            let id = {
+                let cstr = unsafe { CStr::from_ptr((*output_raw).szId) };
+                let str_slice = cstr.to_str().map_err(|_| ())?;
+                str_slice.to_owned()
+            };
+            let friendly_name = {
+                let cstr = unsafe { CStr::from_ptr((*output_raw).szName) };
+                let str_slice = cstr.to_str().map_err(|_| ())?;
+                str_slice.to_owned()
+            };
+            let kind = match (*output_raw).kind {
+                ta_parameter_kind::TA_PARAMETER_STRING => ParameterKind::String,
+                ta_parameter_kind::TA_PARAMETER_BOOLEAN => ParameterKind::Boolean,
+                ta_parameter_kind::TA_PARAMETER_DECIMAL => ParameterKind::Decimal,
+                ta_parameter_kind::TA_PARAMETER_INTEGER => ParameterKind::Integer,
+            };
+            let ink = InstructionNamedKind {
+                id,
+                friendly_name,
+                kind,
+            };
+            outputs.push(ink);
+            i += 1;
+        }
+
+        Ok(Self {
+            id,
+            lua_name,
+            friendly_name,
+            description,
+            flags,
+            parameters,
+            outputs,
+        })
+    }
+
     /// Build a new instruction
-    pub fn new<S>(id: S, lua_name: S, friendly_name: S, description: S) -> Self
+    #[must_use]
+    pub fn new<S>(
+        id: S,
+        lua_name: S,
+        friendly_name: S,
+        description: S,
+        flags: InstructionFlags,
+    ) -> Self
     where
         S: Into<String>,
     {
@@ -39,49 +163,55 @@ impl Instruction {
             lua_name: lua_name.into(),
             friendly_name: friendly_name.into(),
             description: description.into(),
-            parameters: HashMap::new(),
-            parameter_order: Vec::new(),
-            outputs: HashMap::new(),
-            output_order: Vec::new(),
+            flags,
+            parameters: vec![],
+            outputs: vec![],
         }
     }
 
-    /// Get the lua name for this instruction
-    pub fn lua_name(&self) -> &String {
-        &self.lua_name
-    }
-
-    /// Get the friendly name of this instruction
-    pub fn friendly_name(&self) -> &String {
-        &self.friendly_name
-    }
-
     /// Add a parameter to this instruction.
+    #[must_use]
     pub fn with_parameter<S>(mut self, id: S, friendly_name: S, kind: ParameterKind) -> Self
     where
         S: Into<String>,
     {
-        let id = id.into();
-        self.parameters
-            .insert(id.clone(), (friendly_name.into(), kind));
-        self.parameter_order.push(id.clone());
+        self.parameters.push(InstructionNamedKind {
+            id: id.into(),
+            friendly_name: friendly_name.into(),
+            kind,
+        });
         self
     }
 
     /// Add a output to this instruction.
+    #[must_use]
     pub fn with_output<S>(mut self, id: S, friendly_name: S, kind: ParameterKind) -> Self
     where
         S: Into<String>,
     {
-        let id = id.into();
-        self.outputs
-            .insert(id.clone(), (friendly_name.into(), kind));
-        self.output_order.push(id.clone());
+        self.outputs.push(InstructionNamedKind {
+            id: id.into(),
+            friendly_name: friendly_name.into(),
+            kind,
+        });
         self
     }
 
+    /// Validate that the provided [`InstructionWithParameters`] matches the
+    /// requirements for this instruction.
+    ///
+    /// # Errors
+    ///
+    /// - [`ErrorKind::MissingParameter`] if a parameter isn't provided
+    /// - [`ErrorKind::InvalidParameterType`] is the type of a provided
+    ///   parameter doesn't match
     pub fn validate(&self, iwp: &InstructionWithParameters) -> Result<(), (ErrorKind, String)> {
-        for (id, (_, kind)) in &self.parameters {
+        for InstructionNamedKind {
+            id,
+            friendly_name: _,
+            kind,
+        } in &self.parameters
+        {
             if !iwp.parameters.contains_key(id) {
                 return Err((
                     ErrorKind::MissingParameter,
@@ -102,44 +232,40 @@ impl Instruction {
 
         Ok(())
     }
+}
 
-    /// Get the ID of this instruction
-    pub fn id(&self) -> &String {
-        &self.id
-    }
-
-    /// Get the description of this instruction
-    pub fn description(&self) -> &String {
-        &self.description
-    }
-
-    /// Get the parameters of this instruction
-    pub fn parameters(&self) -> &HashMap<String, (String, ParameterKind)> {
-        &self.parameters
-    }
-
-    /// Get the order of parameters of this instruction
-    pub fn parameter_order(&self) -> &Vec<String> {
-        &self.parameter_order
-    }
-
-    /// Get the outputs of this instruction
-    pub fn outputs(&self) -> &HashMap<String, (String, ParameterKind)> {
-        &self.outputs
-    }
-
-    /// Get the order of outputs of this instruction
-    pub fn output_order(&self) -> &Vec<String> {
-        &self.output_order
-    }
+#[derive(Clone, Debug, PartialEq, Getters)]
+#[getset(get = "pub")]
+pub struct InstructionNamedKind {
+    pub id: String,
+    pub friendly_name: String,
+    pub kind: ParameterKind,
 }
 
 /// An instruction with it's parameters.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "schemas", derive(JsonSchema))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct InstructionWithParameters {
     /// The ID of the instruction to run.
     pub instruction: String,
+    /// Should this instruction be triggered as a dry run?
+    pub dry_run: bool,
     /// The parameters for the instruction.
     pub parameters: HashMap<String, ParameterValue>,
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct InstructionFlags: u16 {
+        /// No specific flags
+        const NONE = 0b0000_0000_0000_0000;
+        /// This instruction is pure, i.e. it has no side effects (it doesn't affect
+        /// any other external systems and for each identical execution, provides
+        /// identical output).
+        const PURE = 0b0000_0000_0000_0001;
+        /// This instruction is infallible.
+        const INFALLIBLE = 0b0000_0000_0000_0010;
+        /// This instruction is fully automatic, i.e. it requires no user input at
+        /// any stage, regardless of behaviour.
+        const AUTOMATIC = 0b0000_0000_0000_0100;
+    }
 }

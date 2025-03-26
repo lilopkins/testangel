@@ -6,11 +6,12 @@ use testangel_ipc::prelude::*;
 
 use crate::{
     action_loader::ActionMap,
-    action_syntax::{Descriptor, DescriptorKind},
+    action_syntax::{Descriptor, FlagDescriptorKind, KeyValueDescriptorKind, TypedDescriptorKind},
     ipc::{self, EngineList, IpcError},
 };
 
 pub mod action_v1;
+pub mod action_v2;
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct VersionedFile {
@@ -19,6 +20,7 @@ pub struct VersionedFile {
 
 impl VersionedFile {
     /// Get the version of the file
+    #[must_use]
     pub fn version(&self) -> usize {
         self.version
     }
@@ -30,16 +32,6 @@ pub struct Action {
     version: usize,
     /// The internal ID of this action. Must be unique.
     pub id: String,
-    /// The friendly name of this action.
-    pub friendly_name: String,
-    /// A description of this action.
-    pub description: String,
-    /// A group this action belongs to.
-    pub group: String,
-    /// The author of this action.
-    pub author: String,
-    /// Whether this action should be visible in the flow editor.
-    pub visible: bool,
     /// The Lua code driving this action.
     pub script: String,
     /// A vector of required instruction IDs for this action to work.
@@ -49,14 +41,9 @@ pub struct Action {
 impl Default for Action {
     fn default() -> Self {
         Self {
-            version: 2,
+            version: 3,
             id: uuid::Uuid::new_v4().to_string(),
-            friendly_name: String::new(),
-            description: String::new(),
-            author: String::new(),
-            visible: true,
-            group: String::new(),
-            script: "--: param Integer Example Parameter\n--: return Text Some value to return\nfunction run_action(x)\n  \n  return 'Hello, world!'\nend\n".to_string(),
+            script: include_str!("new_action.lua").to_string(),
             required_instructions: Vec::new(),
         }
     }
@@ -64,6 +51,7 @@ impl Default for Action {
 
 impl Action {
     /// Get the version of this action.
+    #[must_use]
     pub fn version(&self) -> usize {
         self.version
     }
@@ -78,7 +66,7 @@ impl Action {
     /// missing instructions.
     pub fn check_instructions_available(
         &self,
-        engine_list: Arc<EngineList>,
+        engine_list: &Arc<EngineList>,
     ) -> Result<(), Vec<String>> {
         let mut missing = vec![];
         for instruction in &self.required_instructions {
@@ -95,25 +83,127 @@ impl Action {
         }
     }
 
+    /// Get the name of the action
+    #[must_use]
+    pub fn name(&self) -> Option<String> {
+        let descriptors = Descriptor::parse_all(&self.script);
+        for d in descriptors {
+            if let Descriptor::KeyValueDescriptor {
+                descriptor_kind,
+                value,
+            } = d
+            {
+                if descriptor_kind == KeyValueDescriptorKind::Name {
+                    return Some(value);
+                }
+            }
+        }
+        None
+    }
+
+    /// Get the group of the action
+    #[must_use]
+    pub fn group(&self) -> Option<String> {
+        let descriptors = Descriptor::parse_all(&self.script);
+        for d in descriptors {
+            if let Descriptor::KeyValueDescriptor {
+                descriptor_kind,
+                value,
+            } = d
+            {
+                if descriptor_kind == KeyValueDescriptorKind::Group {
+                    return Some(value);
+                }
+            }
+        }
+        None
+    }
+
+    /// Get the creator of the action
+    #[must_use]
+    pub fn creator(&self) -> Option<String> {
+        let descriptors = Descriptor::parse_all(&self.script);
+        for d in descriptors {
+            if let Descriptor::KeyValueDescriptor {
+                descriptor_kind,
+                value,
+            } = d
+            {
+                if descriptor_kind == KeyValueDescriptorKind::Creator {
+                    return Some(value);
+                }
+            }
+        }
+        None
+    }
+
+    /// Get the description of the action
+    #[must_use]
+    pub fn description(&self) -> Option<String> {
+        let descriptors = Descriptor::parse_all(&self.script);
+        for d in descriptors {
+            if let Descriptor::KeyValueDescriptor {
+                descriptor_kind,
+                value,
+            } = d
+            {
+                if descriptor_kind == KeyValueDescriptorKind::Description {
+                    return Some(value);
+                }
+            }
+        }
+        None
+    }
+
+    /// Should the action be hidden in the flow editor?
+    #[must_use]
+    pub fn hide_in_flow_editor(&self) -> bool {
+        let descriptors = Descriptor::parse_all(&self.script);
+        for d in descriptors {
+            if let Descriptor::FlagDescriptor(flag) = d {
+                if flag == FlagDescriptorKind::HideInFlowEditor {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Get a list of parameters that need to be provided to this action.
+    #[must_use]
     pub fn parameters(&self) -> Vec<(String, ParameterKind)> {
         let descriptors = Descriptor::parse_all(&self.script);
         let mut params = vec![];
         for d in descriptors {
-            if d.descriptor_kind == DescriptorKind::Parameter {
-                params.push((d.name.clone(), d.kind));
+            if let Descriptor::TypedDescriptor {
+                descriptor_kind,
+                kind,
+                name,
+            } = d
+            {
+                if descriptor_kind == TypedDescriptorKind::Parameter {
+                    params.push((name.clone(), kind));
+                }
             }
         }
         params
     }
 
     /// Get a list of outputs provided by this action.
+    #[must_use]
     pub fn outputs(&self) -> Vec<(String, ParameterKind)> {
         let descriptors = Descriptor::parse_all(&self.script);
         let mut outputs = vec![];
         for d in descriptors {
-            if d.descriptor_kind == DescriptorKind::Return {
-                outputs.push((d.name.clone(), d.kind));
+            if let Descriptor::TypedDescriptor {
+                descriptor_kind,
+                kind,
+                name,
+            } = d
+            {
+                if descriptor_kind == TypedDescriptorKind::Return {
+                    outputs.push((name.clone(), kind));
+                }
             }
         }
         outputs
@@ -140,7 +230,7 @@ impl fmt::Display for FlowError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IPCFailure(e) => write!(f, "An IPC call failed ({e:?})."),
-            Self::Lua(e) => write!(f, "An action script error occurred:\n{}", e),
+            Self::Lua(e) => write!(f, "An action script error occurred:\n{e}"),
             Self::FromInstruction { error_kind, reason } => write!(
                 f,
                 "An instruction returned an error: {error_kind:?}: {reason}"
@@ -182,6 +272,7 @@ impl Default for AutomationFlow {
 
 impl AutomationFlow {
     /// Get the version of this flow.
+    #[must_use]
     pub fn version(&self) -> usize {
         self.version
     }
@@ -197,9 +288,9 @@ impl ActionConfiguration {
     /// Execute this action
     pub fn execute(
         &self,
-        action_map: Arc<ActionMap>,
-        engine_map: Arc<EngineList>,
-        previous_action_outputs: Vec<HashMap<usize, ParameterValue>>,
+        action_map: &Arc<ActionMap>,
+        engine_map: &Arc<EngineList>,
+        previous_action_outputs: &[HashMap<usize, ParameterValue>],
     ) -> Result<(HashMap<usize, ParameterValue>, Vec<Evidence>), FlowError> {
         // Find action by ID
         let action = action_map.get_action_by_id(&self.action_id).unwrap();
@@ -227,7 +318,7 @@ impl ActionConfiguration {
     #[allow(clippy::type_complexity)]
     /// Directly execute an action with a set of parameters.
     pub fn execute_directly(
-        engine_map: Arc<EngineList>,
+        engine_map: &Arc<EngineList>,
         action: &Action,
         action_parameters: Vec<ParameterValue>,
     ) -> Result<(HashMap<usize, ParameterValue>, Vec<Evidence>), FlowError> {
@@ -255,106 +346,108 @@ impl ActionConfiguration {
 
                         // Check we have the correct parameter types and convert to parameter map
                         let mut param_map = HashMap::new();
-                        for (idx, param_id) in instruction.parameter_order().iter().enumerate() {
-                            if let Some((_name, kind)) = instruction.parameters().get(param_id) {
-                                // Get argument and coerce
-                                let arg = args[idx].clone();
-                                match kind {
-                                    ParameterKind::Boolean => {
-                                        if let mlua::Value::Boolean(b) = arg {
-                                            param_map.insert(
-                                                param_id.clone(),
-                                                ParameterValue::Boolean(b),
-                                            );
-                                        } else {
-                                            return Err(mlua::Error::external(
-                                                FlowError::InstructionCalledWithInvalidParamType,
-                                            ));
-                                        }
+                        for (
+                            idx,
+                            InstructionNamedKind {
+                                id: param_id, kind, ..
+                            },
+                        ) in instruction.parameters().iter().enumerate()
+                        {
+                            // Get argument and coerce
+                            let arg = args[idx].clone();
+                            match kind {
+                                ParameterKind::Boolean => {
+                                    if let mlua::Value::Boolean(b) = arg {
+                                        param_map
+                                            .insert(param_id.clone(), ParameterValue::Boolean(b));
+                                    } else {
+                                        return Err(mlua::Error::external(
+                                            FlowError::InstructionCalledWithInvalidParamType,
+                                        ));
                                     }
-                                    ParameterKind::String => {
-                                        let maybe_str = lua.coerce_string(arg)?;
-                                        if let Some(s) = maybe_str {
-                                            param_map.insert(
-                                                param_id.clone(),
-                                                ParameterValue::String(s.to_str()?.to_string()),
-                                            );
-                                        } else {
-                                            return Err(mlua::Error::external(
-                                                FlowError::InstructionCalledWithInvalidParamType,
-                                            ));
-                                        }
+                                }
+                                ParameterKind::String => {
+                                    let maybe_str = lua.coerce_string(arg)?;
+                                    if let Some(s) = maybe_str {
+                                        param_map.insert(
+                                            param_id.clone(),
+                                            ParameterValue::String(s.to_str()?.to_string()),
+                                        );
+                                    } else {
+                                        return Err(mlua::Error::external(
+                                            FlowError::InstructionCalledWithInvalidParamType,
+                                        ));
                                     }
-                                    ParameterKind::Decimal => {
-                                        let maybe_dec = lua.coerce_number(arg)?;
-                                        if let Some(d) = maybe_dec {
-                                            param_map.insert(
-                                                param_id.clone(),
-                                                ParameterValue::Decimal(d as f32),
-                                            );
-                                        } else {
-                                            return Err(mlua::Error::external(
-                                                FlowError::InstructionCalledWithInvalidParamType,
-                                            ));
-                                        }
+                                }
+                                ParameterKind::Decimal => {
+                                    let maybe_dec = lua.coerce_number(arg)?;
+                                    if let Some(d) = maybe_dec {
+                                        param_map
+                                            .insert(param_id.clone(), ParameterValue::Decimal(d));
+                                    } else {
+                                        return Err(mlua::Error::external(
+                                            FlowError::InstructionCalledWithInvalidParamType,
+                                        ));
                                     }
-                                    ParameterKind::Integer => {
-                                        let maybe_int = lua.coerce_integer(arg)?;
-                                        if let Some(i) = maybe_int {
-                                            param_map.insert(
-                                                param_id.clone(),
-                                                ParameterValue::Integer(i),
-                                            );
-                                        } else {
-                                            return Err(mlua::Error::external(
-                                                FlowError::InstructionCalledWithInvalidParamType,
-                                            ));
-                                        }
+                                }
+                                ParameterKind::Integer => {
+                                    let maybe_int = lua.coerce_integer(arg)?;
+                                    if let Some(i) = maybe_int {
+                                        param_map
+                                            .insert(param_id.clone(), ParameterValue::Integer(i));
+                                    } else {
+                                        return Err(mlua::Error::external(
+                                            FlowError::InstructionCalledWithInvalidParamType,
+                                        ));
                                     }
                                 }
                             }
                         }
 
                         // Trigger instruction behaviour
-                        let response = ipc::ipc_call(
-                            &engine,
-                            Request::RunInstructions {
-                                instructions: vec![InstructionWithParameters {
-                                    instruction: instruction.id().clone(),
-                                    parameters: param_map,
-                                }],
-                            },
-                        )
+                        let response = unsafe {
+                            ipc::ipc_call(
+                                &engine,
+                                &Request::RunInstruction {
+                                    instruction: InstructionWithParameters {
+                                        instruction: instruction.id().clone(),
+                                        dry_run: false,
+                                        parameters: param_map,
+                                    },
+                                },
+                            )
+                        }
                         .map_err(|e| mlua::Error::external(FlowError::IPCFailure(e)))?;
 
                         match response {
                             Response::ExecutionOutput { output, evidence } => {
                                 // Add evidence
                                 let mut ev = lua.app_data_mut::<Vec<Evidence>>().unwrap();
-                                for item in &evidence[0] {
+                                for item in &evidence {
                                     ev.push(item.clone());
                                 }
 
                                 // Convert output back to Lua values
                                 let mut outputs = vec![];
-                                for output_id in instruction.output_order() {
-                                    let o = output[0][output_id].clone();
+                                for InstructionNamedKind { id, .. } in instruction.outputs() {
+                                    let o = output[id].clone();
                                     match o {
                                         ParameterValue::Boolean(b) => {
-                                            log::debug!("Boolean {b} returned to Lua");
-                                            outputs.push(mlua::Value::Boolean(b))
+                                            tracing::debug!("Boolean {b} returned to Lua");
+                                            outputs.push(mlua::Value::Boolean(b));
                                         }
                                         ParameterValue::String(s) => {
-                                            log::debug!("String {s:?} returned to Lua");
-                                            outputs.push(mlua::Value::String(lua.create_string(s)?))
+                                            tracing::debug!("String {s:?} returned to Lua");
+                                            outputs
+                                                .push(mlua::Value::String(lua.create_string(s)?));
                                         }
                                         ParameterValue::Integer(i) => {
-                                            log::debug!("Integer {i} returned to Lua");
-                                            outputs.push(mlua::Value::Integer(i))
+                                            tracing::debug!("Integer {i} returned to Lua");
+                                            outputs.push(mlua::Value::Integer(i));
                                         }
                                         ParameterValue::Decimal(n) => {
-                                            log::debug!("Decimal {n} returned to Lua");
-                                            outputs.push(mlua::Value::Number(n as f64))
+                                            tracing::debug!("Decimal {n} returned to Lua");
+                                            outputs.push(mlua::Value::Number(n));
                                         }
                                     }
                                 }
@@ -393,13 +486,13 @@ impl ActionConfiguration {
                         .map_err(|e| FlowError::Lua(e.to_string()))?,
                 )),
                 ParameterValue::Integer(i) => params.push(mlua::Value::Integer(i)),
-                ParameterValue::Decimal(n) => params.push(mlua::Value::Number(n as f64)),
+                ParameterValue::Decimal(n) => params.push(mlua::Value::Number(n)),
             }
         }
 
         lua_env
             .load(&action.script)
-            .set_name(action.friendly_name.clone())
+            .set_name(action.name().unwrap_or("Unnamed Action".to_string()))
             .exec()
             .map_err(|e| FlowError::Lua(e.to_string()))?;
 
@@ -421,7 +514,7 @@ impl ActionConfiguration {
                 mlua::Value::Boolean(b) => ParameterValue::Boolean(b),
                 mlua::Value::String(s) => ParameterValue::String(s.to_str().unwrap().to_owned()),
                 mlua::Value::Integer(i) => ParameterValue::Integer(i),
-                mlua::Value::Number(n) => ParameterValue::Decimal(n as f32),
+                mlua::Value::Number(n) => ParameterValue::Decimal(n),
                 _ => return Err(FlowError::ActionDidntReturnValidArguments),
             };
             if ta_out.kind() != kind {
@@ -436,12 +529,15 @@ impl ActionConfiguration {
     }
 
     /// Update this action configuration to match the inputs and outputs of the provided action.
-    /// This will panic if the action's ID doesn't match the ID of this configuration already set.
     /// Return true if this configuration has changed.
+    ///
+    /// # Panics
+    /// This will panic if the action's ID doesn't match the ID of this configuration already set.
     pub fn update(&mut self, action: Action) -> bool {
-        if self.action_id != action.id {
-            panic!("ActionConfiguration tried to be updated with a different action!");
-        }
+        assert!(
+            self.action_id == action.id,
+            "ActionConfiguration tried to be updated with a different action!"
+        );
 
         // If number of parameters has changed
         if self.parameter_sources.len() != action.parameters().len() {

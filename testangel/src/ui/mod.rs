@@ -22,7 +22,7 @@ pub(crate) mod lang;
 
 /// Initialise and open the UI.
 pub fn initialise_ui() {
-    log::info!("Starting Next UI...");
+    tracing::info!("Starting Next UI...");
     let app = RelmApp::new("uk.hpkns.testangel");
     relm4_icons::initialize_icons();
 
@@ -32,7 +32,7 @@ pub fn initialise_ui() {
     theme.add_resource_path("/uk/hpkns/testangel/icons/scalable/actions/");
 
     let engines = Arc::new(ipc::get_engines());
-    let actions = Arc::new(action_loader::get_actions(engines.clone()));
+    let actions = Arc::new(action_loader::get_actions(&engines));
     app.run::<AppModel>(AppInit { engines, actions });
 }
 
@@ -43,7 +43,7 @@ pub struct AppInit {
 
 #[derive(Debug)]
 enum AppInput {
-    /// The view has changed and should be read from visible_child_name, then components updated as needed.
+    /// The view has changed and should be read from `visible_child_name`, then components updated as needed.
     ChangedView(Option<String>),
     /// The actions might have changed and should be reloaded
     ReloadActionsMap,
@@ -51,6 +51,12 @@ enum AppInput {
     AttachGeneralActionGroup(RelmActionGroup<header_bar::GeneralActionGroup>),
     /// Attach the action group to the window
     AttachFileActionGroup(RelmActionGroup<header_bar::FileActionGroup>),
+    /// Add the given action to the flow
+    AddActionToFlow(String),
+    /// Set a page needs attention
+    SetPageNeedsSaving(&'static str, bool),
+    /// Check and then close TestAngel
+    CheckAndCloseProgram,
 }
 
 #[derive(Debug)]
@@ -63,6 +69,9 @@ struct AppModel {
 
     engines_list: Arc<EngineList>,
     actions_map: Arc<ActionMap>,
+
+    flow_needs_saving: bool,
+    action_needs_saving: bool,
 }
 
 #[relm4::component]
@@ -73,11 +82,16 @@ impl Component for AppModel {
     type CommandOutput = ();
 
     view! {
-        main_window = adw::Window {
+        #[root]
+        main_window = adw::ApplicationWindow {
             set_title: Some(&lang::lookup("app-name")),
             set_default_width: 800,
             set_default_height: 600,
-            set_icon_name: Some(relm4_icons::icon_names::TESTANGEL),
+
+            connect_close_request[sender] => move |_| {
+                sender.input(AppInput::CheckAndCloseProgram);
+                gtk::glib::Propagation::Stop
+            },
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -88,7 +102,7 @@ impl Component for AppModel {
                 #[local_ref]
                 stack -> adw::ViewStack {
                     connect_visible_child_name_notify[sender] => move |st| {
-                        sender.input(AppInput::ChangedView(st.visible_child_name().map(|s| s.into())));
+                        sender.input(AppInput::ChangedView(st.visible_child_name().map(Into::into)));
                     },
                 },
             }
@@ -103,11 +117,23 @@ impl Component for AppModel {
         // Initialise the sub-components (pages)
         let flows = flows::FlowsModel::builder()
             .launch((init.actions.clone(), init.engines.clone()))
-            .forward(sender.input_sender(), |msg| match msg {});
+            .forward(sender.input_sender(), |msg| match msg {
+                flows::FlowOutputs::RequestProgramExit => AppInput::CheckAndCloseProgram,
+                flows::FlowOutputs::SetNeedsSaving(needs_saving) => {
+                    AppInput::SetPageNeedsSaving("flows", needs_saving)
+                }
+            });
         let actions = actions::ActionsModel::builder()
             .launch((init.actions.clone(), init.engines.clone()))
             .forward(sender.input_sender(), |msg| match msg {
+                actions::ActionOutputs::RequestProgramExit => AppInput::CheckAndCloseProgram,
                 actions::ActionOutputs::ReloadActions => AppInput::ReloadActionsMap,
+                actions::ActionOutputs::SetNeedsSaving(needs_saving) => {
+                    AppInput::SetPageNeedsSaving("actions", needs_saving)
+                }
+                actions::ActionOutputs::AddOpenActionToFlow(action_id) => {
+                    AppInput::AddActionToFlow(action_id)
+                }
             });
 
         let stack = Rc::new(adw::ViewStack::new());
@@ -139,6 +165,8 @@ impl Component for AppModel {
             header,
             flows,
             actions,
+            flow_needs_saving: false,
+            action_needs_saving: false,
         };
 
         // Render window parts
@@ -164,11 +192,11 @@ impl Component for AppModel {
         }
 
         let widgets = view_output!();
-        log::debug!("Initialised model: {model:?}");
+        tracing::debug!("Initialised model: {model:?}");
 
         // Trigger initial header bar update
         sender.input(AppInput::ChangedView(
-            stack.visible_child_name().map(|s| s.into()),
+            stack.visible_child_name().map(Into::into),
         ));
 
         ComponentParts { model, widgets }
@@ -181,6 +209,26 @@ impl Component for AppModel {
         root: &Self::Root,
     ) {
         match message {
+            AppInput::CheckAndCloseProgram => {
+                if self.action_needs_saving {
+                    // Deal with that
+                    self.stack.set_visible_child_name("actions");
+                    // Here we explicitly tell the header bar to change NOW to
+                    // make sure it's mounted before we show a dialog.
+                    self.actions
+                        .emit(actions::ActionInputs::CloseActionThen(Box::new(
+                            actions::ActionInputs::RequestProgramExit,
+                        )));
+                } else if self.flow_needs_saving {
+                    // Deal with that
+                    self.stack.set_visible_child_name("flows");
+                    self.flows.emit(flows::FlowInputs::CloseFlowThen(Box::new(
+                        flows::FlowInputs::RequestProgramExit,
+                    )));
+                } else {
+                    relm4::main_application().quit();
+                }
+            }
             AppInput::AttachGeneralActionGroup(group) => {
                 group.register_for_widget(root);
             }
@@ -191,8 +239,22 @@ impl Component for AppModel {
                 self.header
                     .emit(HeaderBarInput::ChangedView(new_view.unwrap_or_default()));
             }
+            AppInput::AddActionToFlow(action_id) => {
+                self.stack.set_visible_child_name("flows");
+                self.flows.emit(flows::FlowInputs::AddStep(action_id));
+            }
+            AppInput::SetPageNeedsSaving(page, needs_saving) => {
+                match page {
+                    "flows" => self.flow_needs_saving = needs_saving,
+                    "actions" => self.action_needs_saving = needs_saving,
+                    _ => (),
+                }
+                if let Some(page) = self.stack.child_by_name(&page) {
+                    self.stack.page(&page).set_needs_attention(needs_saving);
+                }
+            }
             AppInput::ReloadActionsMap => {
-                self.actions_map = Arc::new(action_loader::get_actions(self.engines_list.clone()));
+                self.actions_map = Arc::new(action_loader::get_actions(&self.engines_list));
                 self.flows.emit(flows::FlowInputs::ActionsMapChanged(
                     self.actions_map.clone(),
                 ));
@@ -202,7 +264,7 @@ impl Component for AppModel {
                 self.header
                     .emit(header_bar::HeaderBarInput::ActionsMapChanged(
                         self.actions_map.clone(),
-                    ))
+                    ));
             }
         }
     }

@@ -60,9 +60,9 @@ impl SimpleComponent for LiteralInput {
             ParameterValue::Integer(val) => {
                 let entry = gtk::SpinButton::builder()
                     .adjustment(&gtk::Adjustment::new(
-                        *val as f64,
-                        i32::MIN as f64,
-                        i32::MAX as f64,
+                        f64::from(*val),
+                        f64::from(i32::MIN),
+                        f64::from(i32::MAX),
                         1.,
                         5.,
                         0.,
@@ -84,14 +84,7 @@ impl SimpleComponent for LiteralInput {
             }
             ParameterValue::Decimal(val) => {
                 let entry = gtk::SpinButton::builder()
-                    .adjustment(&gtk::Adjustment::new(
-                        *val as f64,
-                        f32::MIN as f64,
-                        f32::MAX as f64,
-                        0.1,
-                        1.,
-                        0.,
-                    ))
+                    .adjustment(&gtk::Adjustment::new(*val, f64::MIN, f64::MAX, 0.1, 1., 0.))
                     .digits(2)
                     .numeric(true)
                     .editable(true)
@@ -100,7 +93,7 @@ impl SimpleComponent for LiteralInput {
                 let sender_c = sender.clone();
                 entry.connect_value_changed(move |spn| {
                     let _ = sender_c.clone().output(LiteralInputOutput::ValueChanged(
-                        ParameterValue::Decimal(spn.value() as f32),
+                        ParameterValue::Decimal(spn.value()),
                     ));
                 });
                 root.set_child(Some(&entry));
