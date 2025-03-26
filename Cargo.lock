@@ -4270,7 +4270,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.22.0"
+version = "0.22.0-rc.6"
 dependencies = [
  "arboard",
  "base64",
@@ -4334,7 +4334,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-evidence"
-version = "0.22.0"
+version = "0.22.0-rc.6"
 dependencies = [
  "dynamic-plugin",
  "testangel-engine",
@@ -4353,7 +4353,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-rand"
-version = "0.22.0"
+version = "0.22.0-rc.6"
 dependencies = [
  "dynamic-plugin",
  "rand",
@@ -4364,7 +4364,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-time"
-version = "0.22.0"
+version = "0.22.0-rc.6"
 dependencies = [
  "dynamic-plugin",
  "testangel-engine",
@@ -4373,7 +4373,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-user-interaction"
-version = "0.22.0"
+version = "0.22.0-rc.6"
 dependencies = [
  "dynamic-plugin",
  "rfd",
