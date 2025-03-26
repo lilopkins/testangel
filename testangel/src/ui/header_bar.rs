@@ -2,9 +2,10 @@ use std::{rc::Rc, sync::Arc};
 
 use gtk::prelude::*;
 use relm4::{
-    actions::{AccelsPlus, RelmAction, RelmActionGroup},
-    adw, gtk, Component, ComponentController, ComponentParts, ComponentSender, Controller,
+    Component, ComponentController, ComponentParts, ComponentSender, Controller,
     RelmIterChildrenExt, RelmWidgetExt,
+    actions::{AccelsPlus, RelmAction, RelmActionGroup},
+    adw, gtk,
 };
 use testangel::{action_loader::ActionMap, ipc::EngineList};
 

@@ -2,11 +2,10 @@ use std::ffi;
 
 use adw::prelude::*;
 use relm4::{
-    adw,
+    RelmWidgetExt, adw,
     factory::FactoryVecDeque,
     gtk,
     prelude::{DynamicIndex, FactoryComponent},
-    RelmWidgetExt,
 };
 use testangel::types::{Action, ActionConfiguration, ActionParameterSource};
 use testangel_ipc::prelude::{ParameterKind, ParameterValue};

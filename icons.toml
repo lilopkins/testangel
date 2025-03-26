@@ -2,5 +2,5 @@
 app_id = "uk.hpkns.testangel"
 base_resource_path = "/uk/hpkns/testangel/"
 
-icons = [ "play", "menu", "lightbulb", "papyrus-vertical", "puzzle-piece", "edit", "plus", "x-circular", "up", "down", "tag" ]
+icons = [ "play", "menu", "lightbulb", "papyrus-vertical", "puzzle-piece", "edit", "plus", "x-circular", "up", "down", "tag", "gear" ]
 icon_folder = "testangel/icons"

@@ -1,3 +1,6 @@
+#![allow(clippy::unused_unit)]
+#![warn(clippy::pedantic)]
+
 use std::{thread::sleep, time::Duration};
 
 use testangel_engine::engine;
@@ -33,7 +36,7 @@ engine! {
             }
 
             if !dry_run {
-                sleep(Duration::from_millis(duration as u64));
+                sleep(Duration::from_millis(u64::try_from(duration)?));
             }
         }
     }

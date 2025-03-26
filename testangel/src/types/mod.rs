@@ -64,6 +64,10 @@ impl Action {
     /// Check that all the instructions this action uses are available. Returns
     /// Ok if all instructions are available, otherwise returns a list of
     /// missing instructions.
+    ///
+    /// ## Errors
+    ///
+    /// This function returns a list of instructions that are unavailable as an error.
     pub fn check_instructions_available(
         &self,
         engine_list: &Arc<EngineList>,
@@ -278,6 +282,7 @@ impl AutomationFlow {
     }
 }
 
+#[allow(clippy::unsafe_derive_deserialize)]
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ActionConfiguration {
     pub action_id: String,
@@ -286,6 +291,14 @@ pub struct ActionConfiguration {
 }
 impl ActionConfiguration {
     /// Execute this action
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if execution failed.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the action does not exist, or if it is malformed.
     pub fn execute(
         &self,
         action_map: &Arc<ActionMap>,
@@ -317,6 +330,15 @@ impl ActionConfiguration {
 
     #[allow(clippy::type_complexity)]
     /// Directly execute an action with a set of parameters.
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if execution failed.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the action does not exist, or if it is malformed.
+    #[allow(clippy::too_many_lines)]
     pub fn execute_directly(
         engine_map: &Arc<EngineList>,
         action: &Action,
@@ -329,7 +351,7 @@ impl ActionConfiguration {
         lua_env.set_app_data::<Vec<Evidence>>(vec![]);
 
         // unwrap rationale: this will only fail under memory issues
-        for engine in engine_map.inner().clone() {
+        for engine in &***engine_map {
             let engine_lua_name = engine.lua_name.clone();
             let engine_tbl = lua_env.create_table().unwrap();
             for instruction in engine.instructions.clone() {

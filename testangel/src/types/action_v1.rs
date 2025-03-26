@@ -32,6 +32,12 @@ pub struct ActionV1 {
 }
 
 impl ActionV1 {
+    /// Upgrade the action from version 1 to version 2.
+    ///
+    /// ## Panics
+    ///
+    /// This will panic if the version 1 action is malformed.
+    #[allow(clippy::too_many_lines)]
     #[must_use]
     pub fn upgrade_action(
         self,

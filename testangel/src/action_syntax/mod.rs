@@ -52,6 +52,10 @@ impl Descriptor {
     }
 
     /// Parse a line and return a descriptor, if one can be created from the provided line.
+    ///
+    /// ## Panics
+    ///
+    /// This cannot panic as long as this function remains updated alongside the pest grammar.
     pub fn parse_line<S: AsRef<str>>(line: S) -> Option<Descriptor> {
         let mut res = DescriptorParser::parse(Rule::Line, line.as_ref()).ok()?;
         let line_pair = res.next()?;
@@ -60,12 +64,14 @@ impl Descriptor {
         let descriptor_pair = line_pair.into_inner().next()?;
         assert_eq!(descriptor_pair.as_rule(), Rule::Descriptor);
         let descriptor_inner = descriptor_pair.into_inner().next()?;
-        assert!([
-            Rule::TypedDescriptor,
-            Rule::KeyValueDescriptor,
-            Rule::FlagDescriptor
-        ]
-        .contains(&descriptor_inner.as_rule()));
+        assert!(
+            [
+                Rule::TypedDescriptor,
+                Rule::KeyValueDescriptor,
+                Rule::FlagDescriptor
+            ]
+            .contains(&descriptor_inner.as_rule())
+        );
 
         Some(match descriptor_inner.as_rule() {
             Rule::TypedDescriptor => {

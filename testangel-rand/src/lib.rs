@@ -1,3 +1,6 @@
+#![allow(clippy::unused_unit)]
+#![warn(clippy::pedantic)]
+
 use rand::Rng;
 use testangel_engine::engine;
 use thiserror::Error;

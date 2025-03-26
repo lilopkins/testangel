@@ -1,24 +1,26 @@
+#![warn(clippy::pedantic)]
+
 use heck::ToShoutySnakeCase;
 use heck::ToTitleCase;
 use heck::ToUpperCamelCase;
 use proc_macro::TokenStream;
-use proc_macro2::Span as Span2;
 use proc_macro_error2::abort;
 use proc_macro_error2::emit_error;
 use proc_macro_error2::proc_macro_error;
+use proc_macro2::Span as Span2;
 use quote::quote;
+use syn::Expr;
+use syn::Ident;
 use syn::parse::Parse;
 use syn::parse_macro_input;
 use syn::parse_str;
 use syn::spanned::Spanned;
-use syn::Expr;
-use syn::Ident;
 
 mod kv_attributes;
-use kv_attributes::*;
+use kv_attributes::parse_as_kv_attr;
 
 mod instruction_implementation;
-use instruction_implementation::*;
+use instruction_implementation::InstructionsImpl;
 use syn::Lit;
 use syn::Meta;
 
@@ -43,7 +45,10 @@ impl Parse for EngineDefinition {
         };
 
         if !input.is_empty() {
-            emit_error!(input.span(), "An engine implementation should only include a `struct` definition, followed by an `impl` block.");
+            emit_error!(
+                input.span(),
+                "An engine implementation should only include a `struct` definition, followed by an `impl` block."
+            );
         }
 
         Ok(r)

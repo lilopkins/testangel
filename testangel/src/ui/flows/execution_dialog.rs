@@ -1,10 +1,9 @@
 use std::{collections::HashMap, fs, sync::Arc};
 
 use adw::prelude::*;
-use arboard::Clipboard;
-use base64::{prelude::BASE64_STANDARD, Engine};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use evidenceangel::{Author, EvidencePackage};
-use relm4::{adw, gtk, Component, ComponentParts, RelmWidgetExt};
+use relm4::{Component, ComponentParts, RelmWidgetExt, adw, gtk};
 use testangel::{
     action_loader::ActionMap,
     ipc::EngineList,
@@ -127,7 +126,7 @@ impl Component for ExecutionDialog {
             let mut outputs: Vec<HashMap<usize, ParameterValue>> = Vec::new();
             let mut evidence = Vec::new();
 
-            for engine in engine_list.inner() {
+            for engine in &**engine_list {
                 if engine.reset_state().is_err() {
                     evidence.push(Evidence {
                         label: String::from("WARNING: State Warning"),
@@ -193,7 +192,7 @@ impl Component for ExecutionDialog {
                     .modal(true)
                     .title(lang::lookup("evidence-save-title"))
                     .initial_name(lang::lookup("evidence-default-name"))
-                    .filters(&file_filters::filter_list(vec![
+                    .filters(&file_filters::filter_list(&[
                         file_filters::evps(),
                         file_filters::all(),
                     ]))
@@ -286,8 +285,12 @@ impl Component for ExecutionDialog {
                 let sender_c = sender.clone();
                 dialog.connect_response(None, move |dlg, response| match response {
                     "copy" => {
-                        if let Ok(mut cb) = Clipboard::new() {
-                            let _ = cb.set_text(reason.to_string());
+                        if let Some(display) = gtk::gdk::Display::default() {
+                            display.clipboard().set_text(reason.to_string().as_str());
+                        } else {
+                            tracing::warn!(
+                                "No display is present, so no clipboard could be accessed!"
+                            );
                         }
                         sender_c.input(ExecutionDialogInput::Close);
                         dlg.close();

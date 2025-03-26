@@ -1,6 +1,6 @@
 [workspace.package]
-version = "0.22.0-rc.6"
-edition = "2021"
+version = "0.23.0-rc.1"
+edition = "2024"
 
 [workspace]
 resolver = "2"

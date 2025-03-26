@@ -33,6 +33,12 @@ impl ActionMap {
     }
 }
 
+/// Get the action directory
+///
+/// ## Panics
+///
+/// This may panic on Windows iff the executable is not in a subfolder, usually
+/// this in `bin`.
 #[must_use]
 pub fn get_action_directory() -> PathBuf {
     let p = if let Ok(env_path) = env::var("TA_ACTION_DIR") {
@@ -55,6 +61,11 @@ pub fn get_action_directory() -> PathBuf {
 }
 
 /// Get the list of available engines.
+///
+/// ## Panics
+///
+/// This will panic if there are I/O issues reading the actions directory or
+/// actions.
 pub fn get_actions(engine_list: &Arc<EngineList>) -> ActionMap {
     let mut actions = HashMap::new();
     let action_dir = get_action_directory();

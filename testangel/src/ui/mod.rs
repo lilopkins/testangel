@@ -1,9 +1,9 @@
-use std::{rc::Rc, sync::Arc};
+use std::{fmt, rc::Rc, sync::Arc};
 
 use gtk::prelude::*;
 use relm4::{
-    actions::RelmActionGroup, adw, gtk, Component, ComponentController, ComponentParts, Controller,
-    RelmApp,
+    Component, ComponentController, ComponentParts, Controller, RelmApp, actions::RelmActionGroup,
+    adw, gtk,
 };
 use testangel::{
     action_loader::{self, ActionMap},
@@ -31,6 +31,8 @@ pub fn initialise_ui() {
     theme.add_resource_path("/uk/hpkns/testangel/icons/");
     theme.add_resource_path("/uk/hpkns/testangel/icons/scalable/actions/");
 
+    sourceview5::init();
+
     let engines = Arc::new(ipc::get_engines());
     let actions = Arc::new(action_loader::get_actions(&engines));
     app.run::<AppModel>(AppInit { engines, actions });
@@ -55,11 +57,10 @@ enum AppInput {
     AddActionToFlow(String),
     /// Set a page needs attention
     SetPageNeedsSaving(&'static str, bool),
-    /// Check and then close TestAngel
+    /// Check and then close the application
     CheckAndCloseProgram,
 }
 
-#[derive(Debug)]
 struct AppModel {
     stack: Rc<adw::ViewStack>,
     header: Controller<header_bar::HeaderBarModel>,
@@ -72,6 +73,17 @@ struct AppModel {
 
     flow_needs_saving: bool,
     action_needs_saving: bool,
+}
+
+impl fmt::Debug for AppModel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AppModel")
+            .field("engines_list", &self.engines_list)
+            .field("actions_map", &self.actions_map)
+            .field("flow_needs_saving", &self.flow_needs_saving)
+            .field("action_needs_saving", &self.action_needs_saving)
+            .finish_non_exhaustive()
+    }
 }
 
 #[relm4::component]
@@ -249,7 +261,7 @@ impl Component for AppModel {
                     "actions" => self.action_needs_saving = needs_saving,
                     _ => (),
                 }
-                if let Some(page) = self.stack.child_by_name(&page) {
+                if let Some(page) = self.stack.child_by_name(page) {
                     self.stack.page(&page).set_needs_attention(needs_saving);
                 }
             }

@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 use std::{collections::HashMap, error::Error, ffi::c_char};
 
 pub use dynamic_plugin::libc::{free, malloc, strcpy};
@@ -126,6 +128,7 @@ impl<'a, T: Default + Send + Sync> Engine<'a, T> {
     }
 
     /// Add an instruction to this engine.
+    #[must_use]
     pub fn with_instruction<F>(mut self, instruction: Instruction, execute: F) -> Self
     where
         F: 'a
@@ -145,6 +148,13 @@ impl<'a, T: Default + Send + Sync> Engine<'a, T> {
         self
     }
 
+    /// Request an instruction to be run on an engine.
+    ///
+    /// ## Errors
+    ///
+    /// Returns a [`String`] representation of an execution error, either from
+    /// the engine itself (in the case of trying to find an instruction), or
+    /// from an instruction (in the case of a failure or validation issue.)
     pub fn run_instruction(
         &mut self,
         iwp: InstructionWithParameters,

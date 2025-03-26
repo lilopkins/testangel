@@ -2,8 +2,8 @@
 
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 
-use base64::{prelude::BASE64_STANDARD, Engine};
-use clap::{arg, Parser};
+use base64::{Engine, prelude::BASE64_STANDARD};
+use clap::{Parser, arg};
 use evidenceangel::{Author, EvidencePackage};
 use testangel::{action_loader, ipc, types::AutomationFlow};
 use testangel_ipc::prelude::*;
@@ -38,7 +38,9 @@ fn main() {
             .get_action_by_id(&action_config.action_id)
             .is_none()
         {
-            eprintln!("This flow cannot be executed because an action isn't available or wasn't loaded. Maybe an engine is missing?");
+            eprintln!(
+                "This flow cannot be executed because an action isn't available or wasn't loaded. Maybe an engine is missing?"
+            );
             std::process::exit(1);
         }
     }
@@ -46,7 +48,7 @@ fn main() {
     let mut outputs: Vec<HashMap<usize, ParameterValue>> = Vec::new();
     let mut evidence = Vec::new();
 
-    for engine in engine_map.inner() {
+    for engine in &**engine_map {
         if engine.reset_state().is_err() {
             evidence.push(Evidence {
                 label: String::from("WARNING: State Warning"),
