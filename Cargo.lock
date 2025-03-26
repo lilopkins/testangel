@@ -81,7 +81,7 @@ dependencies = [
 [[package]]
 name = "angelmark"
 version = "0.0.0"
-source = "git+https://github.com/lilopkins/evidenceangel.git?branch=next#11568cf7a2400b1489a55756f26ce58b027f3645"
+source = "git+https://github.com/lilopkins/evidenceangel.git#acae09f57641258a5782e591b56378a81dc28a91"
 dependencies = [
  "getset",
  "pest",
@@ -822,9 +822,9 @@ checksum = "da692b8d1080ea3045efaab14434d40468c3d8657e42abddfffca87b428f4c1b"
 
 [[package]]
 name = "deranged"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c9e6a11ca8224451684bc0d7d5a7adbf8f2fd6887261a1cfc3c0432f9d4068e"
+checksum = "28cfac68e08048ae1883171632c2aef3ebc555621ae56fbccce1cbf22dd7f058"
 dependencies = [
  "powerfmt",
 ]
@@ -1067,8 +1067,8 @@ dependencies = [
 
 [[package]]
 name = "evidenceangel"
-version = "1.4.0-rc.3"
-source = "git+https://github.com/lilopkins/evidenceangel.git?branch=next#11568cf7a2400b1489a55756f26ce58b027f3645"
+version = "1.4.0"
+source = "git+https://github.com/lilopkins/evidenceangel.git#acae09f57641258a5782e591b56378a81dc28a91"
 dependencies = [
  "angelmark",
  "base64",
@@ -1271,9 +1271,9 @@ dependencies = [
 
 [[package]]
 name = "fragile"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c2141d6d6c8512188a7891b4b01590a45f6dac67afb4f255c4124dbb86d4eaa"
+checksum = "28dd6caf6059519a65843af8fe2a3ae298b14b80179855aeb4adc2c1934ee619"
 
 [[package]]
 name = "futures"
@@ -1901,14 +1901,15 @@ dependencies = [
 
 [[package]]
 name = "iana-time-zone"
-version = "0.1.61"
+version = "0.1.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "235e081f3925a06703c2d0117ea8b91f042756fd6e7a6e5d901e8ca1a996b220"
+checksum = "b2fd658b06e56721792c5df4475705b6cda790e9298d19d2f8af083457bcd127"
 dependencies = [
  "android_system_properties",
  "core-foundation-sys",
  "iana-time-zone-haiku",
  "js-sys",
+ "log",
  "wasm-bindgen",
  "windows-core",
 ]
@@ -1928,7 +1929,7 @@ version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e96d2a8af7dab92396bac5fe778a3668a347e1c9e7864cad478a93c484664712"
 dependencies = [
- "image 0.25.5",
+ "image 0.25.6",
 ]
 
 [[package]]
@@ -2106,9 +2107,9 @@ dependencies = [
 
 [[package]]
 name = "image"
-version = "0.25.5"
+version = "0.25.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd6f44aed642f18953a158afeb30206f4d50da59fbc66ecb53c66488de73563b"
+checksum = "db35664ce6b9810857a38a906215e75a9c879f0696556a39f59c62829710251a"
 dependencies = [
  "bytemuck",
  "byteorder-lite",
@@ -2376,9 +2377,9 @@ checksum = "9374ef4228402d4b7e403e5838cb880d9ee663314b0a900d5a6aabf0c213552e"
 
 [[package]]
 name = "log"
-version = "0.4.26"
+version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30bde2b3dc3671ae49d8e2e9f044c7c005836e7a023ee57cffa25ab82764bb9e"
+checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
 
 [[package]]
 name = "lopdf"
@@ -2892,9 +2893,9 @@ checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
 name = "pest"
-version = "2.7.15"
+version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b7cafe60d6cf8e62e1b9b2ea516a089c008945bb5a275416789e7db0bc199dc"
+checksum = "198db74531d58c70a361c42201efde7e2591e976d518caf7662a47dc5720e7b6"
 dependencies = [
  "memchr",
  "thiserror 2.0.12",
@@ -2903,9 +2904,9 @@ dependencies = [
 
 [[package]]
 name = "pest_derive"
-version = "2.7.15"
+version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "816518421cfc6887a0d62bf441b6ffb4536fcc926395a69e1a85852d4363f57e"
+checksum = "d725d9cfd79e87dccc9341a2ef39d1b6f6353d68c4b33c177febbe1a402c97c5"
 dependencies = [
  "pest",
  "pest_generator",
@@ -2913,9 +2914,9 @@ dependencies = [
 
 [[package]]
 name = "pest_generator"
-version = "2.7.15"
+version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d1396fd3a870fc7838768d171b4616d5c91f6cc25e377b673d714567d99377b"
+checksum = "db7d01726be8ab66ab32f9df467ae8b1148906685bbe75c82d1e65d7f5b3f841"
 dependencies = [
  "pest",
  "pest_meta",
@@ -2926,9 +2927,9 @@ dependencies = [
 
 [[package]]
 name = "pest_meta"
-version = "2.7.15"
+version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1e58089ea25d717bfd31fb534e4f3afcc2cc569c70de3e239778991ea3b7dea"
+checksum = "7f9f832470494906d1fca5329f8ab5791cc60beb230c74815dff541cbd2b5ca0"
 dependencies = [
  "once_cell",
  "pest",
@@ -3488,9 +3489,9 @@ checksum = "917ce264624a4b4db1c364dcc35bfca9ded014d0a958cd47ad3e960e988ea51c"
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.0"
+version = "0.103.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aa4eeac2588ffff23e9d7a7e9b3f971c5fb5b7ebc9452745e0c232c64f83b2f"
+checksum = "fef8b8769aaccf73098557a87cd1816b4f9c7c16811c9c77142aa695c16f2c03"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -3787,7 +3788,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "thiserror 2.0.12",
- "time 0.3.40",
+ "time 0.3.41",
 ]
 
 [[package]]
@@ -4056,7 +4057,7 @@ dependencies = [
 
 [[package]]
 name = "testangel"
-version = "0.22.0-rc.5"
+version = "0.22.0-rc.6"
 dependencies = [
  "base64",
  "chrono",
@@ -4068,7 +4069,7 @@ dependencies = [
  "fuzzy-matcher",
  "genpdf",
  "ico-builder",
- "image 0.25.5",
+ "image 0.25.6",
  "itertools",
  "libc",
  "libloading",
@@ -4119,7 +4120,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-evidence"
-version = "0.22.0-rc.5"
+version = "0.22.0-rc.6"
 dependencies = [
  "dynamic-plugin",
  "testangel-engine",
@@ -4138,7 +4139,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-rand"
-version = "0.22.0-rc.5"
+version = "0.22.0-rc.6"
 dependencies = [
  "dynamic-plugin",
  "rand",
@@ -4149,7 +4150,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-time"
-version = "0.22.0-rc.5"
+version = "0.22.0-rc.6"
 dependencies = [
  "dynamic-plugin",
  "testangel-engine",
@@ -4158,7 +4159,7 @@ dependencies = [
 
 [[package]]
 name = "testangel-user-interaction"
-version = "0.22.0-rc.5"
+version = "0.22.0-rc.6"
 dependencies = [
  "dynamic-plugin",
  "rfd",
@@ -4244,9 +4245,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.40"
+version = "0.3.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d9c75b47bdff86fa3334a3db91356b8d7d86a9b839dab7d0bdc5c3d3a077618"
+checksum = "8a7619e19bc266e0f9c5e6686659d394bc57973859340060a69221e57dbc0c40"
 dependencies = [
  "deranged",
  "itoa 1.0.15",
@@ -4254,7 +4255,7 @@ dependencies = [
  "powerfmt",
  "serde",
  "time-core",
- "time-macros 0.2.21",
+ "time-macros 0.2.22",
 ]
 
 [[package]]
@@ -4275,9 +4276,9 @@ dependencies = [
 
 [[package]]
 name = "time-macros"
-version = "0.2.21"
+version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29aa485584182073ed57fd5004aa09c371f021325014694e432313345865fd04"
+checksum = "3526739392ec93fd8b359c8e98514cb3e8e021beb4e5f597b00a0221f8ed8a49"
 dependencies = [
  "num-conv",
  "time-core",
@@ -5304,9 +5305,9 @@ dependencies = [
 
 [[package]]
 name = "zip"
-version = "2.4.2"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fabe6324e908f85a1c52063ce7aa26b68dcb7eb6dbc83a2d148403c9bc3eba50"
+checksum = "27c03817464f64e23f6f37574b4fdc8cf65925b5bfd2b0f2aedf959791941f88"
 dependencies = [
  "aes",
  "arbitrary",
@@ -5315,7 +5316,6 @@ dependencies = [
  "crc32fast",
  "crossbeam-utils",
  "deflate64",
- "displaydoc",
  "flate2",
  "getrandom 0.3.2",
  "hmac",
@@ -5324,8 +5324,7 @@ dependencies = [
  "memchr",
  "pbkdf2",
  "sha1 0.10.6",
- "thiserror 2.0.12",
- "time 0.3.40",
+ "time 0.3.41",
  "xz2",
  "zeroize",
  "zopfli",
