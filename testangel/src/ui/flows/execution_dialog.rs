@@ -288,7 +288,9 @@ impl Component for ExecutionDialog {
                         if let Some(display) = gtk::gdk::Display::default() {
                             display.clipboard().set_text(reason.to_string().as_str());
                         } else {
-                            tracing::warn!("No display is present, so no clipboard could be accessed!");
+                            tracing::warn!(
+                                "No display is present, so no clipboard could be accessed!"
+                            );
                         }
                         sender_c.input(ExecutionDialogInput::Close);
                         dlg.close();
