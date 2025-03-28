@@ -230,8 +230,9 @@ impl Component for FlowsHeader {
                                         action
                                             .name()
                                             .unwrap_or(lang::lookup("action-default-name"))
-                                    ),
-                                    &query,
+                                    )
+                                    .to_ascii_lowercase(),
+                                    &query.to_ascii_lowercase(),
                                 ) {
                                     unsorted_results.push((score, action));
                                 }

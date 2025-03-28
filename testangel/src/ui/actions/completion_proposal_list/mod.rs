@@ -43,8 +43,17 @@ impl CompletionProposalListModel {
         F: Fn(&CompletionProposal) -> bool,
     {
         let mut list = self.imp().inner.borrow().clone();
+        let mut remove_indexes = vec![];
+        for (idx, item) in list.iter().enumerate() {
+            if !retain_fn(item) {
+                remove_indexes.push(idx);
+            }
+        }
         list.retain(retain_fn);
         self.imp().inner.replace(list);
+        for (offset, index) in remove_indexes.iter().enumerate() {
+            self.items_changed(u32::try_from(*index - offset).unwrap(), 1, 0);
+        }
     }
 
     pub fn sort<F>(&self, compare: F)
