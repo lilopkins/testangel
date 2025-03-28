@@ -218,7 +218,8 @@ impl Component for ActionsHeader {
                     for engine in &**self.engine_list {
                         for instruction in &engine.instructions {
                             if let Some(score) = matcher.fuzzy_match(
-                                &format!("{}: {}", engine.name, instruction.friendly_name()).to_ascii_lowercase(),
+                                &format!("{}: {}", engine.name, instruction.friendly_name())
+                                    .to_ascii_lowercase(),
                                 &query.to_ascii_lowercase(),
                             ) {
                                 unsorted_results.push((
